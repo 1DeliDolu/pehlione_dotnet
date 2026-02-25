@@ -30,6 +30,15 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
 
         builder.Entity<Category>(b =>
         {
+            b.ToTable("categories");
+            b.Property(x => x.Id).HasColumnName("id");
+            b.Property(x => x.ParentId).HasColumnName("parent_id");
+            b.Property(x => x.Code).HasColumnName("code");
+            b.Property(x => x.Name).HasColumnName("name");
+            b.Property(x => x.Slug).HasColumnName("slug");
+            b.Property(x => x.SortOrder).HasColumnName("sort_order");
+            b.Property(x => x.IsActive).HasColumnName("is_active");
+
             b.Property(x => x.Code).HasMaxLength(60);
             b.Property(x => x.Name).HasMaxLength(120).IsRequired();
             b.Property(x => x.Slug).HasMaxLength(160).IsRequired();
@@ -45,6 +54,14 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
 
         builder.Entity<Product>(b =>
         {
+            b.ToTable("products");
+            b.Property(x => x.Id).HasColumnName("id");
+            b.Property(x => x.CategoryId).HasColumnName("category_id");
+            b.Property(x => x.Name).HasColumnName("name");
+            b.Property(x => x.Sku).HasColumnName("sku");
+            b.Property(x => x.Price).HasColumnName("price");
+            b.Property(x => x.IsActive).HasColumnName("is_active");
+
             b.Property(x => x.Name).HasMaxLength(160).IsRequired();
             b.Property(x => x.Sku).HasMaxLength(64).IsRequired();
             b.HasIndex(x => x.Sku).IsUnique();
@@ -59,6 +76,16 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
 
         builder.Entity<Collection>(b =>
         {
+            b.ToTable("collections");
+            b.Property(x => x.Id).HasColumnName("id");
+            b.Property(x => x.Name).HasColumnName("name");
+            b.Property(x => x.Slug).HasColumnName("slug");
+            b.Property(x => x.Kind).HasColumnName("kind");
+            b.Property(x => x.RuleJson).HasColumnName("rule_json");
+            b.Property(x => x.IsActive).HasColumnName("is_active");
+            b.Property(x => x.CreatedAt).HasColumnName("created_at");
+            b.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+
             b.Property(x => x.Name).HasMaxLength(160).IsRequired();
             b.Property(x => x.Slug).HasMaxLength(180).IsRequired();
             b.Property(x => x.Kind)
@@ -73,6 +100,11 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
 
         builder.Entity<CollectionProduct>(b =>
         {
+            b.ToTable("collection_products");
+            b.Property(x => x.CollectionId).HasColumnName("collection_id");
+            b.Property(x => x.ProductId).HasColumnName("product_id");
+            b.Property(x => x.SortOrder).HasColumnName("sort_order");
+
             b.HasKey(x => new { x.CollectionId, x.ProductId });
             b.Property(x => x.SortOrder).HasDefaultValue(0);
             b.HasIndex(x => new { x.CollectionId, x.SortOrder });
@@ -90,6 +122,13 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
 
         builder.Entity<CmsPage>(b =>
         {
+            b.ToTable("cms_pages");
+            b.Property(x => x.Id).HasColumnName("id");
+            b.Property(x => x.Title).HasColumnName("title");
+            b.Property(x => x.Slug).HasColumnName("slug");
+            b.Property(x => x.Content).HasColumnName("content");
+            b.Property(x => x.IsActive).HasColumnName("is_active");
+
             b.Property(x => x.Title).HasMaxLength(200).IsRequired();
             b.Property(x => x.Slug).HasMaxLength(220).IsRequired();
             b.HasIndex(x => x.Slug).IsUnique();
@@ -97,6 +136,12 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
 
         builder.Entity<Activity>(b =>
         {
+            b.ToTable("activities");
+            b.Property(x => x.Id).HasColumnName("id");
+            b.Property(x => x.Name).HasColumnName("name");
+            b.Property(x => x.Slug).HasColumnName("slug");
+            b.Property(x => x.IconUrl).HasColumnName("icon_url");
+
             b.Property(x => x.Name).HasMaxLength(120).IsRequired();
             b.Property(x => x.Slug).HasMaxLength(160).IsRequired();
             b.Property(x => x.IconUrl).HasMaxLength(500);
@@ -105,6 +150,13 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
 
         builder.Entity<Menu>(b =>
         {
+            b.ToTable("menus");
+            b.Property(x => x.Id).HasColumnName("id");
+            b.Property(x => x.Code).HasColumnName("code");
+            b.Property(x => x.Name).HasColumnName("name");
+            b.Property(x => x.Locale).HasColumnName("locale");
+            b.Property(x => x.IsActive).HasColumnName("is_active");
+
             b.Property(x => x.Code).HasMaxLength(60).IsRequired();
             b.Property(x => x.Name).HasMaxLength(120).IsRequired();
             b.Property(x => x.Locale).HasMaxLength(10).IsRequired();
@@ -113,6 +165,24 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
 
         builder.Entity<MenuNode>(b =>
         {
+            b.ToTable("menu_nodes");
+            b.Property(x => x.Id).HasColumnName("id");
+            b.Property(x => x.MenuId).HasColumnName("menu_id");
+            b.Property(x => x.ParentId).HasColumnName("parent_id");
+            b.Property(x => x.NodeKind).HasColumnName("node_kind");
+            b.Property(x => x.Label).HasColumnName("label");
+            b.Property(x => x.LinkType).HasColumnName("link_type");
+            b.Property(x => x.RefId).HasColumnName("ref_id");
+            b.Property(x => x.Url).HasColumnName("url");
+            b.Property(x => x.MegaColumn).HasColumnName("mega_column");
+            b.Property(x => x.SortOrder).HasColumnName("sort_order");
+            b.Property(x => x.IconUrl).HasColumnName("icon_url");
+            b.Property(x => x.Badge).HasColumnName("badge");
+            b.Property(x => x.Style).HasColumnName("style");
+            b.Property(x => x.IsActive).HasColumnName("is_active");
+            b.Property(x => x.CreatedAt).HasColumnName("created_at");
+            b.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+
             b.Property(x => x.NodeKind)
                 .HasConversion<string>()
                 .HasMaxLength(16)
@@ -150,6 +220,11 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
 
         builder.Entity<MenuNodeTranslation>(b =>
         {
+            b.ToTable("menu_node_translations");
+            b.Property(x => x.NodeId).HasColumnName("node_id");
+            b.Property(x => x.Locale).HasColumnName("locale");
+            b.Property(x => x.Label).HasColumnName("label");
+
             b.HasKey(x => new { x.NodeId, x.Locale });
             b.Property(x => x.Locale).HasMaxLength(10).IsRequired();
             b.Property(x => x.Label).HasMaxLength(200).IsRequired();

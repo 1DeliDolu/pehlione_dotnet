@@ -1,6 +1,4 @@
-﻿using System;
-using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -12,320 +10,258 @@ namespace Pehlione.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "Code",
-                table: "Categories",
-                type: "varchar(60)",
-                maxLength: 60,
-                nullable: true)
-                .Annotation("MySql:CharSet", "utf8mb4");
+            migrationBuilder.Sql("""
+                CREATE TABLE IF NOT EXISTS `categories` (
+                  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                  `parent_id` BIGINT UNSIGNED NULL,
+                  `code` varchar(60) NULL,
+                  `name` varchar(120) NOT NULL,
+                  `slug` varchar(160) NOT NULL,
+                  `sort_order` int NOT NULL DEFAULT 0,
+                  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+                  PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB;
+                """);
 
-            migrationBuilder.AddColumn<int>(
-                name: "ParentId",
-                table: "Categories",
-                type: "int",
-                nullable: true);
+            migrationBuilder.Sql("""
+                SET @sql = (
+                  SELECT IF(
+                    EXISTS (
+                      SELECT 1
+                      FROM INFORMATION_SCHEMA.COLUMNS
+                      WHERE TABLE_SCHEMA = DATABASE()
+                        AND TABLE_NAME = 'categories'
+                        AND COLUMN_NAME = 'code'
+                    ),
+                    'SELECT 1',
+                    'ALTER TABLE `categories` ADD COLUMN `code` varchar(60) NULL'
+                  )
+                );
+                PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+                """);
 
-            migrationBuilder.AddColumn<int>(
-                name: "SortOrder",
-                table: "Categories",
-                type: "int",
-                nullable: false,
-                defaultValue: 0);
+            migrationBuilder.Sql("""
+                SET @sql = (
+                  SELECT IF(
+                    EXISTS (
+                      SELECT 1
+                      FROM INFORMATION_SCHEMA.COLUMNS
+                      WHERE TABLE_SCHEMA = DATABASE()
+                        AND TABLE_NAME = 'categories'
+                        AND COLUMN_NAME = 'parent_id'
+                    ),
+                    'SELECT 1',
+                    'ALTER TABLE `categories` ADD COLUMN `parent_id` BIGINT UNSIGNED NULL'
+                  )
+                );
+                PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+                """);
 
-            migrationBuilder.CreateTable(
-                name: "Activities",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    Name = table.Column<string>(type: "varchar(120)", maxLength: 120, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    Slug = table.Column<string>(type: "varchar(160)", maxLength: 160, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    IconUrl = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Activities", x => x.Id);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
+            migrationBuilder.Sql("""
+                SET @sql = (
+                  SELECT IF(
+                    EXISTS (
+                      SELECT 1
+                      FROM INFORMATION_SCHEMA.COLUMNS
+                      WHERE TABLE_SCHEMA = DATABASE()
+                        AND TABLE_NAME = 'categories'
+                        AND COLUMN_NAME = 'sort_order'
+                    ),
+                    'SELECT 1',
+                    'ALTER TABLE `categories` ADD COLUMN `sort_order` int NOT NULL DEFAULT 0'
+                  )
+                );
+                PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+                """);
 
-            migrationBuilder.CreateTable(
-                name: "CmsPages",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    Title = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    Slug = table.Column<string>(type: "varchar(220)", maxLength: 220, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    Content = table.Column<string>(type: "longtext", nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    IsActive = table.Column<bool>(type: "tinyint(1)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_CmsPages", x => x.Id);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
+            migrationBuilder.Sql("""
+                SET @sql = (
+                  SELECT IF(
+                    EXISTS (
+                      SELECT 1
+                      FROM INFORMATION_SCHEMA.STATISTICS
+                      WHERE TABLE_SCHEMA = DATABASE()
+                        AND TABLE_NAME = 'categories'
+                        AND INDEX_NAME = 'IX_categories_slug'
+                    ),
+                    'SELECT 1',
+                    'CREATE UNIQUE INDEX `IX_categories_slug` ON `categories` (`slug`)'
+                  )
+                );
+                PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+                """);
 
-            migrationBuilder.CreateTable(
-                name: "Collections",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    Name = table.Column<string>(type: "varchar(160)", maxLength: 160, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    Slug = table.Column<string>(type: "varchar(180)", maxLength: 180, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    Kind = table.Column<string>(type: "varchar(16)", maxLength: 16, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    RuleJson = table.Column<string>(type: "json", nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    IsActive = table.Column<bool>(type: "tinyint(1)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Collections", x => x.Id);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
+            migrationBuilder.Sql("""
+                SET @sql = (
+                  SELECT IF(
+                    EXISTS (
+                      SELECT 1
+                      FROM INFORMATION_SCHEMA.STATISTICS
+                      WHERE TABLE_SCHEMA = DATABASE()
+                        AND TABLE_NAME = 'categories'
+                        AND INDEX_NAME = 'IX_categories_is_active_sort_order'
+                    ),
+                    'SELECT 1',
+                    'CREATE INDEX `IX_categories_is_active_sort_order` ON `categories` (`is_active`, `sort_order`)'
+                  )
+                );
+                PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+                """);
 
-            migrationBuilder.CreateTable(
-                name: "Menus",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    Code = table.Column<string>(type: "varchar(60)", maxLength: 60, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    Name = table.Column<string>(type: "varchar(120)", maxLength: 120, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    Locale = table.Column<string>(type: "varchar(10)", maxLength: 10, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    IsActive = table.Column<bool>(type: "tinyint(1)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Menus", x => x.Id);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
+            migrationBuilder.Sql("""
+                SET @sql = (
+                  SELECT IF(
+                    EXISTS (
+                      SELECT 1
+                      FROM INFORMATION_SCHEMA.STATISTICS
+                      WHERE TABLE_SCHEMA = DATABASE()
+                        AND TABLE_NAME = 'categories'
+                        AND INDEX_NAME = 'IX_categories_parent_id'
+                    ),
+                    'SELECT 1',
+                    'CREATE INDEX `IX_categories_parent_id` ON `categories` (`parent_id`)'
+                  )
+                );
+                PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+                """);
 
-            migrationBuilder.CreateTable(
-                name: "CollectionProducts",
-                columns: table => new
-                {
-                    CollectionId = table.Column<int>(type: "int", nullable: false),
-                    ProductId = table.Column<int>(type: "int", nullable: false),
-                    SortOrder = table.Column<int>(type: "int", nullable: false, defaultValue: 0)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_CollectionProducts", x => new { x.CollectionId, x.ProductId });
-                    table.ForeignKey(
-                        name: "FK_CollectionProducts_Collections_CollectionId",
-                        column: x => x.CollectionId,
-                        principalTable: "Collections",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_CollectionProducts_Products_ProductId",
-                        column: x => x.ProductId,
-                        principalTable: "Products",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
+            migrationBuilder.Sql("""
+                CREATE TABLE IF NOT EXISTS `products` (
+                  `id` int NOT NULL AUTO_INCREMENT,
+                  `category_id` BIGINT UNSIGNED NOT NULL,
+                  `name` varchar(160) NOT NULL,
+                  `sku` varchar(64) NOT NULL,
+                  `price` decimal(18,2) NOT NULL,
+                  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+                  PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB;
+                """);
 
-            migrationBuilder.CreateTable(
-                name: "MenuNodes",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    MenuId = table.Column<int>(type: "int", nullable: false),
-                    ParentId = table.Column<int>(type: "int", nullable: true),
-                    NodeKind = table.Column<string>(type: "varchar(16)", maxLength: 16, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    Label = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    LinkType = table.Column<string>(type: "varchar(16)", maxLength: 16, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    RefId = table.Column<int>(type: "int", nullable: true),
-                    Url = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    MegaColumn = table.Column<byte>(type: "tinyint unsigned", nullable: true),
-                    SortOrder = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
-                    IconUrl = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    Badge = table.Column<string>(type: "varchar(40)", maxLength: 40, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    Style = table.Column<string>(type: "varchar(16)", maxLength: 16, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    IsActive = table.Column<bool>(type: "tinyint(1)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_MenuNodes", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_MenuNodes_MenuNodes_ParentId",
-                        column: x => x.ParentId,
-                        principalTable: "MenuNodes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_MenuNodes_Menus_MenuId",
-                        column: x => x.MenuId,
-                        principalTable: "Menus",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
+            migrationBuilder.Sql("""
+                SET @sql = (
+                  SELECT IF(
+                    EXISTS (
+                      SELECT 1
+                      FROM INFORMATION_SCHEMA.STATISTICS
+                      WHERE TABLE_SCHEMA = DATABASE()
+                        AND TABLE_NAME = 'products'
+                        AND INDEX_NAME = 'IX_products_sku'
+                    ),
+                    'SELECT 1',
+                    'CREATE UNIQUE INDEX `IX_products_sku` ON `products` (`sku`)'
+                  )
+                );
+                PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+                """);
 
-            migrationBuilder.CreateTable(
-                name: "MenuNodeTranslations",
-                columns: table => new
-                {
-                    NodeId = table.Column<int>(type: "int", nullable: false),
-                    Locale = table.Column<string>(type: "varchar(10)", maxLength: 10, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    Label = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_MenuNodeTranslations", x => new { x.NodeId, x.Locale });
-                    table.ForeignKey(
-                        name: "FK_MenuNodeTranslations_MenuNodes_NodeId",
-                        column: x => x.NodeId,
-                        principalTable: "MenuNodes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
+            migrationBuilder.Sql("""
+                SET @sql = (
+                  SELECT IF(
+                    EXISTS (
+                      SELECT 1
+                      FROM INFORMATION_SCHEMA.STATISTICS
+                      WHERE TABLE_SCHEMA = DATABASE()
+                        AND TABLE_NAME = 'products'
+                        AND INDEX_NAME = 'IX_products_category_id'
+                    ),
+                    'SELECT 1',
+                    'CREATE INDEX `IX_products_category_id` ON `products` (`category_id`)'
+                  )
+                );
+                PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+                """);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Categories_IsActive_SortOrder",
-                table: "Categories",
-                columns: new[] { "IsActive", "SortOrder" });
+            migrationBuilder.Sql("""
+                CREATE TABLE IF NOT EXISTS `activities` (
+                  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                  `name` varchar(120) NOT NULL,
+                  `slug` varchar(160) NOT NULL,
+                  `icon_url` varchar(500) NULL,
+                  PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB;
+                """);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Categories_ParentId",
-                table: "Categories",
-                column: "ParentId");
+            migrationBuilder.Sql("""
+                CREATE TABLE IF NOT EXISTS `cms_pages` (
+                  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                  `title` varchar(200) NOT NULL,
+                  `slug` varchar(220) NOT NULL,
+                  `content` LONGTEXT NULL,
+                  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+                  PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB;
+                """);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Activities_Slug",
-                table: "Activities",
-                column: "Slug",
-                unique: true);
+            migrationBuilder.Sql("""
+                CREATE TABLE IF NOT EXISTS `collections` (
+                  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                  `name` varchar(160) NOT NULL,
+                  `slug` varchar(180) NOT NULL,
+                  `kind` varchar(16) NOT NULL,
+                  `rule_json` JSON NULL,
+                  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+                  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB;
+                """);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_CmsPages_Slug",
-                table: "CmsPages",
-                column: "Slug",
-                unique: true);
+            migrationBuilder.Sql("""
+                CREATE TABLE IF NOT EXISTS `collection_products` (
+                  `collection_id` BIGINT UNSIGNED NOT NULL,
+                  `product_id` int NOT NULL,
+                  `sort_order` int NOT NULL DEFAULT 0,
+                  PRIMARY KEY (`collection_id`, `product_id`)
+                ) ENGINE=InnoDB;
+                """);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_CollectionProducts_CollectionId_SortOrder",
-                table: "CollectionProducts",
-                columns: new[] { "CollectionId", "SortOrder" });
+            migrationBuilder.Sql("""
+                CREATE TABLE IF NOT EXISTS `menus` (
+                  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                  `code` varchar(60) NOT NULL,
+                  `name` varchar(120) NOT NULL,
+                  `locale` varchar(10) NOT NULL DEFAULT 'tr-TR',
+                  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+                  PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB;
+                """);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_CollectionProducts_ProductId",
-                table: "CollectionProducts",
-                column: "ProductId");
+            migrationBuilder.Sql("""
+                CREATE TABLE IF NOT EXISTS `menu_nodes` (
+                  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                  `menu_id` BIGINT UNSIGNED NOT NULL,
+                  `parent_id` BIGINT UNSIGNED NULL,
+                  `node_kind` varchar(16) NOT NULL,
+                  `label` varchar(200) NULL,
+                  `link_type` varchar(16) NOT NULL,
+                  `ref_id` BIGINT UNSIGNED NULL,
+                  `url` varchar(500) NULL,
+                  `mega_column` tinyint unsigned NULL,
+                  `sort_order` int NOT NULL DEFAULT 0,
+                  `icon_url` varchar(500) NULL,
+                  `badge` varchar(40) NULL,
+                  `style` varchar(16) NOT NULL,
+                  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+                  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB;
+                """);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Collections_Slug",
-                table: "Collections",
-                column: "Slug",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_MenuNodes_MenuId",
-                table: "MenuNodes",
-                column: "MenuId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_MenuNodes_MenuId_MegaColumn",
-                table: "MenuNodes",
-                columns: new[] { "MenuId", "MegaColumn" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_MenuNodes_ParentId_SortOrder",
-                table: "MenuNodes",
-                columns: new[] { "ParentId", "SortOrder" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Menus_Code_Locale",
-                table: "Menus",
-                columns: new[] { "Code", "Locale" },
-                unique: true);
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_Categories_Categories_ParentId",
-                table: "Categories",
-                column: "ParentId",
-                principalTable: "Categories",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.SetNull);
+            migrationBuilder.Sql("""
+                CREATE TABLE IF NOT EXISTS `menu_node_translations` (
+                  `node_id` BIGINT UNSIGNED NOT NULL,
+                  `locale` varchar(10) NOT NULL,
+                  `label` varchar(200) NOT NULL,
+                  PRIMARY KEY (`node_id`, `locale`)
+                ) ENGINE=InnoDB;
+                """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_Categories_Categories_ParentId",
-                table: "Categories");
-
-            migrationBuilder.DropTable(
-                name: "Activities");
-
-            migrationBuilder.DropTable(
-                name: "CmsPages");
-
-            migrationBuilder.DropTable(
-                name: "CollectionProducts");
-
-            migrationBuilder.DropTable(
-                name: "MenuNodeTranslations");
-
-            migrationBuilder.DropTable(
-                name: "Collections");
-
-            migrationBuilder.DropTable(
-                name: "MenuNodes");
-
-            migrationBuilder.DropTable(
-                name: "Menus");
-
-            migrationBuilder.DropIndex(
-                name: "IX_Categories_IsActive_SortOrder",
-                table: "Categories");
-
-            migrationBuilder.DropIndex(
-                name: "IX_Categories_ParentId",
-                table: "Categories");
-
-            migrationBuilder.DropColumn(
-                name: "Code",
-                table: "Categories");
-
-            migrationBuilder.DropColumn(
-                name: "ParentId",
-                table: "Categories");
-
-            migrationBuilder.DropColumn(
-                name: "SortOrder",
-                table: "Categories");
+            // Intentionally left empty to avoid destructive behavior on existing data.
         }
     }
 }
