@@ -103,16 +103,32 @@
                                 <div class="fw-semibold">@p.Price.ToString("0.00")</div>
                             </div>
                             <h3 class="h6 mb-3">
-                        <a asp-area="Customer"
-                           asp-controller="Catalog"
-                           asp-action="Details"
-                           asp-route-id="@p.Id"
-                           class="text-decoration-none stretched-link">
-                            @p.Name
-                        </a>
+                                <a asp-area="Customer"
+                                   asp-controller="Catalog"
+                                   asp-action="Details"
+                                   asp-route-id="@p.Id"
+                                   class="text-decoration-none">
+                                    @p.Name
+                                </a>
                             </h3>
-                            <div class="mt-auto">
-                                <span class="badge text-bg-light border">Detaya git</span>
+
+                            <div class="mt-auto d-flex align-items-center justify-content-between gap-2">
+                                <a href="@Url.Action("Details", "Catalog", new { area = "Customer", id = p.Id })"
+                                   class="btn btn-sm btn-outline-secondary">
+                                    Detaya git
+                                </a>
+
+                                <form asp-area="Customer"
+                                      asp-controller="Cart"
+                                      asp-action="Add"
+                                      method="post"
+                                      class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="productId" value="@p.Id" />
+                                    <input type="hidden" name="qty" value="1" />
+                                    <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                    <button type="submit" class="btn btn-sm btn-dark">Sepete ekle</button>
+                                </form>
                             </div>
                         </div>
                     </div>

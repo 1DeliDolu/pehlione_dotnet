@@ -3,49 +3,102 @@
     ViewData["Title"] = Model.Name;
 }
 
-<div class="container" style="max-width: 900px;">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <a class="btn btn-outline-secondary btn-sm"
-           asp-area="Customer"
-           asp-controller="Catalog"
-           asp-action="Category"
-           asp-route-slug="@Model.CategorySlug">
-            <- @Model.CategoryName
-        </a>
+<div class="container py-3 py-md-4" style="max-width: 1100px;">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div class="small text-muted">
+            <a asp-area="Customer" asp-controller="Catalog" asp-action="Index" class="text-decoration-none">Katalog</a>
+            <span class="mx-1">/</span>
+            <a asp-area="Customer" asp-controller="Catalog" asp-action="Category" asp-route-slug="@Model.CategorySlug" class="text-decoration-none">@Model.CategoryName</a>
+            <span class="mx-1">/</span>
+            <span>@Model.Name</span>
+        </div>
 
-        <a class="btn btn-outline-primary btn-sm"
-           asp-area="Customer"
-           asp-controller="Cart"
-           asp-action="Index">
-            Sepet
-        </a>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary btn-sm"
+               asp-area="Customer"
+               asp-controller="Catalog"
+               asp-action="Category"
+               asp-route-slug="@Model.CategorySlug">
+                Kategoriye don
+            </a>
+            <a class="btn btn-outline-primary btn-sm"
+               asp-area="Customer"
+               asp-controller="Cart"
+               asp-action="Index">
+                Sepet
+            </a>
+        </div>
     </div>
 
-    <h1 class="h3 mb-1">@Model.Name</h1>
-    <div class="text-muted mb-3">
-        SKU: <code>@Model.Sku</code>
-    </div>
+    <div class="row g-3">
+        <div class="col-12 col-lg-7">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-3 p-md-4">
+                    <div class="text-uppercase small text-muted mb-2">Urun detayi</div>
+                    <h1 class="h3 mb-2">@Model.Name</h1>
+                    <div class="text-muted mb-3">SKU: <code>@Model.Sku</code></div>
 
-    <div class="card">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <div class="text-muted">Fiyat</div>
-                    <div class="h4 m-0">@Model.Price.ToString("0.00")</div>
+                    <p class="mb-0 text-muted">
+                        Bu urun, <strong>@Model.CategoryName</strong> kategorisinde yer alir.
+                        Satin alma icin sagdaki panelden adet secip sepete ekleyebilirsiniz.
+                    </p>
                 </div>
+            </div>
+        </div>
 
-                <form asp-area="Customer"
-                      asp-controller="Cart"
-                      asp-action="Add"
-                      method="post"
-                      class="d-flex gap-2 align-items-center">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="productId" value="@Model.Id" />
-                    <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+        <div class="col-12 col-lg-5">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-3 p-md-4 d-flex flex-column">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="text-muted">Fiyat</div>
+                        <div class="h4 m-0">@Model.Price.ToString("0.00")</div>
+                    </div>
 
-                    <input type="number" name="qty" value="1" min="1" max="99" class="form-control" style="width: 110px;" />
-                    <button type="submit" class="btn btn-primary">Sepete ekle</button>
-                </form>
+                    <form asp-area="Customer"
+                          asp-controller="Cart"
+                          asp-action="Add"
+                          method="post"
+                          class="d-flex flex-column gap-2 mt-auto">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="productId" value="@Model.Id" />
+                        <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+
+                        <div class="mb-2">
+                            <label class="form-label m-0">Renk</label>
+                            <div class="d-flex gap-2 mt-2">
+                                <input type="radio" class="btn-check" name="color" id="color-black" value="Siyah" checked />
+                                <label class="btn btn-outline-dark btn-sm" for="color-black">Siyah</label>
+
+                                <input type="radio" class="btn-check" name="color" id="color-blue" value="Mavi" />
+                                <label class="btn btn-outline-primary btn-sm" for="color-blue">Mavi</label>
+
+                                <input type="radio" class="btn-check" name="color" id="color-green" value="Yesil" />
+                                <label class="btn btn-outline-success btn-sm" for="color-green">Yesil</label>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label m-0">Beden</label>
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                <input type="radio" class="btn-check" name="size" id="size-s" value="S" checked />
+                                <label class="btn btn-outline-secondary btn-sm" for="size-s">S</label>
+
+                                <input type="radio" class="btn-check" name="size" id="size-m" value="M" />
+                                <label class="btn btn-outline-secondary btn-sm" for="size-m">M</label>
+
+                                <input type="radio" class="btn-check" name="size" id="size-l" value="L" />
+                                <label class="btn btn-outline-secondary btn-sm" for="size-l">L</label>
+
+                                <input type="radio" class="btn-check" name="size" id="size-xl" value="XL" />
+                                <label class="btn btn-outline-secondary btn-sm" for="size-xl">XL</label>
+                            </div>
+                        </div>
+
+                        <label class="form-label m-0" for="qty">Adet</label>
+                        <input id="qty" type="number" name="qty" value="1" min="1" max="99" class="form-control" />
+                        <button type="submit" class="btn btn-dark">Sepete ekle</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>

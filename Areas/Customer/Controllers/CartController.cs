@@ -1,8 +1,10 @@
 using System.Text.Json;
+using System.Linq.Expressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
+using Pehlione.Models.Catalog;
 using Pehlione.Models.Commerce;
 using Pehlione.Models.ViewModels.Customer;
 
@@ -32,10 +34,10 @@ public sealed class CartController : Controller
             return View(new CartVm());
 
         var ids = cart.Select(x => x.ProductId).Distinct().ToArray();
+        var productQuery = ApplyProductIdFilter(_db.Products.AsNoTracking(), ids);
 
-        var products = await _db.Products
-            .AsNoTracking()
-            .Where(p => ids.Contains(p.Id) && p.IsActive && p.Category != null && p.Category.IsActive)
+        var products = await productQuery
+            .Where(p => p.IsActive && p.Category != null && p.Category.IsActive)
             .Select(p => new
             {
                 p.Id,
@@ -63,6 +65,8 @@ public sealed class CartController : Controller
                 ProductId = p.Id,
                 Name = p.Name,
                 Sku = p.Sku,
+                Color = ci.Color,
+                Size = ci.Size,
                 UnitPrice = p.Price,
                 Quantity = qty,
                 Subtotal = sub
@@ -80,9 +84,17 @@ public sealed class CartController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Add(int productId, int qty = 1, string? returnUrl = null, CancellationToken ct = default)
+    public async Task<IActionResult> Add(
+        int productId,
+        int qty = 1,
+        string? color = null,
+        string? size = null,
+        string? returnUrl = null,
+        CancellationToken ct = default)
     {
         qty = Math.Clamp(qty, 1, MaxQtyPerItem);
+        color = NormalizeOption(color);
+        size = NormalizeOption(size);
 
         var exists = await _db.Products
             .AsNoTracking()
@@ -93,13 +105,22 @@ public sealed class CartController : Controller
 
         var cart = ReadCart();
 
-        var item = cart.FirstOrDefault(x => x.ProductId == productId);
+        var item = cart.FirstOrDefault(x =>
+            x.ProductId == productId &&
+            string.Equals(x.Color, color, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(x.Size, size, StringComparison.OrdinalIgnoreCase));
         if (item is null)
         {
             if (cart.Count >= MaxDistinctItems)
                 return RedirectToAction(nameof(Index));
 
-            cart.Add(new CartCookieItem { ProductId = productId, Qty = qty });
+            cart.Add(new CartCookieItem
+            {
+                ProductId = productId,
+                Qty = qty,
+                Color = color,
+                Size = size
+            });
         }
         else
         {
@@ -116,16 +137,27 @@ public sealed class CartController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Update(int productId, int qty, string? returnUrl = null, CancellationToken ct = default)
+    public async Task<IActionResult> Update(
+        int productId,
+        int qty,
+        string? color = null,
+        string? size = null,
+        string? returnUrl = null,
+        CancellationToken ct = default)
     {
         qty = Math.Clamp(qty, 1, MaxQtyPerItem);
+        color = NormalizeOption(color);
+        size = NormalizeOption(size);
 
         var exists = await _db.Products
             .AsNoTracking()
             .AnyAsync(p => p.Id == productId && p.IsActive && p.Category != null && p.Category.IsActive, ct);
 
         var cart = ReadCart();
-        var item = cart.FirstOrDefault(x => x.ProductId == productId);
+        var item = cart.FirstOrDefault(x =>
+            x.ProductId == productId &&
+            string.Equals(x.Color, color, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(x.Size, size, StringComparison.OrdinalIgnoreCase));
 
         if (item is null)
             return RedirectToReturnUrlOrCart(returnUrl);
@@ -145,10 +177,15 @@ public sealed class CartController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Remove(int productId, string? returnUrl = null)
+    public IActionResult Remove(int productId, string? color = null, string? size = null, string? returnUrl = null)
     {
+        color = NormalizeOption(color);
+        size = NormalizeOption(size);
         var cart = ReadCart();
-        cart.RemoveAll(x => x.ProductId == productId);
+        cart.RemoveAll(x =>
+            x.ProductId == productId &&
+            string.Equals(x.Color, color, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(x.Size, size, StringComparison.OrdinalIgnoreCase));
         WriteCart(cart);
 
         return RedirectToReturnUrlOrCart(returnUrl);
@@ -176,9 +213,9 @@ public sealed class CartController : Controller
         }
 
         var ids = cart.Select(x => x.ProductId).Distinct().ToArray();
-        var products = await _db.Products
-            .AsNoTracking()
-            .Where(p => ids.Contains(p.Id) && p.IsActive && p.Category != null && p.Category.IsActive)
+        var productQuery = ApplyProductIdFilter(_db.Products.AsNoTracking(), ids);
+        var products = await productQuery
+            .Where(p => p.IsActive && p.Category != null && p.Category.IsActive)
             .Select(p => new
             {
                 p.Id,
@@ -242,6 +279,25 @@ public sealed class CartController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    private static IQueryable<Product> ApplyProductIdFilter(IQueryable<Product> query, IReadOnlyList<int> productIds)
+    {
+        if (productIds.Count == 0)
+            return query.Where(_ => false);
+
+        var parameter = Expression.Parameter(typeof(Product), "p");
+        var member = Expression.Property(parameter, nameof(Product.Id));
+        Expression body = Expression.Equal(member, Expression.Constant(productIds[0]));
+
+        for (var i = 1; i < productIds.Count; i++)
+        {
+            var next = Expression.Equal(member, Expression.Constant(productIds[i]));
+            body = Expression.OrElse(body, next);
+        }
+
+        var lambda = Expression.Lambda<Func<Product, bool>>(body, parameter);
+        return query.Where(lambda);
+    }
+
     private List<CartCookieItem> ReadCart()
     {
         if (!Request.Cookies.TryGetValue(CartCookieKey, out var json) || string.IsNullOrWhiteSpace(json))
@@ -280,9 +336,17 @@ public sealed class CartController : Controller
         Response.Cookies.Delete(CartCookieKey);
     }
 
+    private static string? NormalizeOption(string? value)
+    {
+        var normalized = (value ?? "").Trim();
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
+
     private sealed class CartCookieItem
     {
         public int ProductId { get; set; }
         public int Qty { get; set; }
+        public string? Color { get; set; }
+        public string? Size { get; set; }
     }
 }

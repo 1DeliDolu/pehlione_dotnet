@@ -11,6 +11,8 @@ public sealed class CartLineVm
     public int ProductId { get; set; }
     public string Name { get; set; } = "";
     public string Sku { get; set; } = "";
+    public string? Color { get; set; }
+    public string? Size { get; set; }
     public decimal UnitPrice { get; set; }
     public int Quantity { get; set; }
     public decimal Subtotal { get; set; }

@@ -1,9 +1,15 @@
 /* /Views/Shared/_Layout.cshtml.rz.scp.css */
 .ph-header[b-gn91jfo8cn] {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 1030;
   background: #fff;
+}
+
+.ph-page[b-gn91jfo8cn] {
+  padding-top: 130px;
 }
 
 .ph-topbar[b-gn91jfo8cn] {
@@ -108,6 +114,10 @@
 }
 
 @media (max-width: 991.98px) {
+  .ph-page[b-gn91jfo8cn] {
+    padding-top: 120px;
+  }
+
   .ph-navsurface[b-gn91jfo8cn] {
     border-radius: 16px;
   }
