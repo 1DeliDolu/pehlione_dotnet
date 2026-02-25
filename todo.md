@@ -1,5 +1,5 @@
 A) **Hedef (Türkçe)**
-Dev ortamında **gerçek SMTP kullanmadan** e-posta göndermeyi tamamlayacağız: e-postalar **pickup directory** içine `.eml` olarak düşecek. Admin yeni kullanıcı oluşturduğunda o kullanıcıya **“hoş geldin / ilk girişte şifre değiştir”** bilgilendirme e-postası üretilecek (ileride sipariş sonrası e-posta için aynı altyapıyı kullanacağız).
+“Birimler arası haberleşme” için **uygulama içi event bus** (in-process) kurup, **Customer** tarafında basit bir “Sipariş ver” akışı ekleyeceğiz. Sipariş verildiğinde **OrderPlaced** eventi yayınlanacak ve ayrı bir handler bu eventi dinleyip **pickup directory’e sipariş onay e-postası** bırakacak.
 
 B) **CLI Komutu (maksimum 1 komut)**
 
@@ -9,82 +9,293 @@ dotnet build
 
 C) **Dosya Değişiklikleri (sadece değişen/eklenen dosyalar, TAM içerik)**
 
-`./Services/IAppEmailSender.cs`
+`./Services/Events/IEvent.cs`
 
 ```csharp
-namespace Pehlione.Services;
+namespace Pehlione.Services.Events;
 
-public interface IAppEmailSender
+public interface IEvent
 {
-    Task SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct);
 }
 ```
 
-`./Services/DevPickupEmailSender.cs`
+`./Services/Events/IEventHandler.cs`
 
 ```csharp
-using System.Net.Mail;
+namespace Pehlione.Services.Events;
 
-namespace Pehlione.Services;
-
-public sealed class DevPickupEmailSender : IAppEmailSender
+public interface IEventHandler<in TEvent> where TEvent : IEvent
 {
-    private readonly IWebHostEnvironment _env;
-    private readonly IConfiguration _config;
-    private readonly ILogger<DevPickupEmailSender> _logger;
+    Task HandleAsync(TEvent evt, CancellationToken ct);
+}
+```
 
-    public DevPickupEmailSender(
-        IWebHostEnvironment env,
-        IConfiguration config,
-        ILogger<DevPickupEmailSender> logger)
+`./Services/Events/IEventBus.cs`
+
+```csharp
+namespace Pehlione.Services.Events;
+
+public interface IEventBus
+{
+    Task PublishAsync<TEvent>(TEvent evt, CancellationToken ct) where TEvent : IEvent;
+}
+```
+
+`./Services/Events/InProcessEventBus.cs`
+
+```csharp
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Pehlione.Services.Events;
+
+public sealed class InProcessEventBus : IEventBus
+{
+    private readonly IServiceProvider _services;
+
+    public InProcessEventBus(IServiceProvider services)
     {
-        _env = env;
-        _config = config;
-        _logger = logger;
+        _services = services;
     }
 
-    public async Task SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct)
+    public async Task PublishAsync<TEvent>(TEvent evt, CancellationToken ct) where TEvent : IEvent
     {
-        var from = _config["Mail:From"] ?? "no-reply@pehlione.local";
-        var pickup = _config["Mail:PickupDirectory"] ?? "App_Data/MailPickup";
-
-        var pickupPath = Path.IsPathRooted(pickup)
-            ? pickup
-            : Path.Combine(_env.ContentRootPath, pickup);
-
-        Directory.CreateDirectory(pickupPath);
-
-        using var message = new MailMessage(from, toEmail)
+        var handlers = _services.GetServices<IEventHandler<TEvent>>().ToArray();
+        foreach (var h in handlers)
         {
-            Subject = subject,
-            Body = htmlBody,
-            IsBodyHtml = true
-        };
-
-        using var client = new SmtpClient
-        {
-            DeliveryMethod = SmtpDeliveryMethod.SpecifiedPickupDirectory,
-            PickupDirectoryLocation = pickupPath
-        };
-
-        // SmtpClient SendMailAsync CancellationToken almaz; ct burada sadece imza için.
-        await client.SendMailAsync(message);
-
-        _logger.LogInformation("DEV email queued to pickup directory: {PickupPath} -> {ToEmail}", pickupPath, toEmail);
+            await h.HandleAsync(evt, ct);
+        }
     }
 }
 ```
 
-`./Services/NullEmailSender.cs`
+`./Events/OrderPlacedEvent.cs`
 
 ```csharp
-namespace Pehlione.Services;
+using Pehlione.Services.Events;
 
-public sealed class NullEmailSender : IAppEmailSender
+namespace Pehlione.Events;
+
+public sealed class OrderPlacedEvent : IEvent
 {
-    public Task SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct)
-        => Task.CompletedTask;
+    public string OrderNo { get; init; } = "";
+    public string CustomerEmail { get; init; } = "";
+    public decimal Total { get; init; }
+    public string ItemName { get; init; } = "";
+    public DateTime PlacedAtUtc { get; init; }
 }
+```
+
+`./Services/Events/Handlers/SendOrderConfirmationEmailHandler.cs`
+
+```csharp
+using Pehlione.Events;
+
+namespace Pehlione.Services.Events.Handlers;
+
+public sealed class SendOrderConfirmationEmailHandler : IEventHandler<OrderPlacedEvent>
+{
+    private readonly IAppEmailSender _email;
+
+    public SendOrderConfirmationEmailHandler(IAppEmailSender email)
+    {
+        _email = email;
+    }
+
+    public async Task HandleAsync(OrderPlacedEvent evt, CancellationToken ct)
+    {
+        var subject = $"Pehlione - Sipariş Onayı ({evt.OrderNo})";
+        var body = $@"
+            <p>Merhaba,</p>
+            <p>Siparişin alındı.</p>
+            <ul>
+                <li><strong>Sipariş No:</strong> {System.Net.WebUtility.HtmlEncode(evt.OrderNo)}</li>
+                <li><strong>Ürün:</strong> {System.Net.WebUtility.HtmlEncode(evt.ItemName)}</li>
+                <li><strong>Tutar:</strong> {evt.Total:0.00}</li>
+                <li><strong>Tarih (UTC):</strong> {evt.PlacedAtUtc:u}</li>
+            </ul>
+            <p>Teşekkürler.</p>
+        ";
+
+        await _email.SendAsync(evt.CustomerEmail, subject, body, ct);
+    }
+}
+```
+
+`./Models/ViewModels/Customer/PlaceOrderVm.cs`
+
+```csharp
+using System.ComponentModel.DataAnnotations;
+
+namespace Pehlione.Models.ViewModels.Customer;
+
+public sealed class PlaceOrderVm
+{
+    [Required]
+    [Display(Name = "Ürün adı")]
+    public string ItemName { get; set; } = "";
+
+    [Required]
+    [Range(typeof(decimal), "0.01", "9999999")]
+    [Display(Name = "Tutar")]
+    public decimal Total { get; set; }
+}
+```
+
+`./Models/ViewModels/Customer/OrderSuccessVm.cs`
+
+```csharp
+namespace Pehlione.Models.ViewModels.Customer;
+
+public sealed class OrderSuccessVm
+{
+    public string OrderNo { get; set; } = "";
+    public string Email { get; set; } = "";
+}
+```
+
+`./Areas/Customer/Controllers/OrdersController.cs`
+
+```csharp
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Pehlione.Data;
+using Pehlione.Events;
+using Pehlione.Models.Identity;
+using Pehlione.Models.ViewModels.Customer;
+using Pehlione.Services.Events;
+
+namespace Pehlione.Areas.Customer.Controllers;
+
+[Area("Customer")]
+[Authorize(Roles = IdentitySeed.RoleCustomer)]
+public sealed class OrdersController : Controller
+{
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IEventBus _bus;
+
+    public OrdersController(UserManager<ApplicationUser> userManager, IEventBus bus)
+    {
+        _userManager = userManager;
+        _bus = bus;
+    }
+
+    [HttpGet]
+    public IActionResult Checkout()
+    {
+        return View(new PlaceOrderVm());
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Checkout(PlaceOrderVm model, CancellationToken ct)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null)
+            return Challenge();
+
+        var email = user.Email ?? user.UserName ?? "unknown@local";
+
+        var orderNo = $"ORD-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}".Substring(0, 26);
+
+        await _bus.PublishAsync(new OrderPlacedEvent
+        {
+            OrderNo = orderNo,
+            CustomerEmail = email,
+            ItemName = model.ItemName,
+            Total = model.Total,
+            PlacedAtUtc = DateTime.UtcNow
+        }, ct);
+
+        return View("Success", new OrderSuccessVm
+        {
+            OrderNo = orderNo,
+            Email = email
+        });
+    }
+}
+```
+
+`./Areas/Customer/Views/Orders/Checkout.cshtml`
+
+```cshtml
+@model Pehlione.Models.ViewModels.Customer.PlaceOrderVm
+@{
+    ViewData["Title"] = "Checkout";
+}
+
+<div class="container" style="max-width: 680px;">
+    <h1 class="h3 mb-3">Sipariş Ver (Demo)</h1>
+
+    <form asp-area="Customer" asp-controller="Orders" asp-action="Checkout" method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+        <div class="mb-3">
+            <label asp-for="ItemName" class="form-label"></label>
+            <input asp-for="ItemName" class="form-control" />
+            <span asp-validation-for="ItemName" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Total" class="form-label"></label>
+            <input asp-for="Total" class="form-control" />
+            <span asp-validation-for="Total" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Siparişi ver</button>
+        <a class="btn btn-outline-secondary" asp-area="Customer" asp-controller="Home" asp-action="Index">Geri</a>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+```
+
+`./Areas/Customer/Views/Orders/Success.cshtml`
+
+```cshtml
+@model Pehlione.Models.ViewModels.Customer.OrderSuccessVm
+@{
+    ViewData["Title"] = "Sipariş Alındı";
+}
+
+<div class="container" style="max-width: 820px;">
+    <h1 class="h3 mb-3">Sipariş alındı</h1>
+
+    <div class="alert alert-success">
+        Sipariş No: <strong>@Model.OrderNo</strong>
+    </div>
+
+    <p class="text-muted mb-3">
+        Sipariş onay e-postası dev ortamında pickup directory’e yazıldı:
+        <code>App_Data/MailPickup</code>
+    </p>
+
+    <a class="btn btn-outline-primary" asp-area="Customer" asp-controller="Orders" asp-action="Checkout">Yeni sipariş</a>
+    <a class="btn btn-outline-secondary" asp-area="Customer" asp-controller="Home" asp-action="Index">Müşteri ana sayfa</a>
+</div>
+```
+
+`./Areas/Customer/Views/Home/Index.cshtml`
+
+```cshtml
+@{
+    ViewData["Title"] = "Müşteri";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Müşteri (Customer) Bölümü</h1>
+    <p>Bu alan <strong>Customer</strong> rolü ile korunur.</p>
+
+    <div class="d-flex justify-content-center gap-2 flex-wrap mt-3">
+        <a class="btn btn-primary" asp-area="Customer" asp-controller="Orders" asp-action="Checkout">Sipariş Ver (Demo)</a>
+    </div>
+</div>
 ```
 
 `./Program.cs`
@@ -96,9 +307,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Pehlione.Data;
+using Pehlione.Events;
 using Pehlione.Models.Identity;
 using Pehlione.Models.Security;
 using Pehlione.Services;
+using Pehlione.Services.Events;
+using Pehlione.Services.Events.Handlers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -168,6 +382,10 @@ if (builder.Environment.IsDevelopment())
 else
     builder.Services.AddSingleton<IAppEmailSender, NullEmailSender>();
 
+// Event bus + handlers
+builder.Services.AddScoped<IEventBus, InProcessEventBus>();
+builder.Services.AddScoped<IEventHandler<OrderPlacedEvent>, SendOrderConfirmationEmailHandler>();
+
 // EF Core hata tanılama (dev)
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -217,285 +435,21 @@ app.MapControllerRoute(
 app.Run();
 ```
 
-`./Areas/Admin/Controllers/UsersController.cs`
-
-```csharp
-using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Pehlione.Data;
-using Pehlione.Models.Identity;
-using Pehlione.Models.ViewModels.Admin;
-using Pehlione.Security;
-using Pehlione.Services;
-
-namespace Pehlione.Areas.Admin.Controllers;
-
-[Area("Admin")]
-[Authorize(Roles = IdentitySeed.RoleAdmin)]
-public sealed class UsersController : Controller
-{
-    private static readonly string[] AllowedRoles =
-    [
-        IdentitySeed.RoleCustomer,
-        IdentitySeed.RoleStaff,
-        IdentitySeed.RoleAdmin
-    ];
-
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IAppEmailSender _emailSender;
-    private readonly ILogger<UsersController> _logger;
-
-    public UsersController(
-        UserManager<ApplicationUser> userManager,
-        IAppEmailSender emailSender,
-        ILogger<UsersController> logger)
-    {
-        _userManager = userManager;
-        _emailSender = emailSender;
-        _logger = logger;
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> Index(CancellationToken ct)
-    {
-        var users = await _userManager.Users
-            .OrderBy(u => u.Email)
-            .ToListAsync(ct);
-
-        var items = new List<UserListItemVm>(users.Count);
-
-        foreach (var u in users)
-        {
-            var roles = await _userManager.GetRolesAsync(u);
-            items.Add(new UserListItemVm
-            {
-                Email = u.Email ?? "",
-                UserName = u.UserName ?? "",
-                Roles = roles.OrderBy(x => x).ToArray()
-            });
-        }
-
-        return View(items);
-    }
-
-    [HttpGet]
-    public IActionResult Create()
-    {
-        return View(new CreateUserVm());
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(CreateUserVm model, CancellationToken ct)
-    {
-        if (!AllowedRoles.Contains(model.Role))
-        {
-            ModelState.AddModelError(nameof(model.Role), "Geçersiz rol seçimi.");
-        }
-
-        if (!ModelState.IsValid)
-            return View(model);
-
-        var existing = await _userManager.FindByEmailAsync(model.Email);
-        if (existing is not null)
-        {
-            ModelState.AddModelError(nameof(model.Email), "Bu e-posta zaten kayıtlı.");
-            return View(model);
-        }
-
-        var user = new ApplicationUser
-        {
-            UserName = model.Email,
-            Email = model.Email,
-            EmailConfirmed = true
-        };
-
-        var create = await _userManager.CreateAsync(user, model.Password);
-        if (!create.Succeeded)
-        {
-            foreach (var err in create.Errors)
-                ModelState.AddModelError(string.Empty, err.Description);
-
-            return View(model);
-        }
-
-        var addRole = await _userManager.AddToRoleAsync(user, model.Role);
-        if (!addRole.Succeeded)
-        {
-            foreach (var err in addRole.Errors)
-                ModelState.AddModelError(string.Empty, err.Description);
-
-            return View(model);
-        }
-
-        // İlk girişte şifre değişimi zorunlu
-        var claims = await _userManager.GetClaimsAsync(user);
-        var hasFlag = claims.Any(c => c.Type == PehlioneClaimTypes.MustChangePassword);
-        if (!hasFlag)
-        {
-            await _userManager.AddClaimAsync(user, new Claim(PehlioneClaimTypes.MustChangePassword, "true"));
-        }
-
-        // DEV email (pickup directory) - hata olsa bile kullanıcı oluştu, akışı bozmayalım.
-        try
-        {
-            var subject = "Pehlione - Hesabın oluşturuldu";
-            var body = $@"
-                <p>Merhaba,</p>
-                <p>Pehlione hesabın oluşturuldu.</p>
-                <ul>
-                    <li><strong>E-posta/Kullanıcı adı:</strong> {System.Net.WebUtility.HtmlEncode(model.Email)}</li>
-                    <li><strong>Rol:</strong> {System.Net.WebUtility.HtmlEncode(model.Role)}</li>
-                </ul>
-                <p>İlk girişte şifre değiştirmen istenecektir.</p>
-                <p>Giriş: <a href=""{Request.Scheme}://{Request.Host}/Account/Login"">/Account/Login</a></p>
-            ";
-
-            await _emailSender.SendAsync(model.Email, subject, body, ct);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "DEV email send failed for new user: {Email}", model.Email);
-        }
-
-        return RedirectToAction(nameof(Index));
-    }
-}
-```
-
-`./appsettings.json`
-
-```json
-{
-  "ConnectionStrings": {
-    "PehlioneDb": ""
-  },
-  "Jwt": {
-    "Issuer": "pehlione",
-    "Audience": "pehlione",
-    "SigningKey": "",
-    "ExpiresMinutes": 60
-  },
-  "Mail": {
-    "From": "no-reply@pehlione.local",
-    "PickupDirectory": "App_Data/MailPickup"
-  },
-  "Seed": {
-    "AdminEmail": "admin@pehlione.local",
-    "AdminPassword": "",
-    "StaffEmail": "staff@pehlione.local",
-    "StaffPassword": "",
-    "CustomerEmail": "customer@pehlione.local",
-    "CustomerPassword": ""
-  },
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
-  "AllowedHosts": "*"
-}
-```
-
-`./appsettings.Development.json`
-
-```json
-{
-  "ConnectionStrings": {
-    "PehlioneDb": "server=localhost;port=3306;database=pehlione_dotnet;user=root;password=D0cker!;SslMode=None;"
-  },
-  "Jwt": {
-    "Issuer": "pehlione-dev",
-    "Audience": "pehlione-dev",
-    "SigningKey": "DEV_ONLY_CHANGE_ME_32_CHARS_MINIMUM__________",
-    "ExpiresMinutes": 120
-  },
-  "Mail": {
-    "From": "no-reply@pehlione.local",
-    "PickupDirectory": "App_Data/MailPickup"
-  },
-  "Seed": {
-    "AdminEmail": "admin@pehlione.local",
-    "AdminPassword": "Pehlione!Admin1",
-    "StaffEmail": "staff@pehlione.local",
-    "StaffPassword": "Pehlione!Staff1",
-    "CustomerEmail": "customer@pehlione.local",
-    "CustomerPassword": "Pehlione!Cust1"
-  },
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  }
-}
-```
-
-`./.gitignore`
-
-```gitignore
-# Build outputs
-[Bb]in/
-[Oo]bj/
-
-# User-specific / IDE
-.vs/
-.vscode/
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-
-.idea/
-*.sln.iml
-
-*.user
-*.suo
-*.userosscache
-*.sln.docstates
-
-# OS / tooling noise
-.DS_Store
-Thumbs.db
-*.swp
-*.tmp
-*.log
-
-# Secrets / local overrides (do NOT commit)
-appsettings.Development.json
-appsettings.Local.json
-.env
-.env.*
-
-# Dev email pickup directory
-App_Data/MailPickup/
-App_Data/MailPickup/**
-
-# Certificates / keys
-*.pfx
-*.snk
-```
-
 D) **Kısa Açıklama (en fazla 5 madde, öğretici)**
 
-* `SmtpDeliveryMethod.SpecifiedPickupDirectory`, e-postayı SMTP’ye göndermek yerine belirttiğin klasöre kopyalar. ([Microsoft Learn][1])
-* Pickup directory mantığı: uygulama maili bir dizine bırakır; dış bir süreç/insan isterse `.eml` dosyasını işler. ([Microsoft Learn][2])
-* Dev’de güvenli: yanlışlıkla gerçek kişilere mail gitmez; klasörden içerikleri görüp test edersin.
-* Prod’da SMTP’ye geçince `NullEmailSender` yerine gerçek SMTP sender yazacağız (aynı `IAppEmailSender` ile).
-* Test: Admin → `/Admin/Users/Create` ile yeni kullanıcı oluştur → proje kökünde `App_Data/MailPickup` altında `.eml` oluşmalı.
+* `OrdersController` siparişi “veriyor” ve **OrderPlacedEvent** yayınlıyor; e-posta göndermek controller’ın işi değil.
+* `SendOrderConfirmationEmailHandler` eventi dinleyip maili **pickup directory**’e yazar (birimler arası haberleşme = event).
+* Bu adımda siparişi DB’ye kaydetmedik; sadece event + e-posta akışını netleştirdik.
+* Test: Customer ile giriş → `/Customer/Orders/Checkout` → sipariş ver → `App_Data/MailPickup` altında `.eml` oluşmalı.
+* Sonraki adımda: siparişi **EF Core entity** olarak MySQL’e kaydedip (migration) sonra event’i DB kaydı sonrası yayınlayacağız.
 
 E) **Git Commit**
 
-* Commit mesajı: `Add dev pickup-directory email sender and send welcome email on user creation`
+* Commit mesajı: `Add in-process event bus and order-placed email flow (dev pickup)`
 * Komut:
 
 ```bash
-git add -A && git commit -m "Add dev pickup-directory email sender and send welcome email on user creation"
+git add -A && git commit -m "Add in-process event bus and order-placed email flow (dev pickup)"
 ```
 
-Bunu uygulayıp yeni kullanıcı oluşturduğunda `App_Data/MailPickup` içine `.eml` düştüyse **“bitti”** yaz. Sonraki adımda bunu **sipariş sonrası e-posta** ile bağlayacağız (Order oluşturulunca event → email).
-
+Sipariş verip `App_Data/MailPickup` içinde sipariş onay `.eml` dosyasını gördüysen **“bitti”** yaz. Sonraki adımda siparişi MySQL’e persist edecek EF entity + migration’a geçelim.
