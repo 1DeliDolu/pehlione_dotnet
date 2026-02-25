@@ -133,4 +133,64 @@ public sealed class CategoriesController : Controller
 
         return RedirectToAction(nameof(Index));
     }
+
+    [HttpGet]
+    public async Task<IActionResult> Delete(int id, CancellationToken ct)
+    {
+        var entity = await _db.Categories.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (entity is null)
+        {
+            return NotFound();
+        }
+
+        var hasProducts = await _db.Products.AsNoTracking().AnyAsync(p => p.CategoryId == id, ct);
+
+        return View(new CategoryDeleteVm
+        {
+            Id = entity.Id,
+            Name = entity.Name,
+            Slug = entity.Slug,
+            HasProducts = hasProducts
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(CategoryDeleteVm model, CancellationToken ct)
+    {
+        var entity = await _db.Categories.FirstOrDefaultAsync(x => x.Id == model.Id, ct);
+        if (entity is null)
+        {
+            return NotFound();
+        }
+
+        var hasProducts = await _db.Products.AsNoTracking().AnyAsync(p => p.CategoryId == model.Id, ct);
+        if (hasProducts)
+        {
+            model.Name = entity.Name;
+            model.Slug = entity.Slug;
+            model.HasProducts = true;
+
+            ModelState.AddModelError(string.Empty, "Bu kategoriye bagli urunler var. Once urunleri tasiyin veya silin.");
+            return View(model);
+        }
+
+        _db.Categories.Remove(entity);
+
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            model.Name = entity.Name;
+            model.Slug = entity.Slug;
+            model.HasProducts = true;
+
+            ModelState.AddModelError(string.Empty, "Silme engellendi (iliskili kayit olabilir).");
+            return View(model);
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
 }

@@ -35,11 +35,19 @@
                     }
                 </td>
                 <td class="text-end">
-                    <a class="btn btn-sm btn-outline-primary"
-                       asp-area="Admin"
-                       asp-controller="Categories"
-                       asp-action="Edit"
-                       asp-route-id="@c.Id">Duzenle</a>
+                    <div class="d-inline-flex gap-2">
+                        <a class="btn btn-sm btn-outline-primary"
+                           asp-area="Admin"
+                           asp-controller="Categories"
+                           asp-action="Edit"
+                           asp-route-id="@c.Id">Duzenle</a>
+
+                        <a class="btn btn-sm btn-outline-danger"
+                           asp-area="Admin"
+                           asp-controller="Categories"
+                           asp-action="Delete"
+                           asp-route-id="@c.Id">Sil</a>
+                    </div>
                 </td>
             </tr>
         }
