@@ -1,0 +1,29 @@
+@model Pehlione.ViewModels.Navigation.MainNavVm
+
+<div class="ph-navsurface mx-lg-auto my-3 my-lg-0">
+    <ul class="navbar-nav ph-navsurface__nav">
+        <li class="nav-item">
+            <a class="nav-link ph-navsurface__link @(Model.ActiveSlug is null ? "active" : "")"
+               asp-area="Customer"
+               asp-controller="Catalog"
+               asp-action="Index">
+                Neu &amp; angesagt
+            </a>
+        </li>
+
+        @foreach (var c in Model.Categories)
+        {
+            var isActive = string.Equals(Model.ActiveSlug, c.Slug, StringComparison.OrdinalIgnoreCase);
+
+            <li class="nav-item">
+                <a class="nav-link ph-navsurface__link @(isActive ? "active" : "")"
+                   asp-area="Customer"
+                   asp-controller="Catalog"
+                   asp-action="Category"
+                   asp-route-slug="@c.Slug">
+                    @c.Name
+                </a>
+            </li>
+        }
+    </ul>
+</div>
