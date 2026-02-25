@@ -1,5 +1,5 @@
 A) **Hedef (Türkçe)**
-Admin panelinde `/Admin/Users` üzerinden **yeni kullanıcı oluşturma** (Customer / Staff / Admin rolü seçerek) ekranını ekleyeceğiz. Böylece “kişiler/çalışanlar/admin” için demo seed’e bağlı kalmadan kullanıcı açabileceksin.
+Yeni oluşturulan kullanıcıların **ilk girişte şifre değiştirmesini zorunlu** yapacağız. Bunu DB şemasına dokunmadan, Identity’nin mevcut tablolarını kullanarak **User Claim** ile işaretleyeceğiz (`must_change_password=true`). Login sonrası bu claim varsa kullanıcı doğrudan **/Account/ChangePassword**’a yönlenecek.
 
 B) **CLI Komutu (maksimum 1 komut)**
 
@@ -9,9 +9,245 @@ dotnet build
 
 C) **Dosya Değişiklikleri (sadece değişen/eklenen dosyalar, TAM içerik)**
 
+`./Security/PehlioneClaimTypes.cs`
+
+```csharp
+namespace Pehlione.Security;
+
+public static class PehlioneClaimTypes
+{
+    public const string MustChangePassword = "pehlione.must_change_password";
+}
+```
+
+`./Models/ViewModels/ChangePasswordViewModel.cs`
+
+```csharp
+using System.ComponentModel.DataAnnotations;
+
+namespace Pehlione.Models.ViewModels;
+
+public sealed class ChangePasswordViewModel
+{
+    [Required]
+    public string? ReturnUrl { get; set; }
+
+    [Required]
+    [DataType(DataType.Password)]
+    [Display(Name = "Mevcut parola")]
+    public string CurrentPassword { get; set; } = "";
+
+    [Required]
+    [DataType(DataType.Password)]
+    [Display(Name = "Yeni parola")]
+    public string NewPassword { get; set; } = "";
+
+    [Required]
+    [DataType(DataType.Password)]
+    [Display(Name = "Yeni parola (tekrar)")]
+    [Compare(nameof(NewPassword), ErrorMessage = "Yeni parolalar eşleşmiyor.")]
+    public string ConfirmNewPassword { get; set; } = "";
+}
+```
+
+`./Views/Account/ChangePassword.cshtml`
+
+```cshtml
+@model Pehlione.Models.ViewModels.ChangePasswordViewModel
+@{
+    ViewData["Title"] = "Şifre Değiştir";
+}
+
+<div class="container" style="max-width: 560px;">
+    <h1 class="h3 mb-3">Şifre değiştir</h1>
+
+    <div class="alert alert-warning">
+        Bu hesap için <strong>ilk girişte şifre değişimi</strong> zorunlu olabilir.
+    </div>
+
+    <form asp-action="ChangePassword" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="ReturnUrl" />
+
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+        <div class="mb-3">
+            <label asp-for="CurrentPassword" class="form-label"></label>
+            <input asp-for="CurrentPassword" class="form-control" autocomplete="current-password" />
+            <span asp-validation-for="CurrentPassword" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="NewPassword" class="form-label"></label>
+            <input asp-for="NewPassword" class="form-control" autocomplete="new-password" />
+            <span asp-validation-for="NewPassword" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="ConfirmNewPassword" class="form-label"></label>
+            <input asp-for="ConfirmNewPassword" class="form-control" autocomplete="new-password" />
+            <span asp-validation-for="ConfirmNewPassword" class="text-danger"></span>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Kaydet</button>
+            <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Ana sayfa</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+```
+
+`./Controllers/AccountController.cs`
+
+```csharp
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Pehlione.Models.Identity;
+using Pehlione.Models.ViewModels;
+using Pehlione.Security;
+
+namespace Pehlione.Controllers;
+
+public sealed class AccountController : Controller
+{
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly SignInManager<ApplicationUser> _signInManager;
+
+    public AccountController(
+        UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager)
+    {
+        _userManager = userManager;
+        _signInManager = signInManager;
+    }
+
+    [HttpGet]
+    [AllowAnonymous]
+    public IActionResult Login(string? returnUrl = null)
+    {
+        return View(new LoginViewModel
+        {
+            ReturnUrl = string.IsNullOrWhiteSpace(returnUrl) ? Url.Content("~/") : returnUrl
+        });
+    }
+
+    [HttpPost]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Login(LoginViewModel model)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var user = await _userManager.FindByEmailAsync(model.EmailOrUserName)
+                   ?? await _userManager.FindByNameAsync(model.EmailOrUserName);
+
+        if (user is null)
+        {
+            ModelState.AddModelError(string.Empty, "Kullanıcı adı/e-posta veya parola hatalı.");
+            return View(model);
+        }
+
+        var result = await _signInManager.PasswordSignInAsync(
+            userName: user.UserName!,
+            password: model.Password,
+            isPersistent: model.RememberMe,
+            lockoutOnFailure: false);
+
+        if (result.Succeeded)
+        {
+            // İlk girişte şifre değişimi zorunluluğu (claim tabanlı)
+            var claims = await _userManager.GetClaimsAsync(user);
+            var mustChange = claims.Any(c => c.Type == PehlioneClaimTypes.MustChangePassword && c.Value == "true");
+            if (mustChange)
+            {
+                var ru = (string.IsNullOrWhiteSpace(model.ReturnUrl) ? Url.Content("~/") : model.ReturnUrl)!;
+                return RedirectToAction(nameof(ChangePassword), new { returnUrl = ru });
+            }
+
+            if (!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+                return Redirect(model.ReturnUrl);
+
+            return RedirectToAction("Index", "Home");
+        }
+
+        ModelState.AddModelError(string.Empty, "Kullanıcı adı/e-posta veya parola hatalı.");
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Logout()
+    {
+        await _signInManager.SignOutAsync();
+        return RedirectToAction("Index", "Home");
+    }
+
+    [HttpGet]
+    [AllowAnonymous]
+    public IActionResult Denied()
+    {
+        return View();
+    }
+
+    [HttpGet]
+    [Authorize]
+    public IActionResult ChangePassword(string? returnUrl = null)
+    {
+        return View(new ChangePasswordViewModel
+        {
+            ReturnUrl = string.IsNullOrWhiteSpace(returnUrl) ? Url.Content("~/") : returnUrl
+        });
+    }
+
+    [HttpPost]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangePassword(ChangePasswordViewModel model)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null)
+            return Challenge();
+
+        var result = await _userManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
+        if (!result.Succeeded)
+        {
+            foreach (var err in result.Errors)
+                ModelState.AddModelError(string.Empty, err.Description);
+
+            return View(model);
+        }
+
+        // Zorunlu değişim claim'ini temizle
+        var claims = await _userManager.GetClaimsAsync(user);
+        var mustChangeClaims = claims.Where(c => c.Type == PehlioneClaimTypes.MustChangePassword).ToList();
+        if (mustChangeClaims.Count > 0)
+        {
+            await _userManager.RemoveClaimsAsync(user, mustChangeClaims);
+        }
+
+        await _signInManager.RefreshSignInAsync(user);
+
+        if (!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+            return Redirect(model.ReturnUrl);
+
+        return RedirectToAction("Index", "Home");
+    }
+}
+```
+
 `./Areas/Admin/Controllers/UsersController.cs`
 
 ```csharp
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +255,7 @@ using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
 using Pehlione.Models.Identity;
 using Pehlione.Models.ViewModels.Admin;
+using Pehlione.Security;
 
 namespace Pehlione.Areas.Admin.Controllers;
 
@@ -113,143 +350,34 @@ public sealed class UsersController : Controller
             return View(model);
         }
 
+        // İlk girişte şifre değişimi zorunlu
+        var claims = await _userManager.GetClaimsAsync(user);
+        var hasFlag = claims.Any(c => c.Type == PehlioneClaimTypes.MustChangePassword);
+        if (!hasFlag)
+        {
+            await _userManager.AddClaimAsync(user, new Claim(PehlioneClaimTypes.MustChangePassword, "true"));
+        }
+
         return RedirectToAction(nameof(Index));
     }
 }
 ```
 
-`./Models/ViewModels/Admin/CreateUserVm.cs`
-
-```csharp
-using System.ComponentModel.DataAnnotations;
-using Pehlione.Data;
-
-namespace Pehlione.Models.ViewModels.Admin;
-
-public sealed class CreateUserVm
-{
-    [Required]
-    [EmailAddress]
-    [Display(Name = "E-posta")]
-    public string Email { get; set; } = "";
-
-    [Required]
-    [DataType(DataType.Password)]
-    [Display(Name = "Parola")]
-    public string Password { get; set; } = "";
-
-    [Required]
-    [Display(Name = "Rol")]
-    public string Role { get; set; } = IdentitySeed.RoleCustomer;
-}
-```
-
-`./Areas/Admin/Views/Users/Index.cshtml`
-
-```cshtml
-@model IReadOnlyList<Pehlione.Models.ViewModels.Admin.UserListItemVm>
-@{
-    ViewData["Title"] = "Kullanıcılar";
-}
-
-<div class="container" style="max-width: 980px;">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-        <h1 class="h3 m-0">Kullanıcılar</h1>
-        <a class="btn btn-primary" asp-area="Admin" asp-controller="Users" asp-action="Create">Yeni kullanıcı</a>
-    </div>
-
-    <p class="text-muted">
-        Bu liste, Identity kullanıcılarını ve rollerini gösterir.
-    </p>
-
-    <table class="table table-striped align-middle">
-        <thead>
-            <tr>
-                <th>E-posta</th>
-                <th>Kullanıcı Adı</th>
-                <th>Roller</th>
-            </tr>
-        </thead>
-        <tbody>
-        @foreach (var u in Model)
-        {
-            <tr>
-                <td>@u.Email</td>
-                <td>@u.UserName</td>
-                <td>@(u.Roles.Length == 0 ? "-" : string.Join(", ", u.Roles))</td>
-            </tr>
-        }
-        </tbody>
-    </table>
-</div>
-```
-
-`./Areas/Admin/Views/Users/Create.cshtml`
-
-```cshtml
-@model Pehlione.Models.ViewModels.Admin.CreateUserVm
-@{
-    ViewData["Title"] = "Yeni Kullanıcı";
-}
-
-<div class="container" style="max-width: 620px;">
-    <h1 class="h3 mb-3">Yeni kullanıcı</h1>
-
-    <form asp-area="Admin" asp-controller="Users" asp-action="Create" method="post">
-        @Html.AntiForgeryToken()
-
-        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-
-        <div class="mb-3">
-            <label asp-for="Email" class="form-label"></label>
-            <input asp-for="Email" class="form-control" autocomplete="email" />
-            <span asp-validation-for="Email" class="text-danger"></span>
-        </div>
-
-        <div class="mb-3">
-            <label asp-for="Password" class="form-label"></label>
-            <input asp-for="Password" class="form-control" autocomplete="new-password" />
-            <span asp-validation-for="Password" class="text-danger"></span>
-            <div class="form-text">Parola politikası Identity ayarlarına göre doğrulanır.</div>
-        </div>
-
-        <div class="mb-3">
-            <label asp-for="Role" class="form-label"></label>
-            <select asp-for="Role" class="form-select">
-                <option value="Customer">Customer</option>
-                <option value="Staff">Staff</option>
-                <option value="Admin">Admin</option>
-            </select>
-            <span asp-validation-for="Role" class="text-danger"></span>
-        </div>
-
-        <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary">Oluştur</button>
-            <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Users" asp-action="Index">İptal</a>
-        </div>
-    </form>
-</div>
-
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-}
-```
-
 D) **Kısa Açıklama (en fazla 5 madde, öğretici)**
 
-* `/Admin/Users/Create` sadece **Admin** rolüne açık.
-* Rol seçimini `AllowedRoles` ile whitelist yaptık (kötü niyetli “başka rol adı” post edilemesin).
-* `UserName = Email` yaparak login tarafını basit tuttuk.
-* Hata mesajlarını Identity’nin `Errors` listesinden ModelState’e aktardık.
-* Sonraki adım: oluşturulan kullanıcıya **“ilk girişte şifre değiştir”** zorunluluğu koyacağız (MustChangePassword akışı).
+* Yeni kullanıcı oluşturulunca `pehlione.must_change_password=true` claim’i ekleniyor (DB migration yok).
+* Login başarılı olunca bu claim kontrol ediliyor; varsa kullanıcı zorunlu olarak `/Account/ChangePassword`’a gidiyor.
+* Şifre değişince claim kaldırılıyor ve `RefreshSignInAsync` ile cookie güncelleniyor.
+* Admin/Staff/Customer hepsi için geçerli (admin isterse yine değiştirebilir).
+* Sonraki adımda istersen: **Admin “reset password”** (token ile) akışını da ekleyebiliriz.
 
 E) **Git Commit**
 
-* Commit mesajı: `Add Admin create-user page with role assignment`
+* Commit mesajı: `Force first-login password change via Identity claim`
 * Komut:
 
 ```bash
-git add -A && git commit -m "Add Admin create-user page with role assignment"
+git add -A && git commit -m "Force first-login password change via Identity claim"
 ```
 
-Bunu uygulayıp `/Admin/Users/Create` ile bir **Staff** ve bir **Customer** kullanıcı oluşturabildiysen **“bitti”** yaz. Sonraki adımda “ilk girişte şifre değişimi zorunlu” akışına geçelim.
+Bunu yaptıktan sonra test: Admin panelinden yeni bir Staff oluştur → o kullanıcıyla login ol → **direkt ChangePassword** sayfasına düşüyorsan tamam. Olduysa **“bitti”** yaz.
