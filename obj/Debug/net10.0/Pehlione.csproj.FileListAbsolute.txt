@@ -203,3 +203,11 @@
 /home/project/Pehlione/bin/Debug/net10.0/NSwag.Generation.AspNetCore.dll
 /home/project/Pehlione/bin/Debug/net10.0/YamlDotNet.dll
 /home/project/Pehlione/obj/Debug/net10.0/Pehlione.MvcApplicationPartsAssemblyInfo.cs
+/home/project/Pehlione/bin/Debug/net10.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll
+/home/project/Pehlione/bin/Debug/net10.0/Microsoft.IdentityModel.Abstractions.dll
+/home/project/Pehlione/bin/Debug/net10.0/Microsoft.IdentityModel.JsonWebTokens.dll
+/home/project/Pehlione/bin/Debug/net10.0/Microsoft.IdentityModel.Logging.dll
+/home/project/Pehlione/bin/Debug/net10.0/Microsoft.IdentityModel.Protocols.dll
+/home/project/Pehlione/bin/Debug/net10.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+/home/project/Pehlione/bin/Debug/net10.0/Microsoft.IdentityModel.Tokens.dll
+/home/project/Pehlione/bin/Debug/net10.0/System.IdentityModel.Tokens.Jwt.dll
