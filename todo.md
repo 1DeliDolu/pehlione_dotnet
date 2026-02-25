@@ -1,91 +1,13 @@
 A) **Hedef (Türkçe)**
-Pehlione MVC projesini EF Core üzerinden **yerel MySQL**’e bağlayacak altyapıyı kurup, bağlantıyı hızlı doğrulamak için **/db/ping** endpoint’i ekleyeceğiz (RBAC/JWT’ye geçmeden önce “DB’ye gerçekten erişiyor muyuz?” testini netleştireceğiz).
+Çalışanlar (Staff), Müşteri (Customer) ve Admin için ayrı “bölüm” iskeletini **MVC Areas** ile kurup her bölümde birer `HomeController/Index` action + view oluşturacağız; böylece ileride JWT + RBAC geldiğinde her rolün sadece kendi alanına erişmesini net biçimde bağlayacağız.
 
 B) **CLI Komutu (maksimum 1 komut)**
 
 ```bash
-dotnet add package Pomelo.EntityFrameworkCore.MySql && dotnet add package Microsoft.EntityFrameworkCore.Design && dotnet add package Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore
+dotnet build
 ```
 
 C) **Dosya Değişiklikleri (sadece değişen/eklenen dosyalar, TAM içerik)**
-
-`./Controllers/DbPingController.cs`
-
-```csharp
-using System.Data;
-using Microsoft.AspNetCore.Mvc;
-using Pehlione.Data;
-
-namespace Pehlione.Controllers;
-
-[ApiController]
-[Route("db")]
-public sealed class DbPingController : ControllerBase
-{
-    private readonly PehlioneDbContext _db;
-
-    public DbPingController(PehlioneDbContext db)
-    {
-        _db = db;
-    }
-
-    [HttpGet("ping")]
-    public async Task<IActionResult> Ping(CancellationToken ct)
-    {
-        try
-        {
-            var canConnect = await _db.Database.CanConnectAsync(ct);
-
-            string? provider = _db.Database.ProviderName;
-            string? serverVersion = null;
-
-            if (canConnect)
-            {
-                await using var conn = _db.Database.GetDbConnection();
-                if (conn.State != ConnectionState.Open)
-                {
-                    await conn.OpenAsync(ct);
-                }
-
-                serverVersion = conn.ServerVersion;
-            }
-
-            return Ok(new
-            {
-                canConnect,
-                provider,
-                serverVersion
-            });
-        }
-        catch (Exception ex)
-        {
-            return Problem(
-                title: "Database connection failed",
-                detail: ex.Message,
-                statusCode: StatusCodes.Status500InternalServerError);
-        }
-    }
-}
-```
-
-`./Data/PehlioneDbContext.cs`
-
-```csharp
-using Microsoft.EntityFrameworkCore;
-
-namespace Pehlione.Data;
-
-public sealed class PehlioneDbContext : DbContext
-{
-    public PehlioneDbContext(DbContextOptions<PehlioneDbContext> options)
-        : base(options)
-    {
-    }
-
-    // Şimdilik DbSet yok: sadece bağlantı testi yapıyoruz.
-    // İlk entity ile birlikte buraya DbSet<...> ekleyeceğiz.
-}
-```
 
 `./Program.cs`
 
@@ -124,6 +46,11 @@ app.UseRouting();
 
 app.UseAuthorization();
 
+// Areas routing (Admin / Staff / Customer)
+app.MapControllerRoute(
+    name: "areas",
+    pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}");
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
@@ -131,56 +58,145 @@ app.MapControllerRoute(
 app.Run();
 ```
 
-`./appsettings.json`
+`./Areas/Admin/Controllers/HomeController.cs`
 
-```json
+```csharp
+using Microsoft.AspNetCore.Mvc;
+
+namespace Pehlione.Areas.Admin.Controllers;
+
+[Area("Admin")]
+public sealed class HomeController : Controller
 {
-  "ConnectionStrings": {
-    "PehlioneDb": ""
-  },
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
+    public IActionResult Index()
+    {
+        return View();
     }
-  },
-  "AllowedHosts": "*"
 }
 ```
 
-`./appsettings.Development.json`
+`./Areas/Admin/Views/Home/Index.cshtml`
 
-```json
+```cshtml
+@{
+    ViewData["Title"] = "Admin";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Admin Bölümü</h1>
+    <p>Bu alan ileride <strong>Admin</strong> rolü ile korunacak (JWT + RBAC).</p>
+</div>
+```
+
+`./Areas/Staff/Controllers/HomeController.cs`
+
+```csharp
+using Microsoft.AspNetCore.Mvc;
+
+namespace Pehlione.Areas.Staff.Controllers;
+
+[Area("Staff")]
+public sealed class HomeController : Controller
 {
-  "ConnectionStrings": {
-    "PehlioneDb": "server=localhost;port=3306;database=pehlione_dotnet;user=root;password=D0cker!;SslMode=None;"
-  },
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
+    public IActionResult Index()
+    {
+        return View();
     }
-  }
 }
 ```
 
-D) **Kısa Açıklama (en fazla 5 madde)**
+`./Areas/Staff/Views/Home/Index.cshtml`
 
-* Microsoft’un EF MVC yaklaşımındaki temel fikir: **provider paketi + DbContext + DI kaydı + connection string**. Biz SQL Server yerine MySQL provider’ı kullandık. ([Microsoft Learn][1])
-* Tutorial sayfası .NET 6+ minimal hosting farklarına değiniyor; biz zaten tek `Program.cs` (minimal hosting) ile ilerledik. ([Microsoft Learn][1])
-* `GET /db/ping` → `canConnect: true` görürsen MySQL bağlantısı OK; false/500 ise connection string / MySQL servis / DB varlığı kontrol edilir.
-* `ServerVersion.AutoDetect(...)` MySQL sürümünü otomatik algılar (ilk bağlantıda doğrulama yapar).
-* Bir sonraki adımda ilk entity + migration + `dotnet ef database update` ile DB’ye tablo basacağız.
+```cshtml
+@{
+    ViewData["Title"] = "Çalışanlar";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Çalışanlar (Staff) Bölümü</h1>
+    <p>Bu alan ileride <strong>Staff</strong> rolü ile korunacak (JWT + RBAC).</p>
+</div>
+```
+
+`./Areas/Customer/Controllers/HomeController.cs`
+
+```csharp
+using Microsoft.AspNetCore.Mvc;
+
+namespace Pehlione.Areas.Customer.Controllers;
+
+[Area("Customer")]
+public sealed class HomeController : Controller
+{
+    public IActionResult Index()
+    {
+        return View();
+    }
+}
+```
+
+`./Areas/Customer/Views/Home/Index.cshtml`
+
+```cshtml
+@{
+    ViewData["Title"] = "Müşteri";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Müşteri (Customer) Bölümü</h1>
+    <p>Bu alan ileride <strong>Customer</strong> rolü ile korunacak (JWT + RBAC).</p>
+</div>
+```
+
+`./Views/Home/Index.cshtml`
+
+```cshtml
+@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Pehlione</h1>
+    <p>Prototip alışveriş sitesi - bölüm iskeletleri</p>
+
+    <hr />
+
+    <h2 class="h4">Bölümler</h2>
+    <div class="d-flex justify-content-center gap-3 flex-wrap">
+        <a class="btn btn-outline-primary" asp-area="Customer" asp-controller="Home" asp-action="Index">
+            Müşteri
+        </a>
+        <a class="btn btn-outline-secondary" asp-area="Staff" asp-controller="Home" asp-action="Index">
+            Çalışanlar
+        </a>
+        <a class="btn btn-outline-danger" asp-area="Admin" asp-controller="Home" asp-action="Index">
+            Admin
+        </a>
+    </div>
+
+    <p class="mt-3 text-muted">
+        Not: Şimdilik herkes linkleri görebilir; bir sonraki güvenlik adımlarında (JWT + RBAC) her rol sadece kendi alanına erişebilecek.
+    </p>
+</div>
+```
+
+D) **Kısa Açıklama (en fazla 5 madde, öğretici)**
+
+* Controller’lar istekleri “action” metodlarıyla karşılar; action’lar çoğunlukla `IActionResult` döndürür ve `View()` gibi helper’larla response seçilir. ([Microsoft Learn][1])
+* “Area” kullanımı, uygulamayı **bölümlere ayırmanın** (Admin/Staff/Customer) en temiz yollarından biri; RBAC geldiğinde her area’ya `[Authorize(Roles="...")]` ile net kapı koyacağız. ([Microsoft Learn][1])
+* `MapControllerRoute` içinde `{area:exists}` pattern’i olmadan `/Admin` gibi area URL’leri çözülmez; bu yüzden Program.cs’e area route ekledik.
+* Her bölüm için `HomeController.Index` + `Views/Home/Index.cshtml` ile en minimal “çalışıyor mu?” sayfasını verdik.
+* Bir sonraki adımda bu alanlara **rol bazlı erişim** ekleyeceğiz (JWT + policy/roles) ve ana sayfadaki butonları role göre göstereceğiz. ([Microsoft Learn][1])
 
 E) **Git Commit**
 
-* Commit mesajı: `Add EF Core MySQL wiring and /db/ping endpoint`
+* Commit mesajı: `Add Admin/Staff/Customer areas with Home/Index pages`
 * Komut:
 
 ```bash
-git add -A && git commit -m "Add EF Core MySQL wiring and /db/ping endpoint"
+git add -A && git commit -m "Add Admin/Staff/Customer areas with Home/Index pages"
 ```
 
-> Bu adımı uygulayıp projeyi çalıştırdıktan sonra tarayıcıdan **/db/ping**’e gidip sonucu gördüğünde **“bitti”** yaz.
+Bu adımı yaptıktan sonra tarayıcıda şu URL’leri açıp çalıştığını doğrula: `/Admin`, `/Staff`, `/Customer`. Sonra **“bitti”** yaz.
 
-[1]: https://learn.microsoft.com/de-de/aspnet/core/data/ef-mvc/intro?view=aspnetcore-10.0 "Tutorial: Erste Schritte mit EF Core in einer ASP.NET Core MVC-Web-App | Microsoft Learn"
+[1]: https://learn.microsoft.com/de-de/aspnet/core/mvc/controllers/actions?view=aspnetcore-10.0 "Verarbeiten von Anforderungen mit Controllern in ASP.NET Core MVC | Microsoft Learn"
