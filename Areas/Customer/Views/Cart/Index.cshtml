@@ -1,0 +1,57 @@
+@model Pehlione.Models.ViewModels.Customer.CartVm
+@{
+    ViewData["Title"] = "Sepet";
+}
+
+<div class="container" style="max-width: 1100px;">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h1 class="h3 m-0">Sepet</h1>
+        <a class="btn btn-outline-secondary" asp-area="Customer" asp-controller="Catalog" asp-action="Index">Kataloga don</a>
+    </div>
+
+    @if (Model.Lines.Count == 0)
+    {
+        <div class="alert alert-info">Sepet bos.</div>
+    }
+    else
+    {
+        <table class="table table-striped align-middle">
+            <thead>
+            <tr>
+                <th>Urun</th>
+                <th>SKU</th>
+                <th class="text-end">Birim Fiyat</th>
+                <th class="text-end">Adet</th>
+                <th class="text-end">Ara Toplam</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var l in Model.Lines)
+            {
+                <tr>
+                    <td>
+                        <a asp-area="Customer"
+                           asp-controller="Catalog"
+                           asp-action="Details"
+                           asp-route-id="@l.ProductId">@l.Name</a>
+                    </td>
+                    <td><code>@l.Sku</code></td>
+                    <td class="text-end">@l.UnitPrice.ToString("0.00")</td>
+                    <td class="text-end">@l.Quantity</td>
+                    <td class="text-end">@l.Subtotal.ToString("0.00")</td>
+                </tr>
+            }
+            </tbody>
+            <tfoot>
+            <tr>
+                <th colspan="4" class="text-end">Toplam</th>
+                <th class="text-end">@Model.Total.ToString("0.00")</th>
+            </tr>
+            </tfoot>
+        </table>
+
+        <div class="text-muted">
+            Not: Bu adimda "adet guncelle / sepetten cikar" yok. Sonraki adimda ekleyecegiz.
+        </div>
+    }
+</div>
