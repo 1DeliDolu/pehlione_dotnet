@@ -66,6 +66,8 @@ if (app.Environment.IsDevelopment())
     }
 }
 
+app.MapControllers();
+
 // Areas routing (Admin / Staff / Customer)
 app.MapControllerRoute(
     name: "areas",
