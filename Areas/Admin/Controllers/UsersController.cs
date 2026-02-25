@@ -7,6 +7,7 @@ using Pehlione.Data;
 using Pehlione.Models.Identity;
 using Pehlione.Models.ViewModels.Admin;
 using Pehlione.Security;
+using Pehlione.Services;
 
 namespace Pehlione.Areas.Admin.Controllers;
 
@@ -22,10 +23,17 @@ public sealed class UsersController : Controller
     ];
 
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IAppEmailSender _emailSender;
+    private readonly ILogger<UsersController> _logger;
 
-    public UsersController(UserManager<ApplicationUser> userManager)
+    public UsersController(
+        UserManager<ApplicationUser> userManager,
+        IAppEmailSender emailSender,
+        ILogger<UsersController> logger)
     {
         _userManager = userManager;
+        _emailSender = emailSender;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -112,6 +120,27 @@ public sealed class UsersController : Controller
         if (!hasFlag)
         {
             await _userManager.AddClaimAsync(user, new Claim(PehlioneClaimTypes.MustChangePassword, "true"));
+        }
+
+        try
+        {
+            var subject = "Pehlione - Hesabin olusturuldu";
+            var body = $@"
+                <p>Merhaba,</p>
+                <p>Pehlione hesabin olusturuldu.</p>
+                <ul>
+                    <li><strong>E-posta/Kullanici adi:</strong> {System.Net.WebUtility.HtmlEncode(model.Email)}</li>
+                    <li><strong>Rol:</strong> {System.Net.WebUtility.HtmlEncode(model.Role)}</li>
+                </ul>
+                <p>Ilk giriste sifre degistirmen istenecektir.</p>
+                <p>Giris: <a href=""{Request.Scheme}://{Request.Host}/Account/Login"">/Account/Login</a></p>
+            ";
+
+            await _emailSender.SendAsync(model.Email, subject, body, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "DEV email send failed for new user: {Email}", model.Email);
         }
 
         return RedirectToAction(nameof(Index));

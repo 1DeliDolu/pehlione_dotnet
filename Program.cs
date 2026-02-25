@@ -49,7 +49,6 @@ if (string.IsNullOrWhiteSpace(jwt.SigningKey) || jwt.SigningKey.Length < 32)
     throw new InvalidOperationException("Jwt:SigningKey must be set and at least 32 characters.");
 }
 
-// JWT bearer (API)
 builder.Services.AddAuthentication()
     .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
     {
@@ -73,7 +72,17 @@ builder.Services.AddAuthentication()
     });
 
 builder.Services.AddAuthorization();
+
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddSingleton<IAppEmailSender, DevPickupEmailSender>();
+}
+else
+{
+    builder.Services.AddSingleton<IAppEmailSender, NullEmailSender>();
+}
 
 // EF Core hata tanilama (dev)
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
