@@ -8,20 +8,36 @@
 
     <hr />
 
-    <h2 class="h4">Bolumler</h2>
-    <div class="d-flex justify-content-center gap-3 flex-wrap">
-        <a class="btn btn-outline-primary" asp-area="Customer" asp-controller="Home" asp-action="Index">
-            Musteri
-        </a>
-        <a class="btn btn-outline-secondary" asp-area="Staff" asp-controller="Home" asp-action="Index">
-            Calisanlar
-        </a>
-        <a class="btn btn-outline-danger" asp-area="Admin" asp-controller="Home" asp-action="Index">
-            Admin
-        </a>
-    </div>
+    @if (User?.Identity?.IsAuthenticated == true)
+    {
+        <p class="mb-2">
+            Giris yapildi: <strong>@User.Identity!.Name</strong>
+        </p>
 
-    <p class="mt-3 text-muted">
-        Not: Simdilik herkes linkleri gorebilir; bir sonraki guvenlik adimlarinda (JWT + RBAC) her rol sadece kendi alanina erisebilecek.
-    </p>
+        <form asp-controller="Account" asp-action="Logout" method="post" class="mb-3">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-dark">Cikis</button>
+        </form>
+
+        <h2 class="h4">Bolumler (Rolune gore)</h2>
+        <div class="d-flex justify-content-center gap-3 flex-wrap">
+            @if (User.IsInRole("Customer"))
+            {
+                <a class="btn btn-outline-primary" asp-area="Customer" asp-controller="Home" asp-action="Index">Musteri</a>
+            }
+            @if (User.IsInRole("Staff"))
+            {
+                <a class="btn btn-outline-secondary" asp-area="Staff" asp-controller="Home" asp-action="Index">Calisanlar</a>
+            }
+            @if (User.IsInRole("Admin"))
+            {
+                <a class="btn btn-outline-danger" asp-area="Admin" asp-controller="Home" asp-action="Index">Admin</a>
+            }
+        </div>
+    }
+    else
+    {
+        <p class="mb-3">Bolumler rol ile korunuyor. Devam etmek icin giris yap.</p>
+        <a class="btn btn-primary" asp-controller="Account" asp-action="Login">Giris</a>
+    }
 </div>
