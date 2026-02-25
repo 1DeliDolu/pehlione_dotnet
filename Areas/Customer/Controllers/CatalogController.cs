@@ -36,7 +36,7 @@ public sealed class CatalogController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Category(string slug, CancellationToken ct)
+    public async Task<IActionResult> Category(string slug, string? q, string? sort, CancellationToken ct)
     {
         slug = (slug ?? "").Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(slug))
@@ -76,10 +76,25 @@ public sealed class CatalogController : Controller
 
         var descendantCategoryIds = GetDescendantCategoryIds(categoryRow.Id, allActiveCategories);
 
-        var products = await _db.Products
+        var productQuery = _db.Products
             .AsNoTracking()
-            .Where(p => p.IsActive && descendantCategoryIds.Contains(p.CategoryId) && p.Category != null && p.Category.IsActive)
-            .OrderBy(p => p.Name)
+            .Where(p => p.IsActive && descendantCategoryIds.Contains(p.CategoryId) && p.Category != null && p.Category.IsActive);
+
+        var normalizedQuery = (q ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedQuery))
+        {
+            productQuery = productQuery.Where(p => p.Name.Contains(normalizedQuery) || p.Sku.Contains(normalizedQuery));
+        }
+
+        var normalizedSort = (sort ?? "").Trim().ToLowerInvariant();
+        productQuery = normalizedSort switch
+        {
+            "price_asc" => productQuery.OrderBy(p => p.Price).ThenBy(p => p.Name),
+            "price_desc" => productQuery.OrderByDescending(p => p.Price).ThenBy(p => p.Name),
+            _ => productQuery.OrderBy(p => p.Name)
+        };
+
+        var products = await productQuery
             .Select(p => new CatalogProductListItemVm
             {
                 Id = p.Id,
@@ -99,6 +114,10 @@ public sealed class CatalogController : Controller
             ChildCategories = childCategories,
             Products = products
         };
+
+        ViewBag.Query = normalizedQuery;
+        ViewBag.Sort = normalizedSort;
+        ViewBag.ProductCount = products.Count;
 
         return View(vm);
     }

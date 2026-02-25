@@ -4,7 +4,13 @@
 }
 
 <div class="container" style="max-width: 980px;">
-    <h1 class="h3 mb-3">Katalog</h1>
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h1 class="h3 m-0">Katalog</h1>
+        <a class="btn btn-outline-primary btn-sm"
+           asp-area="Customer"
+           asp-controller="Cart"
+           asp-action="Index">Sepet</a>
+    </div>
 
     @if (Model.Count == 0)
     {

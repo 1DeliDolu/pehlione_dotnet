@@ -19,10 +19,27 @@ public sealed class ProductsController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(CancellationToken ct)
+    public async Task<IActionResult> Index(string? q, int? categoryId, bool? isActive, CancellationToken ct)
     {
-        var items = await _db.Products
-            .AsNoTracking()
+        var query = _db.Products.AsNoTracking().AsQueryable();
+
+        var normalizedQ = (q ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedQ))
+        {
+            query = query.Where(p => p.Name.Contains(normalizedQ) || p.Sku.Contains(normalizedQ));
+        }
+
+        if (categoryId.HasValue && categoryId.Value > 0)
+        {
+            query = query.Where(p => p.CategoryId == categoryId.Value);
+        }
+
+        if (isActive.HasValue)
+        {
+            query = query.Where(p => p.IsActive == isActive.Value);
+        }
+
+        var items = await query
             .OrderBy(p => p.Name)
             .Select(p => new ProductListItemVm
             {
@@ -34,6 +51,11 @@ public sealed class ProductsController : Controller
                 IsActive = p.IsActive
             })
             .ToListAsync(ct);
+
+        ViewBag.Query = normalizedQ;
+        ViewBag.CategoryId = categoryId;
+        ViewBag.IsActive = isActive;
+        ViewBag.CategoryOptions = await LoadCategoryOptionsAsync(includeCategoryId: categoryId, ct);
 
         return View(items);
     }
@@ -224,8 +246,12 @@ public sealed class ProductsController : Controller
         return await _db.Categories
             .AsNoTracking()
             .Where(c => c.IsActive || (includeCategoryId.HasValue && c.Id == includeCategoryId.Value))
+            .Select(c => new ProductCategoryOptionVm
+            {
+                Id = c.Id,
+                Name = c.Parent != null ? c.Parent.Name + " / " + c.Name : c.Name
+            })
             .OrderBy(c => c.Name)
-            .Select(c => new ProductCategoryOptionVm { Id = c.Id, Name = c.Name })
             .ToListAsync(ct);
     }
 }

@@ -1,485 +1,261 @@
-A) **Hedef (Türkçe)**
-Admin tarafında “kategori silinemiyor çünkü ürün bağlı” durumunu çözmek için **ürünleri başka bir kategoriye taşı (Move)** ekranını ekliyoruz. Böylece örn. `Man` kategorisindeki ürünleri `Men` kategorisine taşıyıp sonra `Man` kategorisini silebileceksin.
+### A) Hedef
 
-B) **CLI Komutu (maksimum 1 komut)**
+Columbia örneğindeki gibi **üstte ince bir kampanya/duyuru şeridi** ve altında **solda logo, ortada yuvarlatılmış menü, sağda ikonlar** olan modern bir header’ı `_Layout` üzerinden tüm siteye uygulamak. Proje yapın bu dosyaları zaten içeriyor. 
+
+---
+
+### B) CLI Komutu
 
 ```bash
-dotnet build
+dotnet watch run
 ```
 
-C) **Dosya Değişiklikleri (sadece değişen/eklenen dosyalar, TAM içerik)**
+---
 
-`./Models/ViewModels/Admin/CategoryMoveProductsVm.cs`
+### C) Dosya Değişiklikleri
 
-```csharp
-using System.ComponentModel.DataAnnotations;
-
-namespace Pehlione.Models.ViewModels.Admin;
-
-public sealed class CategoryMoveProductsVm
-{
-    [Required]
-    public int SourceCategoryId { get; set; }
-
-    public string SourceName { get; set; } = "";
-
-    public int ProductCount { get; set; }
-
-    [Required]
-    [Range(1, int.MaxValue, ErrorMessage = "Hedef kategori seçmelisin.")]
-    [Display(Name = "Hedef kategori")]
-    public int TargetCategoryId { get; set; }
-
-    public IReadOnlyList<CategoryOptionVm> TargetOptions { get; set; } = Array.Empty<CategoryOptionVm>();
-}
-
-public sealed class CategoryOptionVm
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = "";
-}
-```
-
-`./Areas/Admin/Controllers/CategoriesController.cs`
-
-```csharp
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Pehlione.Data;
-using Pehlione.Models.Catalog;
-using Pehlione.Models.ViewModels.Admin;
-
-namespace Pehlione.Areas.Admin.Controllers;
-
-[Area("Admin")]
-[Authorize(Roles = IdentitySeed.RoleAdmin)]
-public sealed class CategoriesController : Controller
-{
-    private readonly PehlioneDbContext _db;
-
-    public CategoriesController(PehlioneDbContext db)
-    {
-        _db = db;
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> Index(CancellationToken ct)
-    {
-        var items = await _db.Categories
-            .AsNoTracking()
-            .OrderBy(x => x.Name)
-            .Select(x => new CategoryListItemVm
-            {
-                Id = x.Id,
-                Name = x.Name,
-                Slug = x.Slug,
-                IsActive = x.IsActive
-            })
-            .ToListAsync(ct);
-
-        return View(items);
-    }
-
-    [HttpGet]
-    public IActionResult Create()
-    {
-        return View(new CategoryCreateVm());
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(CategoryCreateVm model, CancellationToken ct)
-    {
-        if (!ModelState.IsValid)
-            return View(model);
-
-        var slug = (model.Slug ?? "").Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(slug))
-        {
-            ModelState.AddModelError(nameof(model.Slug), "Slug zorunludur.");
-            return View(model);
-        }
-
-        var slugExists = await _db.Categories.AnyAsync(x => x.Slug == slug, ct);
-        if (slugExists)
-        {
-            ModelState.AddModelError(nameof(model.Slug), "Bu slug zaten kullanılıyor.");
-            return View(model);
-        }
-
-        var entity = new Category
-        {
-            Name = model.Name.Trim(),
-            Slug = slug,
-            IsActive = model.IsActive
-        };
-
-        _db.Categories.Add(entity);
-        await _db.SaveChangesAsync(ct);
-
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> Edit(int id, CancellationToken ct)
-    {
-        var entity = await _db.Categories.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (entity is null)
-            return NotFound();
-
-        return View(new CategoryEditVm
-        {
-            Id = entity.Id,
-            Name = entity.Name,
-            Slug = entity.Slug,
-            IsActive = entity.IsActive
-        });
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(CategoryEditVm model, CancellationToken ct)
-    {
-        if (!ModelState.IsValid)
-            return View(model);
-
-        var entity = await _db.Categories.FirstOrDefaultAsync(x => x.Id == model.Id, ct);
-        if (entity is null)
-            return NotFound();
-
-        var slug = (model.Slug ?? "").Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(slug))
-        {
-            ModelState.AddModelError(nameof(model.Slug), "Slug zorunludur.");
-            return View(model);
-        }
-
-        var slugExists = await _db.Categories.AnyAsync(x => x.Slug == slug && x.Id != model.Id, ct);
-        if (slugExists)
-        {
-            ModelState.AddModelError(nameof(model.Slug), "Bu slug zaten kullanılıyor.");
-            return View(model);
-        }
-
-        entity.Name = model.Name.Trim();
-        entity.Slug = slug;
-        entity.IsActive = model.IsActive;
-
-        await _db.SaveChangesAsync(ct);
-
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> Delete(int id, CancellationToken ct)
-    {
-        var entity = await _db.Categories.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (entity is null)
-            return NotFound();
-
-        var hasProducts = await _db.Products.AsNoTracking().AnyAsync(p => p.CategoryId == id, ct);
-
-        return View(new CategoryDeleteVm
-        {
-            Id = entity.Id,
-            Name = entity.Name,
-            Slug = entity.Slug,
-            HasProducts = hasProducts
-        });
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Delete(CategoryDeleteVm model, CancellationToken ct)
-    {
-        var entity = await _db.Categories.FirstOrDefaultAsync(x => x.Id == model.Id, ct);
-        if (entity is null)
-            return NotFound();
-
-        var hasProducts = await _db.Products.AsNoTracking().AnyAsync(p => p.CategoryId == model.Id, ct);
-        if (hasProducts)
-        {
-            model.Name = entity.Name;
-            model.Slug = entity.Slug;
-            model.HasProducts = true;
-
-            ModelState.AddModelError(string.Empty, "Bu kategoriye bağlı ürünler var. Önce ürünleri taşıyın veya silin.");
-            return View(model);
-        }
-
-        _db.Categories.Remove(entity);
-
-        try
-        {
-            await _db.SaveChangesAsync(ct);
-        }
-        catch (DbUpdateException)
-        {
-            model.Name = entity.Name;
-            model.Slug = entity.Slug;
-            model.HasProducts = true;
-
-            ModelState.AddModelError(string.Empty, "Silme engellendi (ilişkili kayıt olabilir).");
-            return View(model);
-        }
-
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> MoveProducts(int id, CancellationToken ct)
-    {
-        var source = await _db.Categories.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (source is null)
-            return NotFound();
-
-        var count = await _db.Products.AsNoTracking().CountAsync(p => p.CategoryId == id, ct);
-
-        var targets = await _db.Categories
-            .AsNoTracking()
-            .Where(c => c.Id != id && c.IsActive)
-            .OrderBy(c => c.Name)
-            .Select(c => new CategoryOptionVm { Id = c.Id, Name = c.Name })
-            .ToListAsync(ct);
-
-        return View(new CategoryMoveProductsVm
-        {
-            SourceCategoryId = source.Id,
-            SourceName = source.Name,
-            ProductCount = count,
-            TargetOptions = targets
-        });
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> MoveProducts(CategoryMoveProductsVm model, CancellationToken ct)
-    {
-        // View tekrar gösterilecekse dropdown lazım
-        model.TargetOptions = await _db.Categories
-            .AsNoTracking()
-            .Where(c => c.Id != model.SourceCategoryId && c.IsActive)
-            .OrderBy(c => c.Name)
-            .Select(c => new CategoryOptionVm { Id = c.Id, Name = c.Name })
-            .ToListAsync(ct);
-
-        var sourceExists = await _db.Categories.AsNoTracking().AnyAsync(c => c.Id == model.SourceCategoryId, ct);
-        if (!sourceExists)
-            return NotFound();
-
-        var targetExists = await _db.Categories.AsNoTracking().AnyAsync(c => c.Id == model.TargetCategoryId && c.IsActive, ct);
-        if (!targetExists)
-            ModelState.AddModelError(nameof(model.TargetCategoryId), "Geçersiz hedef kategori.");
-
-        if (!ModelState.IsValid)
-            return View(model);
-
-        var products = await _db.Products
-            .Where(p => p.CategoryId == model.SourceCategoryId)
-            .ToListAsync(ct);
-
-        foreach (var p in products)
-            p.CategoryId = model.TargetCategoryId;
-
-        await _db.SaveChangesAsync(ct);
-
-        return RedirectToAction(nameof(Delete), new { id = model.SourceCategoryId });
-    }
-}
-```
-
-`./Areas/Admin/Views/Categories/Delete.cshtml`
+#### 1) `./Views/Shared/_Layout.cshtml`
 
 ```cshtml
-@model Pehlione.Models.ViewModels.Admin.CategoryDeleteVm
-@{
-    ViewData["Title"] = "Kategori Sil";
-}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Pehlione</title>
 
-<div class="container" style="max-width: 720px;">
-    <h1 class="h3 mb-3">Kategori sil</h1>
-
-    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-
-    <div class="card">
-        <div class="card-body">
-            <p class="mb-1"><strong>Ad:</strong> @Model.Name</p>
-            <p class="mb-3"><strong>Slug:</strong> <code>@Model.Slug</code></p>
-
-            @if (Model.HasProducts)
-            {
-                <div class="alert alert-warning mb-3">
-                    Bu kategoriye bağlı ürünler var. Silme işlemi engellendi.
-                </div>
-
-                <a class="btn btn-outline-primary"
-                   asp-area="Admin"
-                   asp-controller="Categories"
-                   asp-action="MoveProducts"
-                   asp-route-id="@Model.Id">
-                    Ürünleri başka kategoriye taşı
-                </a>
-
-                <a class="btn btn-outline-secondary ms-2"
-                   asp-area="Admin"
-                   asp-controller="Products"
-                   asp-action="Index">
-                    Ürünlere git
-                </a>
-            }
-            else
-            {
-                <div class="alert alert-danger mb-3">
-                    Bu işlem geri alınamaz. Silmek istediğinden emin misin?
-                </div>
-
-                <form asp-area="Admin" asp-controller="Categories" asp-action="Delete" method="post">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" asp-for="Id" />
-
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-danger">Sil</button>
-                        <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Categories" asp-action="Index">İptal</a>
-                    </div>
-                </form>
-            }
-        </div>
-    </div>
-</div>
-```
-
-`./Areas/Admin/Views/Categories/Index.cshtml`
-
-```cshtml
-@model IReadOnlyList<Pehlione.Models.ViewModels.Admin.CategoryListItemVm>
-@{
-    ViewData["Title"] = "Kategoriler";
-}
-
-<div class="container" style="max-width: 980px;">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-        <h1 class="h3 m-0">Kategoriler</h1>
-        <a class="btn btn-primary" asp-area="Admin" asp-controller="Categories" asp-action="Create">Yeni kategori</a>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/Pehlione.styles.css" asp-append-version="true" />
+</head>
+<body>
+<header class="ph-header">
+    <!-- Top announcement bar -->
+    <div class="ph-topbar">
+        <a class="ph-topbar__link" href="#" aria-label="Kampanya: %10 kupon al">
+            Hol dir einen 10 %-Gutschein
+        </a>
+        <button type="button" class="ph-topbar__plus" aria-label="Kampanya detayını aç">
+            +
+        </button>
     </div>
 
-    <table class="table table-striped align-middle">
-        <thead>
-        <tr>
-            <th>Ad</th>
-            <th>Slug</th>
-            <th>Durum</th>
-            <th class="text-end">İşlem</th>
-        </tr>
-        </thead>
-        <tbody>
-        @foreach (var c in Model)
-        {
-            <tr>
-                <td>@c.Name</td>
-                <td><code>@c.Slug</code></td>
-                <td>
-                    @if (c.IsActive)
-                    {
-                        <span class="badge bg-success">Aktif</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-secondary">Pasif</span>
-                    }
-                </td>
-                <td class="text-end">
-                    <div class="d-inline-flex gap-2">
-                        <a class="btn btn-sm btn-outline-primary"
-                           asp-area="Admin"
-                           asp-controller="Categories"
-                           asp-action="Edit"
-                           asp-route-id="@c.Id">Düzenle</a>
+    <!-- Main navbar -->
+    <nav class="navbar navbar-expand-lg ph-navbar">
+        <div class="container-fluid px-3 px-lg-4">
+            <a class="navbar-brand ph-brand" asp-controller="Home" asp-action="Index">
+                <span class="ph-brand__mark">Pehlione</span>
+            </a>
 
-                        <a class="btn btn-sm btn-outline-danger"
-                           asp-area="Admin"
-                           asp-controller="Categories"
-                           asp-action="Delete"
-                           asp-route-id="@c.Id">Sil</a>
-                    </div>
-                </td>
-            </tr>
-        }
-        </tbody>
-    </table>
-</div>
-```
-
-`./Areas/Admin/Views/Categories/MoveProducts.cshtml`
-
-```cshtml
-@model Pehlione.Models.ViewModels.Admin.CategoryMoveProductsVm
-@{
-    ViewData["Title"] = "Ürünleri Taşı";
-}
-
-<div class="container" style="max-width: 760px;">
-    <h1 class="h3 mb-3">Ürünleri başka kategoriye taşı</h1>
-
-    <div class="alert alert-info">
-        Kaynak kategori: <strong>@Model.SourceName</strong> —
-        Ürün sayısı: <strong>@Model.ProductCount</strong>
-    </div>
-
-    <form asp-area="Admin" asp-controller="Categories" asp-action="MoveProducts" method="post">
-        @Html.AntiForgeryToken()
-        <input type="hidden" asp-for="SourceCategoryId" />
-        <input type="hidden" asp-for="SourceName" />
-        <input type="hidden" asp-for="ProductCount" />
-
-        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-
-        <div class="mb-3">
-            <label asp-for="TargetCategoryId" class="form-label"></label>
-            <select asp-for="TargetCategoryId" class="form-select">
-                <option value="0">-- hedef seç --</option>
-                @foreach (var c in Model.TargetOptions)
-                {
-                    <option value="@c.Id" selected="@(Model.TargetCategoryId == c.Id)">@c.Name</option>
-                }
-            </select>
-            <span asp-validation-for="TargetCategoryId" class="text-danger"></span>
-            <div class="form-text">Sadece aktif kategoriler hedef olarak listelenir.</div>
-        </div>
-
-        <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary" @(Model.ProductCount == 0 ? "disabled" : "")>
-                Taşı
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#phMainNav"
+                    aria-controls="phMainNav" aria-expanded="false" aria-label="Menüyü aç/kapat">
+                <span class="navbar-toggler-icon"></span>
             </button>
-            <a class="btn btn-outline-secondary"
-               asp-area="Admin"
-               asp-controller="Categories"
-               asp-action="Delete"
-               asp-route-id="@Model.SourceCategoryId">Geri</a>
+
+            <div class="collapse navbar-collapse" id="phMainNav">
+                <!-- Center nav (pill surface) -->
+                <div class="ph-navsurface mx-lg-auto my-3 my-lg-0">
+                    <ul class="navbar-nav ph-navsurface__nav">
+                        <li class="nav-item">
+                            <a class="nav-link ph-navsurface__link active" aria-current="page" href="#">Neu &amp; angesagt</a>
+                        </li>
+                        <li class="nav-item"><a class="nav-link ph-navsurface__link" href="#">Männer</a></li>
+                        <li class="nav-item"><a class="nav-link ph-navsurface__link" href="#">Frauen</a></li>
+                        <li class="nav-item"><a class="nav-link ph-navsurface__link" href="#">Kinder</a></li>
+                        <li class="nav-item"><a class="nav-link ph-navsurface__link" href="#">Schuhe</a></li>
+                        <li class="nav-item"><a class="nav-link ph-navsurface__link" href="#">Accessoires</a></li>
+                        <li class="nav-item"><a class="nav-link ph-navsurface__link" href="#">Outlet</a></li>
+                        <li class="nav-item"><a class="nav-link ph-navsurface__link" href="#">Über uns</a></li>
+                    </ul>
+                </div>
+
+                <!-- Right icon actions -->
+                <ul class="navbar-nav ms-lg-auto align-items-lg-center gap-lg-1">
+                    <li class="nav-item">
+                        <a class="nav-link ph-iconbtn" href="#" aria-label="Ara">
+                            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                                <path fill="currentColor" d="M10 4a6 6 0 1 1 0 12A6 6 0 0 1 10 4m0-2a8 8 0 1 0 4.9 14.3l4.4 4.4 1.4-1.4-4.4-4.4A8 8 0 0 0 10 2z"/>
+                            </svg>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link ph-iconbtn" href="#" aria-label="Hesabım">
+                            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                                <path fill="currentColor" d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z"/>
+                            </svg>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link ph-iconbtn" href="#" aria-label="Sepet">
+                            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                                <path fill="currentColor" d="M7 6h14l-2 8H9L7 6zm2 10h10a2 2 0 0 1 2 2v2H7v-2a2 2 0 0 1 2-2zM6 4l2.2 10.2A3.99 3.99 0 0 0 9 14h10a4 4 0 0 0 3.9-3l1.6-7H7.4L7 2H3v2h3z"/>
+                            </svg>
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
-    </form>
+    </nav>
+</header>
+
+<div class="container">
+    <main role="main" class="pb-3">
+        @RenderBody()
+    </main>
 </div>
 
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
+<footer class="border-top footer text-muted">
+    <div class="container">
+        &copy; @DateTime.UtcNow.Year - Pehlione - <a asp-controller="Home" asp-action="Privacy">Privacy</a>
+    </div>
+</footer>
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/site.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+```
+
+#### 2) `./Views/Shared/_Layout.cshtml.css`
+
+```css
+/* Header shell */
+.ph-header {
+  position: sticky;
+  top: 0;
+  z-index: 1030; /* above content, below modals */
+  background: #fff;
+}
+
+/* Top announcement bar */
+.ph-topbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  background: #f2f2f2;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.ph-topbar__link {
+  color: #111;
+  text-decoration: none;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  padding: 0 56px; /* space for + button */
+}
+
+.ph-topbar__link:hover {
+  text-decoration: underline;
+}
+
+.ph-topbar__plus {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: #fff;
+  color: #111;
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Navbar */
+.ph-navbar {
+  background: #e9e9e9;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.ph-brand {
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.ph-brand__mark {
+  display: inline-block;
+}
+
+/* Center pill navigation surface */
+.ph-navsurface {
+  background: #fff;
+  border-radius: 14px;
+  padding: 8px 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.ph-navsurface__nav {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ph-navsurface__link {
+  color: #111;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 8px 10px;
+}
+
+.ph-navsurface__link:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.ph-navsurface__link.active {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* Right icon buttons */
+.ph-iconbtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #111;
+}
+
+.ph-iconbtn:hover {
+  background: rgba(255, 255, 255, 0.65);
+}
+
+/* Small screens: keep the pill readable */
+@media (max-width: 991.98px) {
+  .ph-navsurface {
+    border-radius: 16px;
+  }
+
+  .ph-navsurface__nav {
+    justify-content: center;
+  }
 }
 ```
 
-D) **Kısa Açıklama (en fazla 5 madde, öğretici)**
+---
 
-* “Silinemiyor” durumunda artık **tek tıkla taşıma** sayfasına gidebilirsin: `/Admin/Categories/MoveProducts/{id}`
-* Taşıma işlemi: kaynak kategorideki tüm ürünlerin `CategoryId` alanı hedef kategoriye güncellenir.
-* Hedef kategori sadece **aktif** kategorilerden seçilir (yanlış hedefe taşıma azaltılır).
-* Taşıma sonrası otomatik olarak tekrar **Delete** ekranına dönersin; ürün kalmadıysa artık silinebilir.
-* Sonraki adım: istersen “**Kategori pasif yapınca ürünler otomatik pasif olsun mu?**” gibi business kuralı ekleriz.
+### D) Kısa Açıklama
 
-E) **Git Commit**
+* `_Layout.cshtml` üstüne **topbar + navbar** koyduk; böylece tüm sayfalarda aynı header görünür.
+* Menü ortada “pill surface” hissi için ayrı bir `div.ph-navsurface` kullandık (Columbia benzeri).
+* İkonları **inline SVG** yaptık: ekstra kütüphane/CDN gerektirmez.
+* CSS’i `_Layout.cshtml.css` içine aldık; bu dosya Razor scoped css olarak `Pehlione.styles.css` ile sayfaya eklenir.
+* `dotnet watch run` ile anında görüp ince ayar yapabilirsin.
 
-* Commit mesajı: `Add move-products flow to unblock category deletion`
-* Komut:
+---
+
+### E) Git Commit
+
+**Commit mesajı:** `Add Columbia-style topbar and centered pill navbar`
 
 ```bash
-git add -A && git commit -m "Add move-products flow to unblock category deletion"
+git add -A && git commit -m "Add Columbia-style topbar and centered pill navbar"
 ```
 
-Bu adımı uygulayıp: `Man` kategorisi → “Ürünleri başka kategoriye taşı” → taşıma sonrası `Man` kategorisini silebildiysen **“bitti”** yaz.
+“bitti” yaz; bir sonraki adımda bunu **dinamikleştirelim**: menü linklerini Category’lerden üretelim (DB’den), aktif menüyü route’a göre otomatik işaretleyelim.
