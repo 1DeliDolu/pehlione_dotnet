@@ -1,5 +1,5 @@
 A) **Hedef (Türkçe)**
-Yeni oluşturulan kullanıcıların **ilk girişte şifre değiştirmesini zorunlu** yapacağız. Bunu DB şemasına dokunmadan, Identity’nin mevcut tablolarını kullanarak **User Claim** ile işaretleyeceğiz (`must_change_password=true`). Login sonrası bu claim varsa kullanıcı doğrudan **/Account/ChangePassword**’a yönlenecek.
+Dev ortamında **gerçek SMTP kullanmadan** e-posta göndermeyi tamamlayacağız: e-postalar **pickup directory** içine `.eml` olarak düşecek. Admin yeni kullanıcı oluşturduğunda o kullanıcıya **“hoş geldin / ilk girişte şifre değiştir”** bilgilendirme e-postası üretilecek (ileride sipariş sonrası e-posta için aynı altyapıyı kullanacağız).
 
 B) **CLI Komutu (maksimum 1 komut)**
 
@@ -9,239 +9,212 @@ dotnet build
 
 C) **Dosya Değişiklikleri (sadece değişen/eklenen dosyalar, TAM içerik)**
 
-`./Security/PehlioneClaimTypes.cs`
+`./Services/IAppEmailSender.cs`
 
 ```csharp
-namespace Pehlione.Security;
+namespace Pehlione.Services;
 
-public static class PehlioneClaimTypes
+public interface IAppEmailSender
 {
-    public const string MustChangePassword = "pehlione.must_change_password";
+    Task SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct);
 }
 ```
 
-`./Models/ViewModels/ChangePasswordViewModel.cs`
+`./Services/DevPickupEmailSender.cs`
 
 ```csharp
-using System.ComponentModel.DataAnnotations;
+using System.Net.Mail;
 
-namespace Pehlione.Models.ViewModels;
+namespace Pehlione.Services;
 
-public sealed class ChangePasswordViewModel
+public sealed class DevPickupEmailSender : IAppEmailSender
 {
-    [Required]
-    public string? ReturnUrl { get; set; }
+    private readonly IWebHostEnvironment _env;
+    private readonly IConfiguration _config;
+    private readonly ILogger<DevPickupEmailSender> _logger;
 
-    [Required]
-    [DataType(DataType.Password)]
-    [Display(Name = "Mevcut parola")]
-    public string CurrentPassword { get; set; } = "";
+    public DevPickupEmailSender(
+        IWebHostEnvironment env,
+        IConfiguration config,
+        ILogger<DevPickupEmailSender> logger)
+    {
+        _env = env;
+        _config = config;
+        _logger = logger;
+    }
 
-    [Required]
-    [DataType(DataType.Password)]
-    [Display(Name = "Yeni parola")]
-    public string NewPassword { get; set; } = "";
+    public async Task SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct)
+    {
+        var from = _config["Mail:From"] ?? "no-reply@pehlione.local";
+        var pickup = _config["Mail:PickupDirectory"] ?? "App_Data/MailPickup";
 
-    [Required]
-    [DataType(DataType.Password)]
-    [Display(Name = "Yeni parola (tekrar)")]
-    [Compare(nameof(NewPassword), ErrorMessage = "Yeni parolalar eşleşmiyor.")]
-    public string ConfirmNewPassword { get; set; } = "";
+        var pickupPath = Path.IsPathRooted(pickup)
+            ? pickup
+            : Path.Combine(_env.ContentRootPath, pickup);
+
+        Directory.CreateDirectory(pickupPath);
+
+        using var message = new MailMessage(from, toEmail)
+        {
+            Subject = subject,
+            Body = htmlBody,
+            IsBodyHtml = true
+        };
+
+        using var client = new SmtpClient
+        {
+            DeliveryMethod = SmtpDeliveryMethod.SpecifiedPickupDirectory,
+            PickupDirectoryLocation = pickupPath
+        };
+
+        // SmtpClient SendMailAsync CancellationToken almaz; ct burada sadece imza için.
+        await client.SendMailAsync(message);
+
+        _logger.LogInformation("DEV email queued to pickup directory: {PickupPath} -> {ToEmail}", pickupPath, toEmail);
+    }
 }
 ```
 
-`./Views/Account/ChangePassword.cshtml`
-
-```cshtml
-@model Pehlione.Models.ViewModels.ChangePasswordViewModel
-@{
-    ViewData["Title"] = "Şifre Değiştir";
-}
-
-<div class="container" style="max-width: 560px;">
-    <h1 class="h3 mb-3">Şifre değiştir</h1>
-
-    <div class="alert alert-warning">
-        Bu hesap için <strong>ilk girişte şifre değişimi</strong> zorunlu olabilir.
-    </div>
-
-    <form asp-action="ChangePassword" method="post">
-        @Html.AntiForgeryToken()
-        <input type="hidden" asp-for="ReturnUrl" />
-
-        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-
-        <div class="mb-3">
-            <label asp-for="CurrentPassword" class="form-label"></label>
-            <input asp-for="CurrentPassword" class="form-control" autocomplete="current-password" />
-            <span asp-validation-for="CurrentPassword" class="text-danger"></span>
-        </div>
-
-        <div class="mb-3">
-            <label asp-for="NewPassword" class="form-label"></label>
-            <input asp-for="NewPassword" class="form-control" autocomplete="new-password" />
-            <span asp-validation-for="NewPassword" class="text-danger"></span>
-        </div>
-
-        <div class="mb-3">
-            <label asp-for="ConfirmNewPassword" class="form-label"></label>
-            <input asp-for="ConfirmNewPassword" class="form-control" autocomplete="new-password" />
-            <span asp-validation-for="ConfirmNewPassword" class="text-danger"></span>
-        </div>
-
-        <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary">Kaydet</button>
-            <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Ana sayfa</a>
-        </div>
-    </form>
-</div>
-
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-}
-```
-
-`./Controllers/AccountController.cs`
+`./Services/NullEmailSender.cs`
 
 ```csharp
-using Microsoft.AspNetCore.Authorization;
+namespace Pehlione.Services;
+
+public sealed class NullEmailSender : IAppEmailSender
+{
+    public Task SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct)
+        => Task.CompletedTask;
+}
+```
+
+`./Program.cs`
+
+```csharp
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Pehlione.Data;
 using Pehlione.Models.Identity;
-using Pehlione.Models.ViewModels;
-using Pehlione.Security;
+using Pehlione.Models.Security;
+using Pehlione.Services;
 
-namespace Pehlione.Controllers;
+var builder = WebApplication.CreateBuilder(args);
 
-public sealed class AccountController : Controller
+// Add services to the container.
+builder.Services.AddControllersWithViews();
+
+// EF Core + MySQL
+var connectionString = builder.Configuration.GetConnectionString("PehlioneDb")
+    ?? throw new InvalidOperationException("Connection string 'PehlioneDb' not found.");
+
+builder.Services.AddDbContext<PehlioneDbContext>(options =>
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+
+// Identity (Users + Roles)
+builder.Services
+    .AddIdentity<ApplicationUser, IdentityRole>(options =>
+    {
+        options.User.RequireUniqueEmail = true;
+        options.SignIn.RequireConfirmedAccount = false;
+    })
+    .AddEntityFrameworkStores<PehlioneDbContext>()
+    .AddDefaultTokenProviders();
+
+builder.Services.ConfigureApplicationCookie(options =>
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly SignInManager<ApplicationUser> _signInManager;
+    options.LoginPath = "/Account/Login";
+    options.AccessDeniedPath = "/Account/Denied";
+});
 
-    public AccountController(
-        UserManager<ApplicationUser> userManager,
-        SignInManager<ApplicationUser> signInManager)
-    {
-        _userManager = userManager;
-        _signInManager = signInManager;
-    }
+// JWT options
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
+var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
+          ?? throw new InvalidOperationException("Jwt configuration missing.");
 
-    [HttpGet]
-    [AllowAnonymous]
-    public IActionResult Login(string? returnUrl = null)
+if (string.IsNullOrWhiteSpace(jwt.SigningKey) || jwt.SigningKey.Length < 32)
+    throw new InvalidOperationException("Jwt:SigningKey must be set and at least 32 characters.");
+
+builder.Services.AddAuthentication()
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
     {
-        return View(new LoginViewModel
+        options.TokenValidationParameters = new TokenValidationParameters
         {
-            ReturnUrl = string.IsNullOrWhiteSpace(returnUrl) ? Url.Content("~/") : returnUrl
-        });
-    }
+            ValidateIssuer = true,
+            ValidIssuer = jwt.Issuer,
 
-    [HttpPost]
-    [AllowAnonymous]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Login(LoginViewModel model)
+            ValidateAudience = true,
+            ValidAudience = jwt.Audience,
+
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
+
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1),
+
+            NameClaimType = System.Security.Claims.ClaimTypes.Name,
+            RoleClaimType = System.Security.Claims.ClaimTypes.Role
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+
+// DEV e-posta (pickup directory). Prod'da şimdilik "no-op".
+if (builder.Environment.IsDevelopment())
+    builder.Services.AddSingleton<IAppEmailSender, DevPickupEmailSender>();
+else
+    builder.Services.AddSingleton<IAppEmailSender, NullEmailSender>();
+
+// EF Core hata tanılama (dev)
+builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseRouting();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+// DEV: Migration varsa uygula + demo kullanıcıları seed et.
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<PehlioneDbContext>();
+
+    var hasMigrations = (await db.Database.GetMigrationsAsync()).Any();
+    if (hasMigrations)
     {
-        if (!ModelState.IsValid)
-            return View(model);
-
-        var user = await _userManager.FindByEmailAsync(model.EmailOrUserName)
-                   ?? await _userManager.FindByNameAsync(model.EmailOrUserName);
-
-        if (user is null)
-        {
-            ModelState.AddModelError(string.Empty, "Kullanıcı adı/e-posta veya parola hatalı.");
-            return View(model);
-        }
-
-        var result = await _signInManager.PasswordSignInAsync(
-            userName: user.UserName!,
-            password: model.Password,
-            isPersistent: model.RememberMe,
-            lockoutOnFailure: false);
-
-        if (result.Succeeded)
-        {
-            // İlk girişte şifre değişimi zorunluluğu (claim tabanlı)
-            var claims = await _userManager.GetClaimsAsync(user);
-            var mustChange = claims.Any(c => c.Type == PehlioneClaimTypes.MustChangePassword && c.Value == "true");
-            if (mustChange)
-            {
-                var ru = (string.IsNullOrWhiteSpace(model.ReturnUrl) ? Url.Content("~/") : model.ReturnUrl)!;
-                return RedirectToAction(nameof(ChangePassword), new { returnUrl = ru });
-            }
-
-            if (!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
-                return Redirect(model.ReturnUrl);
-
-            return RedirectToAction("Index", "Home");
-        }
-
-        ModelState.AddModelError(string.Empty, "Kullanıcı adı/e-posta veya parola hatalı.");
-        return View(model);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Logout()
-    {
-        await _signInManager.SignOutAsync();
-        return RedirectToAction("Index", "Home");
-    }
-
-    [HttpGet]
-    [AllowAnonymous]
-    public IActionResult Denied()
-    {
-        return View();
-    }
-
-    [HttpGet]
-    [Authorize]
-    public IActionResult ChangePassword(string? returnUrl = null)
-    {
-        return View(new ChangePasswordViewModel
-        {
-            ReturnUrl = string.IsNullOrWhiteSpace(returnUrl) ? Url.Content("~/") : returnUrl
-        });
-    }
-
-    [HttpPost]
-    [Authorize]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ChangePassword(ChangePasswordViewModel model)
-    {
-        if (!ModelState.IsValid)
-            return View(model);
-
-        var user = await _userManager.GetUserAsync(User);
-        if (user is null)
-            return Challenge();
-
-        var result = await _userManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
-        if (!result.Succeeded)
-        {
-            foreach (var err in result.Errors)
-                ModelState.AddModelError(string.Empty, err.Description);
-
-            return View(model);
-        }
-
-        // Zorunlu değişim claim'ini temizle
-        var claims = await _userManager.GetClaimsAsync(user);
-        var mustChangeClaims = claims.Where(c => c.Type == PehlioneClaimTypes.MustChangePassword).ToList();
-        if (mustChangeClaims.Count > 0)
-        {
-            await _userManager.RemoveClaimsAsync(user, mustChangeClaims);
-        }
-
-        await _signInManager.RefreshSignInAsync(user);
-
-        if (!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
-            return Redirect(model.ReturnUrl);
-
-        return RedirectToAction("Index", "Home");
+        await db.Database.MigrateAsync();
+        await IdentitySeed.SeedAsync(scope.ServiceProvider);
     }
 }
+
+// Attribute-routed API controller'lar için (api/*)
+app.MapControllers();
+
+// Areas routing (Admin / Staff / Customer)
+app.MapControllerRoute(
+    name: "areas",
+    pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}");
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.Run();
 ```
 
 `./Areas/Admin/Controllers/UsersController.cs`
@@ -256,6 +229,7 @@ using Pehlione.Data;
 using Pehlione.Models.Identity;
 using Pehlione.Models.ViewModels.Admin;
 using Pehlione.Security;
+using Pehlione.Services;
 
 namespace Pehlione.Areas.Admin.Controllers;
 
@@ -271,10 +245,17 @@ public sealed class UsersController : Controller
     ];
 
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IAppEmailSender _emailSender;
+    private readonly ILogger<UsersController> _logger;
 
-    public UsersController(UserManager<ApplicationUser> userManager)
+    public UsersController(
+        UserManager<ApplicationUser> userManager,
+        IAppEmailSender emailSender,
+        ILogger<UsersController> logger)
     {
         _userManager = userManager;
+        _emailSender = emailSender;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -358,26 +339,163 @@ public sealed class UsersController : Controller
             await _userManager.AddClaimAsync(user, new Claim(PehlioneClaimTypes.MustChangePassword, "true"));
         }
 
+        // DEV email (pickup directory) - hata olsa bile kullanıcı oluştu, akışı bozmayalım.
+        try
+        {
+            var subject = "Pehlione - Hesabın oluşturuldu";
+            var body = $@"
+                <p>Merhaba,</p>
+                <p>Pehlione hesabın oluşturuldu.</p>
+                <ul>
+                    <li><strong>E-posta/Kullanıcı adı:</strong> {System.Net.WebUtility.HtmlEncode(model.Email)}</li>
+                    <li><strong>Rol:</strong> {System.Net.WebUtility.HtmlEncode(model.Role)}</li>
+                </ul>
+                <p>İlk girişte şifre değiştirmen istenecektir.</p>
+                <p>Giriş: <a href=""{Request.Scheme}://{Request.Host}/Account/Login"">/Account/Login</a></p>
+            ";
+
+            await _emailSender.SendAsync(model.Email, subject, body, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "DEV email send failed for new user: {Email}", model.Email);
+        }
+
         return RedirectToAction(nameof(Index));
     }
 }
 ```
 
+`./appsettings.json`
+
+```json
+{
+  "ConnectionStrings": {
+    "PehlioneDb": ""
+  },
+  "Jwt": {
+    "Issuer": "pehlione",
+    "Audience": "pehlione",
+    "SigningKey": "",
+    "ExpiresMinutes": 60
+  },
+  "Mail": {
+    "From": "no-reply@pehlione.local",
+    "PickupDirectory": "App_Data/MailPickup"
+  },
+  "Seed": {
+    "AdminEmail": "admin@pehlione.local",
+    "AdminPassword": "",
+    "StaffEmail": "staff@pehlione.local",
+    "StaffPassword": "",
+    "CustomerEmail": "customer@pehlione.local",
+    "CustomerPassword": ""
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+```
+
+`./appsettings.Development.json`
+
+```json
+{
+  "ConnectionStrings": {
+    "PehlioneDb": "server=localhost;port=3306;database=pehlione_dotnet;user=root;password=D0cker!;SslMode=None;"
+  },
+  "Jwt": {
+    "Issuer": "pehlione-dev",
+    "Audience": "pehlione-dev",
+    "SigningKey": "DEV_ONLY_CHANGE_ME_32_CHARS_MINIMUM__________",
+    "ExpiresMinutes": 120
+  },
+  "Mail": {
+    "From": "no-reply@pehlione.local",
+    "PickupDirectory": "App_Data/MailPickup"
+  },
+  "Seed": {
+    "AdminEmail": "admin@pehlione.local",
+    "AdminPassword": "Pehlione!Admin1",
+    "StaffEmail": "staff@pehlione.local",
+    "StaffPassword": "Pehlione!Staff1",
+    "CustomerEmail": "customer@pehlione.local",
+    "CustomerPassword": "Pehlione!Cust1"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  }
+}
+```
+
+`./.gitignore`
+
+```gitignore
+# Build outputs
+[Bb]in/
+[Oo]bj/
+
+# User-specific / IDE
+.vs/
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+.idea/
+*.sln.iml
+
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# OS / tooling noise
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+*.log
+
+# Secrets / local overrides (do NOT commit)
+appsettings.Development.json
+appsettings.Local.json
+.env
+.env.*
+
+# Dev email pickup directory
+App_Data/MailPickup/
+App_Data/MailPickup/**
+
+# Certificates / keys
+*.pfx
+*.snk
+```
+
 D) **Kısa Açıklama (en fazla 5 madde, öğretici)**
 
-* Yeni kullanıcı oluşturulunca `pehlione.must_change_password=true` claim’i ekleniyor (DB migration yok).
-* Login başarılı olunca bu claim kontrol ediliyor; varsa kullanıcı zorunlu olarak `/Account/ChangePassword`’a gidiyor.
-* Şifre değişince claim kaldırılıyor ve `RefreshSignInAsync` ile cookie güncelleniyor.
-* Admin/Staff/Customer hepsi için geçerli (admin isterse yine değiştirebilir).
-* Sonraki adımda istersen: **Admin “reset password”** (token ile) akışını da ekleyebiliriz.
+* `SmtpDeliveryMethod.SpecifiedPickupDirectory`, e-postayı SMTP’ye göndermek yerine belirttiğin klasöre kopyalar. ([Microsoft Learn][1])
+* Pickup directory mantığı: uygulama maili bir dizine bırakır; dış bir süreç/insan isterse `.eml` dosyasını işler. ([Microsoft Learn][2])
+* Dev’de güvenli: yanlışlıkla gerçek kişilere mail gitmez; klasörden içerikleri görüp test edersin.
+* Prod’da SMTP’ye geçince `NullEmailSender` yerine gerçek SMTP sender yazacağız (aynı `IAppEmailSender` ile).
+* Test: Admin → `/Admin/Users/Create` ile yeni kullanıcı oluştur → proje kökünde `App_Data/MailPickup` altında `.eml` oluşmalı.
 
 E) **Git Commit**
 
-* Commit mesajı: `Force first-login password change via Identity claim`
+* Commit mesajı: `Add dev pickup-directory email sender and send welcome email on user creation`
 * Komut:
 
 ```bash
-git add -A && git commit -m "Force first-login password change via Identity claim"
+git add -A && git commit -m "Add dev pickup-directory email sender and send welcome email on user creation"
 ```
 
-Bunu yaptıktan sonra test: Admin panelinden yeni bir Staff oluştur → o kullanıcıyla login ol → **direkt ChangePassword** sayfasına düşüyorsan tamam. Olduysa **“bitti”** yaz.
+Bunu uygulayıp yeni kullanıcı oluşturduğunda `App_Data/MailPickup` içine `.eml` düştüyse **“bitti”** yaz. Sonraki adımda bunu **sipariş sonrası e-posta** ile bağlayacağız (Order oluşturulunca event → email).
+
