@@ -4,5 +4,10 @@
 
 <div class="text-center">
     <h1 class="display-4">Musteri (Customer) Bolumu</h1>
-    <p>Bu alan ileride <strong>Customer</strong> rolu ile korunacak (JWT + RBAC).</p>
+    <p>Bu alan <strong>Customer</strong> rolu ile korunur.</p>
+
+    <div class="d-flex justify-content-center gap-2 flex-wrap mt-3">
+        <a class="btn btn-outline-primary" asp-area="Customer" asp-controller="Catalog" asp-action="Index">Katalog</a>
+        <a class="btn btn-primary" asp-area="Customer" asp-controller="Orders" asp-action="Checkout">Siparis Ver (Demo)</a>
+    </div>
 </div>

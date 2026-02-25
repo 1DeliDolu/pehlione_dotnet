@@ -1,0 +1,46 @@
+@model Pehlione.Models.ViewModels.Customer.CatalogCategoryDetailsVm
+@{
+    ViewData["Title"] = Model.Category.Name;
+}
+
+<div class="container" style="max-width: 1100px;">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+            <h1 class="h3 m-0">@Model.Category.Name</h1>
+            <div class="text-muted"><code>@Model.Category.Slug</code></div>
+        </div>
+        <a class="btn btn-outline-secondary"
+           asp-area="Customer"
+           asp-controller="Catalog"
+           asp-action="Index">Kategoriler</a>
+    </div>
+
+    @if (Model.Products.Count == 0)
+    {
+        <div class="alert alert-info">
+            Bu kategoride aktif urun yok.
+        </div>
+    }
+    else
+    {
+        <table class="table table-striped align-middle">
+            <thead>
+            <tr>
+                <th>Urun</th>
+                <th>SKU</th>
+                <th class="text-end">Fiyat</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var p in Model.Products)
+            {
+                <tr>
+                    <td>@p.Name</td>
+                    <td><code>@p.Sku</code></td>
+                    <td class="text-end">@p.Price.ToString("0.00")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
