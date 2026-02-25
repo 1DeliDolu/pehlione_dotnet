@@ -1,0 +1,32 @@
+@model IReadOnlyList<Pehlione.Models.ViewModels.Admin.UserListItemVm>
+@{
+    ViewData["Title"] = "Kullanicilar";
+}
+
+<div class="container" style="max-width: 980px;">
+    <h1 class="h3 mb-3">Kullanicilar</h1>
+
+    <p class="text-muted">
+        Bu liste, Identity kullanicilarini ve rollerini gosterir (dev seed dahil).
+    </p>
+
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>E-posta</th>
+                <th>Kullanici Adi</th>
+                <th>Roller</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var u in Model)
+        {
+            <tr>
+                <td>@u.Email</td>
+                <td>@u.UserName</td>
+                <td>@(u.Roles.Length == 0 ? "-" : string.Join(", ", u.Roles))</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
