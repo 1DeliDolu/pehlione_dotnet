@@ -1,12 +1,15 @@
 using System.Text.Json;
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
 using Pehlione.Models.Catalog;
 using Pehlione.Models.Commerce;
+using Pehlione.Models.Identity;
 using Pehlione.Models.ViewModels.Customer;
+using Pehlione.Services;
 
 namespace Pehlione.Areas.Customer.Controllers;
 
@@ -19,10 +22,20 @@ public sealed class CartController : Controller
     private const int MaxQtyPerItem = 99;
 
     private readonly PehlioneDbContext _db;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IAppEmailSender _emailSender;
+    private readonly ILogger<CartController> _logger;
 
-    public CartController(PehlioneDbContext db)
+    public CartController(
+        PehlioneDbContext db,
+        UserManager<ApplicationUser> userManager,
+        IAppEmailSender emailSender,
+        ILogger<CartController> logger)
     {
         _db = db;
+        _userManager = userManager;
+        _emailSender = emailSender;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -266,6 +279,8 @@ public sealed class CartController : Controller
         _db.Orders.Add(order);
         await _db.SaveChangesAsync(ct);
 
+        await TrySendOrderEmailAsync(userId, order, ct);
+
         ClearCart();
         TempData["CheckoutSuccess"] = $"Siparisiniz olusturuldu. Siparis no: #{order.Id}";
         return RedirectToAction(nameof(Index));
@@ -340,6 +355,32 @@ public sealed class CartController : Controller
     {
         var normalized = (value ?? "").Trim();
         return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
+
+    private async Task TrySendOrderEmailAsync(string userId, Order order, CancellationToken ct)
+    {
+        try
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            var email = user?.Email;
+            if (string.IsNullOrWhiteSpace(email))
+                return;
+
+            var subject = $"Siparisiniz alindi #{order.Id}";
+            var body = $"""
+                        <h2>Siparisiniz alindi</h2>
+                        <p>Siparis numaraniz: <strong>#{order.Id}</strong></p>
+                        <p>Toplam tutar: <strong>{order.TotalAmount:0.00} {order.Currency}</strong></p>
+                        <p>Durum: {order.Status}</p>
+                        <p>Olusturma tarihi (UTC): {order.CreatedAt:yyyy-MM-dd HH:mm:ss}</p>
+                        """;
+
+            await _emailSender.SendAsync(email, subject, body, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Order confirmation email could not be sent for order {OrderId}", order.Id);
+        }
     }
 
     private sealed class CartCookieItem
