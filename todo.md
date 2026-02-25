@@ -1,5 +1,5 @@
 A) **Hedef (Türkçe)**
-Kategori silmenin “ürün bağlı” olduğu için engellenmesi doğru. Şimdi bunu yönetebilmek için **Admin → Ürün Listesi + Ürün Silme** ekranını ekliyoruz. Böylece kategoriye bağlı ürünleri silip (veya sonraki adımda taşıyıp) kategoriyi silebileceksin.
+Admin tarafında **Ürün Oluşturma (Create)** ekranını ekleyeceğiz: `/Admin/Products/Create`. Ürün eklerken **kategori seçimi**, **SKU benzersizliği** ve **fiyat doğrulaması** yapılacak.
 
 B) **CLI Komutu (maksimum 1 komut)**
 
@@ -9,36 +9,6 @@ dotnet build
 
 C) **Dosya Değişiklikleri (sadece değişen/eklenen dosyalar, TAM içerik)**
 
-`./Models/ViewModels/Admin/ProductListItemVm.cs`
-
-```csharp
-namespace Pehlione.Models.ViewModels.Admin;
-
-public sealed class ProductListItemVm
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = "";
-    public string Sku { get; set; } = "";
-    public string CategoryName { get; set; } = "";
-    public decimal Price { get; set; }
-    public bool IsActive { get; set; }
-}
-```
-
-`./Models/ViewModels/Admin/ProductDeleteVm.cs`
-
-```csharp
-namespace Pehlione.Models.ViewModels.Admin;
-
-public sealed class ProductDeleteVm
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = "";
-    public string Sku { get; set; } = "";
-    public string CategoryName { get; set; } = "";
-}
-```
-
 `./Areas/Admin/Controllers/ProductsController.cs`
 
 ```csharp
@@ -46,6 +16,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
+using Pehlione.Models.Catalog;
 using Pehlione.Models.ViewModels.Admin;
 
 namespace Pehlione.Areas.Admin.Controllers;
@@ -82,6 +53,63 @@ public sealed class ProductsController : Controller
     }
 
     [HttpGet]
+    public async Task<IActionResult> Create(CancellationToken ct)
+    {
+        var vm = new ProductCreateVm
+        {
+            CategoryOptions = await LoadCategoryOptionsAsync(ct)
+        };
+
+        return View(vm);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(ProductCreateVm model, CancellationToken ct)
+    {
+        // Dropdown verisini her durumda dolduralım (validation fail olursa view tekrar lazım)
+        model.CategoryOptions = await LoadCategoryOptionsAsync(ct);
+
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var sku = (model.Sku ?? "").Trim().ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(sku))
+        {
+            ModelState.AddModelError(nameof(model.Sku), "SKU zorunludur.");
+            return View(model);
+        }
+
+        var categoryExists = await _db.Categories.AsNoTracking().AnyAsync(c => c.Id == model.CategoryId, ct);
+        if (!categoryExists)
+        {
+            ModelState.AddModelError(nameof(model.CategoryId), "Geçersiz kategori seçimi.");
+            return View(model);
+        }
+
+        var skuExists = await _db.Products.AsNoTracking().AnyAsync(p => p.Sku == sku, ct);
+        if (skuExists)
+        {
+            ModelState.AddModelError(nameof(model.Sku), "Bu SKU zaten kullanılıyor.");
+            return View(model);
+        }
+
+        var entity = new Product
+        {
+            CategoryId = model.CategoryId,
+            Name = model.Name.Trim(),
+            Sku = sku,
+            Price = model.Price,
+            IsActive = model.IsActive
+        };
+
+        _db.Products.Add(entity);
+        await _db.SaveChangesAsync(ct);
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
         var item = await _db.Products
@@ -115,6 +143,59 @@ public sealed class ProductsController : Controller
 
         return RedirectToAction(nameof(Index));
     }
+
+    private async Task<IReadOnlyList<ProductCategoryOptionVm>> LoadCategoryOptionsAsync(CancellationToken ct)
+    {
+        return await _db.Categories
+            .AsNoTracking()
+            .Where(c => c.IsActive)
+            .OrderBy(c => c.Name)
+            .Select(c => new ProductCategoryOptionVm { Id = c.Id, Name = c.Name })
+            .ToListAsync(ct);
+    }
+}
+```
+
+`./Models/ViewModels/Admin/ProductCreateVm.cs`
+
+```csharp
+using System.ComponentModel.DataAnnotations;
+
+namespace Pehlione.Models.ViewModels.Admin;
+
+public sealed class ProductCreateVm
+{
+    [Required]
+    [Range(1, int.MaxValue, ErrorMessage = "Kategori seçmelisin.")]
+    [Display(Name = "Kategori")]
+    public int CategoryId { get; set; }
+
+    [Required]
+    [MaxLength(160)]
+    [Display(Name = "Ürün adı")]
+    public string Name { get; set; } = "";
+
+    [Required]
+    [MaxLength(64)]
+    [Display(Name = "SKU")]
+    public string Sku { get; set; } = "";
+
+    [Required]
+    [Range(typeof(decimal), "0.01", "9999999", ErrorMessage = "Fiyat 0.01 ve üzeri olmalı.")]
+    [Display(Name = "Fiyat")]
+    public decimal Price { get; set; }
+
+    [Display(Name = "Aktif mi?")]
+    public bool IsActive { get; set; } = true;
+
+    // Dropdown için
+    public IReadOnlyList<ProductCategoryOptionVm> CategoryOptions { get; set; } = Array.Empty<ProductCategoryOptionVm>();
+}
+
+public sealed class ProductCategoryOptionVm
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
 }
 ```
 
@@ -129,7 +210,7 @@ public sealed class ProductsController : Controller
 <div class="container" style="max-width: 1100px;">
     <div class="d-flex align-items-center justify-content-between mb-3">
         <h1 class="h3 m-0">Ürünler</h1>
-        <span class="text-muted">Şimdilik sadece liste + silme</span>
+        <a class="btn btn-primary" asp-area="Admin" asp-controller="Products" asp-action="Create">Yeni ürün</a>
     </div>
 
     <table class="table table-striped align-middle">
@@ -174,61 +255,92 @@ public sealed class ProductsController : Controller
     </table>
 
     <p class="text-muted mb-0">
-        Kategori silmek için önce bu listeden kategoriye bağlı ürünleri sil (veya sonraki adımda “taşı” ekleyeceğiz).
+        Not: “Kategori sil” engeli için önce bağlı ürünleri buradan silebilir (veya sonraki adımda taşıyabilirsin).
     </p>
 </div>
 ```
 
-`./Areas/Admin/Views/Products/Delete.cshtml`
+`./Areas/Admin/Views/Products/Create.cshtml`
 
 ```cshtml
-@model Pehlione.Models.ViewModels.Admin.ProductDeleteVm
+@model Pehlione.Models.ViewModels.Admin.ProductCreateVm
 @{
-    ViewData["Title"] = "Ürün Sil";
+    ViewData["Title"] = "Yeni Ürün";
 }
 
-<div class="container" style="max-width: 760px;">
-    <h1 class="h3 mb-3">Ürün sil</h1>
+<div class="container" style="max-width: 720px;">
+    <h1 class="h3 mb-3">Yeni ürün</h1>
 
-    <div class="card">
-        <div class="card-body">
-            <p class="mb-1"><strong>Ad:</strong> @Model.Name</p>
-            <p class="mb-1"><strong>SKU:</strong> <code>@Model.Sku</code></p>
-            <p class="mb-3"><strong>Kategori:</strong> @Model.CategoryName</p>
+    <form asp-area="Admin" asp-controller="Products" asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
 
-            <div class="alert alert-danger mb-3">
-                Bu işlem geri alınamaz. Silmek istediğinden emin misin?
-            </div>
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-            <form asp-area="Admin" asp-controller="Products" asp-action="Delete" method="post">
-                @Html.AntiForgeryToken()
-                <input type="hidden" asp-for="Id" />
-
-                <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-danger">Sil</button>
-                    <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Products" asp-action="Index">İptal</a>
-                </div>
-            </form>
+        <div class="mb-3">
+            <label asp-for="CategoryId" class="form-label"></label>
+            <select asp-for="CategoryId" class="form-select">
+                <option value="0">-- seç --</option>
+                @foreach (var c in Model.CategoryOptions)
+                {
+                    <option value="@c.Id" selected="@(Model.CategoryId == c.Id)">
+                        @c.Name
+                    </option>
+                }
+            </select>
+            <span asp-validation-for="CategoryId" class="text-danger"></span>
         </div>
-    </div>
+
+        <div class="mb-3">
+            <label asp-for="Name" class="form-label"></label>
+            <input asp-for="Name" class="form-control" />
+            <span asp-validation-for="Name" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Sku" class="form-label"></label>
+            <input asp-for="Sku" class="form-control" />
+            <span asp-validation-for="Sku" class="text-danger"></span>
+            <div class="form-text">SKU otomatik olarak büyük harfe çevrilir.</div>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Price" class="form-label"></label>
+            <input asp-for="Price" class="form-control" />
+            <span asp-validation-for="Price" class="text-danger"></span>
+        </div>
+
+        <div class="form-check mb-3">
+            <input asp-for="IsActive" class="form-check-input" />
+            <label asp-for="IsActive" class="form-check-label"></label>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Kaydet</button>
+            <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Products" asp-action="Index">İptal</a>
+        </div>
+    </form>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
 ```
 
 D) **Kısa Açıklama (en fazla 5 madde, öğretici)**
 
-* `/Admin/Products` ile kategoriye bağlı ürünleri görüp silebilirsin; böylece kategori silme engeli kalkar.
-* Silme akışı güvenli pattern: **GET onay** + **POST sil**.
-* Bu adımda “Create/Edit” yok; bir sonraki adımda **Ürün ekleme**yi ekleyelim.
-* Eğer kategori silmek istiyorsan: önce ürünleri sil → sonra kategori sil.
-* Sonraki adım: `/Admin/Products/Create` (ürün oluşturma + kategori seçimi + SKU unique kontrol).
+* Create formunda sadece **aktif kategoriler** listelenir.
+* SKU hem uygulamada kontrol ediliyor hem de DB tarafında unique index var (çakışmayı iki kat güvenceye alır).
+* Validation fail olunca dropdown boş kalmaması için `CategoryOptions` POST’ta da dolduruluyor.
+* URL: `/Admin/Products/Create`
+* Sonraki küçük adım: **Product Edit (Update)**.
 
 E) **Git Commit**
 
-* Commit mesajı: `Add Admin products list and delete pages`
+* Commit mesajı: `Add Admin product create page with category selection and SKU check`
 * Komut:
 
 ```bash
-git add -A && git commit -m "Add Admin products list and delete pages"
+git add -A && git commit -m "Add Admin product create page with category selection and SKU check"
 ```
 
-`/Admin/Products` ekranından, “Man” kategorisine bağlı ürünü/ürünleri silip sonra tekrar kategori silmeyi denediğinde başarılıysa **“bitti”** yaz; bir sonraki adımda **Ürün Create** ekleyelim.
+Bir ürün ekleyip `/Admin/Products` listesinde görüyorsan **“bitti”** yaz; sonraki adımda sadece **Product Edit (Update)** ekleyelim.
