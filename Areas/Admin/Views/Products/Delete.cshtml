@@ -1,0 +1,30 @@
+@model Pehlione.Models.ViewModels.Admin.ProductDeleteVm
+@{
+    ViewData["Title"] = "Urun Sil";
+}
+
+<div class="container" style="max-width: 760px;">
+    <h1 class="h3 mb-3">Urun sil</h1>
+
+    <div class="card">
+        <div class="card-body">
+            <p class="mb-1"><strong>Ad:</strong> @Model.Name</p>
+            <p class="mb-1"><strong>SKU:</strong> <code>@Model.Sku</code></p>
+            <p class="mb-3"><strong>Kategori:</strong> @Model.CategoryName</p>
+
+            <div class="alert alert-danger mb-3">
+                Bu islem geri alinamaz. Silmek istediginden emin misin?
+            </div>
+
+            <form asp-area="Admin" asp-controller="Products" asp-action="Delete" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="Id" />
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-danger">Sil</button>
+                    <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Products" asp-action="Index">Iptal</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
