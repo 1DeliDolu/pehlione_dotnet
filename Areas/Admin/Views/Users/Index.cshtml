@@ -4,10 +4,13 @@
 }
 
 <div class="container" style="max-width: 980px;">
-    <h1 class="h3 mb-3">Kullanicilar</h1>
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h1 class="h3 m-0">Kullanicilar</h1>
+        <a class="btn btn-primary" asp-area="Admin" asp-controller="Users" asp-action="Create">Yeni kullanici</a>
+    </div>
 
     <p class="text-muted">
-        Bu liste, Identity kullanicilarini ve rollerini gosterir (dev seed dahil).
+        Bu liste, Identity kullanicilarini ve rollerini gosterir.
     </p>
 
     <table class="table table-striped align-middle">
