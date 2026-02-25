@@ -1,5 +1,5 @@
 A) **Hedef (Türkçe)**
-Evet, kullanıcı tarafı (Admin/Staff/Customer, kullanıcı oluşturma, ilk girişte şifre değişimi, dev e-posta pickup) şu an için “MVP” düzeyinde tamam. Şimdi **Admin** tarafında **Kategori CRUD**’a başlıyoruz; bu adımda sadece **Listeleme + Yeni Kategori Oluşturma** ekranlarını ekliyoruz (`/Admin/Categories`).
+Admin tarafında **Kategori Güncelleme (Edit/Update)** ekranını ekleyeceğiz: `/Admin/Categories/Edit/{id}` ile kategori adı/slug/durum düzenlenecek ve slug için çakışma kontrolü yapılacak.
 
 B) **CLI Komutu (maksimum 1 komut)**
 
@@ -89,32 +89,71 @@ public sealed class CategoriesController : Controller
 
         return RedirectToAction(nameof(Index));
     }
+
+    [HttpGet]
+    public async Task<IActionResult> Edit(int id, CancellationToken ct)
+    {
+        var entity = await _db.Categories.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (entity is null)
+            return NotFound();
+
+        return View(new CategoryEditVm
+        {
+            Id = entity.Id,
+            Name = entity.Name,
+            Slug = entity.Slug,
+            IsActive = entity.IsActive
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(CategoryEditVm model, CancellationToken ct)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var entity = await _db.Categories.FirstOrDefaultAsync(x => x.Id == model.Id, ct);
+        if (entity is null)
+            return NotFound();
+
+        var slug = (model.Slug ?? "").Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            ModelState.AddModelError(nameof(model.Slug), "Slug zorunludur.");
+            return View(model);
+        }
+
+        var slugExists = await _db.Categories.AnyAsync(x => x.Slug == slug && x.Id != model.Id, ct);
+        if (slugExists)
+        {
+            ModelState.AddModelError(nameof(model.Slug), "Bu slug zaten kullanılıyor.");
+            return View(model);
+        }
+
+        entity.Name = model.Name.Trim();
+        entity.Slug = slug;
+        entity.IsActive = model.IsActive;
+
+        await _db.SaveChangesAsync(ct);
+
+        return RedirectToAction(nameof(Index));
+    }
 }
 ```
 
-`./Models/ViewModels/Admin/CategoryListItemVm.cs`
-
-```csharp
-namespace Pehlione.Models.ViewModels.Admin;
-
-public sealed class CategoryListItemVm
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = "";
-    public string Slug { get; set; } = "";
-    public bool IsActive { get; set; }
-}
-```
-
-`./Models/ViewModels/Admin/CategoryCreateVm.cs`
+`./Models/ViewModels/Admin/CategoryEditVm.cs`
 
 ```csharp
 using System.ComponentModel.DataAnnotations;
 
 namespace Pehlione.Models.ViewModels.Admin;
 
-public sealed class CategoryCreateVm
+public sealed class CategoryEditVm
 {
+    [Required]
+    public int Id { get; set; }
+
     [Required]
     [MaxLength(120)]
     [Display(Name = "Kategori adı")]
@@ -150,6 +189,7 @@ public sealed class CategoryCreateVm
             <th>Ad</th>
             <th>Slug</th>
             <th>Durum</th>
+            <th class="text-end">İşlem</th>
         </tr>
         </thead>
         <tbody>
@@ -168,30 +208,34 @@ public sealed class CategoryCreateVm
                         <span class="badge bg-secondary">Pasif</span>
                     }
                 </td>
+                <td class="text-end">
+                    <a class="btn btn-sm btn-outline-primary"
+                       asp-area="Admin"
+                       asp-controller="Categories"
+                       asp-action="Edit"
+                       asp-route-id="@c.Id">Düzenle</a>
+                </td>
             </tr>
         }
         </tbody>
     </table>
-
-    <p class="text-muted mb-0">
-        Not: Eğer burada “table doesn't exist” hatası görürsen, bir sonraki adımda migration ile tabloyu MySQL’e basacağız.
-    </p>
 </div>
 ```
 
-`./Areas/Admin/Views/Categories/Create.cshtml`
+`./Areas/Admin/Views/Categories/Edit.cshtml`
 
 ```cshtml
-@model Pehlione.Models.ViewModels.Admin.CategoryCreateVm
+@model Pehlione.Models.ViewModels.Admin.CategoryEditVm
 @{
-    ViewData["Title"] = "Yeni Kategori";
+    ViewData["Title"] = "Kategori Düzenle";
 }
 
 <div class="container" style="max-width: 640px;">
-    <h1 class="h3 mb-3">Yeni kategori</h1>
+    <h1 class="h3 mb-3">Kategori düzenle</h1>
 
-    <form asp-area="Admin" asp-controller="Categories" asp-action="Create" method="post">
+    <form asp-area="Admin" asp-controller="Categories" asp-action="Edit" method="post">
         @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
 
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
@@ -227,19 +271,19 @@ public sealed class CategoryCreateVm
 
 D) **Kısa Açıklama (en fazla 5 madde, öğretici)**
 
-* Kategori yönetimi sadece **Admin** rolüne açık (`[Authorize(Roles=Admin)]`).
-* `Slug` için uygulama seviyesinde “unique” kontrol yaptık; DB’de de unique index var (migration ile aktifleşecek).
-* İlk CRUD adımı olarak **Read + Create** verdik; Update/Delete’yi sonraki küçük adımlara böleceğiz.
-* URL’ler: `/Admin/Categories` ve `/Admin/Categories/Create`
-* Eğer tablo hatası alırsan, sonraki adım: **migration + database update**.
+* Index’e “Düzenle” linki ekledik; Edit GET formu doldurur, Edit POST günceller.
+* Slug çakışma kontrolü `x.Id != model.Id` ile “kendisi hariç” çalışır.
+* `AsNoTracking()` sadece GET’te; update tarafında entity tracked olsun diye normal query kullandık.
+* URL: `/Admin/Categories/Edit/1`
+* Sonraki küçük adım: **Delete** (silme) + “Ürün varsa silme” kuralını netleştirme.
 
 E) **Git Commit**
 
-* Commit mesajı: `Add Admin category list and create pages`
+* Commit mesajı: `Add Admin category edit (update) flow`
 * Komut:
 
 ```bash
-git add -A && git commit -m "Add Admin category list and create pages"
+git add -A && git commit -m "Add Admin category edit (update) flow"
 ```
 
-`/Admin/Categories` ekranını açıp **1 kategori** oluşturabildiysen **“bitti”** yaz. Sonraki adımda **Edit (Update)** ekleyeceğim (tek adımda sadece edit).
+Kategori düzenleyip kaydedebildiysen **“bitti”** yaz; bir sonraki adımda sadece **Delete** ekleyelim.
