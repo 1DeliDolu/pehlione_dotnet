@@ -188,3 +188,4 @@
 /home/project/Pehlione/bin/Debug/net10.0/zh-Hans/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
 /home/project/Pehlione/bin/Debug/net10.0/zh-Hant/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
 /home/project/Pehlione/bin/Debug/net10.0/Microsoft.AspNetCore.Identity.EntityFrameworkCore.dll
+/home/project/Pehlione/bin/Debug/net10.0/Microsoft.EntityFrameworkCore.InMemory.dll
