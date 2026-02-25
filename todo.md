@@ -1,19 +1,147 @@
 A) **Hedef (Türkçe)**
-Çalışanlar (Staff), Müşteri (Customer) ve Admin için ayrı “bölüm” iskeletini **MVC Areas** ile kurup her bölümde birer `HomeController/Index` action + view oluşturacağız; böylece ileride JWT + RBAC geldiğinde her rolün sadece kendi alanına erişmesini net biçimde bağlayacağız.
+Admin/Staff/Customer için **gerçek kullanıcı + rol** altyapısını kuracağız: ASP.NET Core **Identity + EF Core** ile roller tanımlanacak ve dev ortamında her rol için **1’er demo kullanıcı** otomatik seed edilecek (bir sonraki adımda migration ile tabloyu DB’ye basacağız). Identity; kullanıcı/şifre/rol/claim/token gibi kimlik işlerini yönetmek için standart çözümdür. ([Microsoft Learn][1])
 
-B) **CLI Komutu (maksimum 1 komut)**
+B) **CLI Komutu (maksimum 1 komut; gerekiyorsa sonraki komut sonraki adıma)**
 
 ```bash
-dotnet build
+dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore
 ```
 
 C) **Dosya Değişiklikleri (sadece değişen/eklenen dosyalar, TAM içerik)**
 
+`./Models/Identity/ApplicationUser.cs`
+
+```csharp
+using Microsoft.AspNetCore.Identity;
+
+namespace Pehlione.Models.Identity;
+
+// İleride "MustChangePassword" gibi alanlar eklemek için baştan custom user ile başlıyoruz. :contentReference[oaicite:1]{index=1}
+public sealed class ApplicationUser : IdentityUser
+{
+}
+```
+
+`./Data/PehlioneDbContext.cs`
+
+```csharp
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using Pehlione.Models.Identity;
+
+namespace Pehlione.Data;
+
+public sealed class PehlioneDbContext
+    : IdentityDbContext<ApplicationUser, IdentityRole, string>
+{
+    public PehlioneDbContext(DbContextOptions<PehlioneDbContext> options)
+        : base(options)
+    {
+    }
+
+    // İleride e-ticaret domain DbSet'leri buraya gelecek (Products, Orders, vb.)
+}
+```
+
+`./Data/IdentitySeed.cs`
+
+```csharp
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
+using Pehlione.Models.Identity;
+
+namespace Pehlione.Data;
+
+public static class IdentitySeed
+{
+    public const string RoleAdmin = "Admin";
+    public const string RoleStaff = "Staff";
+    public const string RoleCustomer = "Customer";
+
+    public static async Task SeedAsync(IServiceProvider services)
+    {
+        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var config = services.GetRequiredService<IConfiguration>();
+
+        // 1) Roller
+        await EnsureRoleAsync(roleManager, RoleAdmin);
+        await EnsureRoleAsync(roleManager, RoleStaff);
+        await EnsureRoleAsync(roleManager, RoleCustomer);
+
+        // 2) Demo kullanıcılar (DEV)
+        // Parolaları appsettings.Development.json içindeki Seed bölümünden alıyoruz.
+        await EnsureUserAsync(
+            userManager,
+            email: config["Seed:AdminEmail"] ?? "admin@pehlione.local",
+            password: config["Seed:AdminPassword"] ?? "",
+            role: RoleAdmin);
+
+        await EnsureUserAsync(
+            userManager,
+            email: config["Seed:StaffEmail"] ?? "staff@pehlione.local",
+            password: config["Seed:StaffPassword"] ?? "",
+            role: RoleStaff);
+
+        await EnsureUserAsync(
+            userManager,
+            email: config["Seed:CustomerEmail"] ?? "customer@pehlione.local",
+            password: config["Seed:CustomerPassword"] ?? "",
+            role: RoleCustomer);
+    }
+
+    private static async Task EnsureRoleAsync(RoleManager<IdentityRole> roleManager, string roleName)
+    {
+        if (await roleManager.RoleExistsAsync(roleName))
+            return;
+
+        var result = await roleManager.CreateAsync(new IdentityRole(roleName));
+        if (!result.Succeeded)
+            throw new InvalidOperationException($"Role create failed: {roleName} - {string.Join("; ", result.Errors.Select(e => e.Description))}");
+    }
+
+    private static async Task EnsureUserAsync(UserManager<ApplicationUser> userManager, string email, string password, string role)
+    {
+        var user = await userManager.FindByEmailAsync(email);
+        if (user is null)
+        {
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                // Güvenli varsayılan yok: parola verilmediyse kullanıcı oluşturmayalım.
+                // (Parolayı appsettings.Development.json içinde veriyoruz.)
+                return;
+            }
+
+            user = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                EmailConfirmed = true
+            };
+
+            var create = await userManager.CreateAsync(user, password);
+            if (!create.Succeeded)
+                throw new InvalidOperationException($"User create failed: {email} - {string.Join("; ", create.Errors.Select(e => e.Description))}");
+        }
+
+        if (!await userManager.IsInRoleAsync(user, role))
+        {
+            var addRole = await userManager.AddToRoleAsync(user, role);
+            if (!addRole.Succeeded)
+                throw new InvalidOperationException($"AddToRole failed: {email} -> {role} - {string.Join("; ", addRole.Errors.Select(e => e.Description))}");
+        }
+    }
+}
+```
+
 `./Program.cs`
 
 ```csharp
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
+using Pehlione.Models.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +154,24 @@ var connectionString = builder.Configuration.GetConnectionString("PehlioneDb")
 
 builder.Services.AddDbContext<PehlioneDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+
+// Identity (Users + Roles)
+builder.Services
+    .AddIdentity<ApplicationUser, IdentityRole>(options =>
+    {
+        options.User.RequireUniqueEmail = true;
+
+        // Dev için: mail confirm zorunlu değil (ileride açarız)
+        options.SignIn.RequireConfirmedAccount = false;
+    })
+    .AddEntityFrameworkStores<PehlioneDbContext>()
+    .AddDefaultTokenProviders();
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/Account/Login";
+    options.AccessDeniedPath = "/Account/Denied";
+});
 
 // EF Core hata tanılama (dev)
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
@@ -44,7 +190,24 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+// Authentication/Authorization sırası önemli: UseAuthentication önce gelmeli. :contentReference[oaicite:2]{index=2}
+app.UseAuthentication();
 app.UseAuthorization();
+
+// DEV: Migration varsa uygula + demo kullanıcıları seed et.
+// (Henüz migration yoksa sessizce geçer; bir sonraki adımda migration üreteceğiz.)
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<PehlioneDbContext>();
+
+    var hasMigrations = (await db.Database.GetMigrationsAsync()).Any();
+    if (hasMigrations)
+    {
+        await db.Database.MigrateAsync();
+        await IdentitySeed.SeedAsync(scope.ServiceProvider);
+    }
+}
 
 // Areas routing (Admin / Staff / Customer)
 app.MapControllerRoute(
@@ -58,145 +221,74 @@ app.MapControllerRoute(
 app.Run();
 ```
 
-`./Areas/Admin/Controllers/HomeController.cs`
+`./appsettings.json`
 
-```csharp
-using Microsoft.AspNetCore.Mvc;
-
-namespace Pehlione.Areas.Admin.Controllers;
-
-[Area("Admin")]
-public sealed class HomeController : Controller
+```json
 {
-    public IActionResult Index()
-    {
-        return View();
+  "ConnectionStrings": {
+    "PehlioneDb": ""
+  },
+  "Seed": {
+    "AdminEmail": "admin@pehlione.local",
+    "AdminPassword": "",
+    "StaffEmail": "staff@pehlione.local",
+    "StaffPassword": "",
+    "CustomerEmail": "customer@pehlione.local",
+    "CustomerPassword": ""
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
     }
+  },
+  "AllowedHosts": "*"
 }
 ```
 
-`./Areas/Admin/Views/Home/Index.cshtml`
+`./appsettings.Development.json`
 
-```cshtml
-@{
-    ViewData["Title"] = "Admin";
-}
-
-<div class="text-center">
-    <h1 class="display-4">Admin Bölümü</h1>
-    <p>Bu alan ileride <strong>Admin</strong> rolü ile korunacak (JWT + RBAC).</p>
-</div>
-```
-
-`./Areas/Staff/Controllers/HomeController.cs`
-
-```csharp
-using Microsoft.AspNetCore.Mvc;
-
-namespace Pehlione.Areas.Staff.Controllers;
-
-[Area("Staff")]
-public sealed class HomeController : Controller
+```json
 {
-    public IActionResult Index()
-    {
-        return View();
+  "ConnectionStrings": {
+    "PehlioneDb": "server=localhost;port=3306;database=pehlione_dotnet;user=root;password=D0cker!;SslMode=None;"
+  },
+  "Seed": {
+    "AdminEmail": "admin@pehlione.local",
+    "AdminPassword": "Pehlione!Admin1",
+    "StaffEmail": "staff@pehlione.local",
+    "StaffPassword": "Pehlione!Staff1",
+    "CustomerEmail": "customer@pehlione.local",
+    "CustomerPassword": "Pehlione!Cust1"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
     }
+  }
 }
-```
-
-`./Areas/Staff/Views/Home/Index.cshtml`
-
-```cshtml
-@{
-    ViewData["Title"] = "Çalışanlar";
-}
-
-<div class="text-center">
-    <h1 class="display-4">Çalışanlar (Staff) Bölümü</h1>
-    <p>Bu alan ileride <strong>Staff</strong> rolü ile korunacak (JWT + RBAC).</p>
-</div>
-```
-
-`./Areas/Customer/Controllers/HomeController.cs`
-
-```csharp
-using Microsoft.AspNetCore.Mvc;
-
-namespace Pehlione.Areas.Customer.Controllers;
-
-[Area("Customer")]
-public sealed class HomeController : Controller
-{
-    public IActionResult Index()
-    {
-        return View();
-    }
-}
-```
-
-`./Areas/Customer/Views/Home/Index.cshtml`
-
-```cshtml
-@{
-    ViewData["Title"] = "Müşteri";
-}
-
-<div class="text-center">
-    <h1 class="display-4">Müşteri (Customer) Bölümü</h1>
-    <p>Bu alan ileride <strong>Customer</strong> rolü ile korunacak (JWT + RBAC).</p>
-</div>
-```
-
-`./Views/Home/Index.cshtml`
-
-```cshtml
-@{
-    ViewData["Title"] = "Home Page";
-}
-
-<div class="text-center">
-    <h1 class="display-4">Pehlione</h1>
-    <p>Prototip alışveriş sitesi - bölüm iskeletleri</p>
-
-    <hr />
-
-    <h2 class="h4">Bölümler</h2>
-    <div class="d-flex justify-content-center gap-3 flex-wrap">
-        <a class="btn btn-outline-primary" asp-area="Customer" asp-controller="Home" asp-action="Index">
-            Müşteri
-        </a>
-        <a class="btn btn-outline-secondary" asp-area="Staff" asp-controller="Home" asp-action="Index">
-            Çalışanlar
-        </a>
-        <a class="btn btn-outline-danger" asp-area="Admin" asp-controller="Home" asp-action="Index">
-            Admin
-        </a>
-    </div>
-
-    <p class="mt-3 text-muted">
-        Not: Şimdilik herkes linkleri görebilir; bir sonraki güvenlik adımlarında (JWT + RBAC) her rol sadece kendi alanına erişebilecek.
-    </p>
-</div>
 ```
 
 D) **Kısa Açıklama (en fazla 5 madde, öğretici)**
 
-* Controller’lar istekleri “action” metodlarıyla karşılar; action’lar çoğunlukla `IActionResult` döndürür ve `View()` gibi helper’larla response seçilir. ([Microsoft Learn][1])
-* “Area” kullanımı, uygulamayı **bölümlere ayırmanın** (Admin/Staff/Customer) en temiz yollarından biri; RBAC geldiğinde her area’ya `[Authorize(Roles="...")]` ile net kapı koyacağız. ([Microsoft Learn][1])
-* `MapControllerRoute` içinde `{area:exists}` pattern’i olmadan `/Admin` gibi area URL’leri çözülmez; bu yüzden Program.cs’e area route ekledik.
-* Her bölüm için `HomeController.Index` + `Views/Home/Index.cshtml` ile en minimal “çalışıyor mu?” sayfasını verdik.
-* Bir sonraki adımda bu alanlara **rol bazlı erişim** ekleyeceğiz (JWT + policy/roles) ve ana sayfadaki butonları role göre göstereceğiz. ([Microsoft Learn][1])
+* Identity; kullanıcı, parola, **roller**, claim’ler ve token işleri için standart altyapıdır. ([Microsoft Learn][1])
+* Custom `ApplicationUser` ile başlamamız, Identity modelini ileride ihtiyaçlara göre genişletmeyi kolaylaştırır. ([Microsoft Learn][2])
+* Middleware sırası kritik: `UseRouting` → `UseAuthentication` → `UseAuthorization` olmalı. ([Microsoft Learn][3])
+* Seed parolalarını sadece `appsettings.Development.json` içine koyduk (zaten `.gitignore` ile commit’lenmemeli).
+* Bu adım **tabloları DB’ye basmaz**; bir sonraki adımda migration üretip MySQL’e uygulayacağız.
 
 E) **Git Commit**
 
-* Commit mesajı: `Add Admin/Staff/Customer areas with Home/Index pages`
+* Commit mesajı: `Add ASP.NET Core Identity with roles and dev seeding`
 * Komut:
 
 ```bash
-git add -A && git commit -m "Add Admin/Staff/Customer areas with Home/Index pages"
+git add -A && git commit -m "Add ASP.NET Core Identity with roles and dev seeding"
 ```
 
-Bu adımı yaptıktan sonra tarayıcıda şu URL’leri açıp çalıştığını doğrula: `/Admin`, `/Staff`, `/Customer`. Sonra **“bitti”** yaz.
+Bu adımı yaptıktan sonra **“bitti”** yaz. Sonraki adımda (Microsoft Learn migration akışına uygun) `dotnet-ef` ile **ilk migration + database update** yapıp MySQL’de Identity tablolarını oluşturacağız.
 
-[1]: https://learn.microsoft.com/de-de/aspnet/core/mvc/controllers/actions?view=aspnetcore-10.0 "Verarbeiten von Anforderungen mit Controllern in ASP.NET Core MVC | Microsoft Learn"
+[1]: https://learn.microsoft.com/de-de/aspnet/core/security/authentication/identity?view=aspnetcore-10.0&utm_source=chatgpt.com "Einführung in Identity in ASP.NET Core"
+[2]: https://learn.microsoft.com/en-us/aspnet/core/security/authentication/customize-identity-model?view=aspnetcore-10.0&utm_source=chatgpt.com "Identity model customization in ASP.NET Core"
+[3]: https://learn.microsoft.com/en-us/aspnet/core/security/authentication/?view=aspnetcore-10.0&utm_source=chatgpt.com "Overview of ASP.NET Core Authentication"
