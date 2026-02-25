@@ -18,6 +18,7 @@ namespace Pehlione.Areas.Customer.Controllers;
 public sealed class CartController : Controller
 {
     private const string CartCookieKey = "pehlione.cart";
+    private const string CheckoutDraftCookieKey = "pehlione.checkout";
     private const int MaxDistinctItems = 50;
     private const int MaxQtyPerItem = 99;
 
@@ -204,9 +205,100 @@ public sealed class CartController : Controller
         return RedirectToReturnUrlOrCart(returnUrl);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> Checkout(int step = 1, CancellationToken ct = default)
+    {
+        if (!(User.Identity?.IsAuthenticated ?? false))
+        {
+            var returnUrl = Url.Action(nameof(Checkout), "Cart", new { area = "Customer" }) ?? "/Customer/Cart/Checkout";
+            return RedirectToAction("Login", "Account", new { area = "", returnUrl });
+        }
+
+        var cartVm = await BuildCartVmAsync(ct);
+        if (cartVm.Lines.Count == 0)
+        {
+            TempData["CartError"] = "Sepet bos.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        step = Math.Clamp(step, 1, 4);
+        var draft = await GetOrCreateCheckoutDraftAsync(ct);
+
+        if (step > 1 && !IsUserStepComplete(draft))
+            return RedirectToAction(nameof(Checkout), new { step = 1 });
+
+        if (step > 2 && !IsAddressStepComplete(draft))
+            return RedirectToAction(nameof(Checkout), new { step = 2 });
+
+        if (step > 3 && !IsPaymentStepComplete(draft))
+            return RedirectToAction(nameof(Checkout), new { step = 3 });
+
+        return View(CreateCheckoutVm(step, cartVm, draft));
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Checkout(CancellationToken ct)
+    public async Task<IActionResult> CheckoutUser(CheckoutUserStepVm model, CancellationToken ct)
+    {
+        if (!(User.Identity?.IsAuthenticated ?? false))
+            return RedirectToAction("Login", "Account", new { area = "", returnUrl = "/Customer/Cart/Checkout" });
+
+        if (!TryValidateModel(model, nameof(CheckoutVm.User)))
+            return await RenderCheckoutStepWithModelErrorsAsync(1, model, null, null, ct);
+
+        var draft = ReadCheckoutDraft();
+        draft.FullName = model.FullName.Trim();
+        draft.Email = model.Email.Trim();
+        draft.Phone = model.Phone.Trim();
+        WriteCheckoutDraft(draft);
+
+        return RedirectToAction(nameof(Checkout), new { step = 2 });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CheckoutAddress(CheckoutAddressStepVm model, CancellationToken ct)
+    {
+        if (!(User.Identity?.IsAuthenticated ?? false))
+            return RedirectToAction("Login", "Account", new { area = "", returnUrl = "/Customer/Cart/Checkout" });
+
+        if (!TryValidateModel(model, nameof(CheckoutVm.Address)))
+            return await RenderCheckoutStepWithModelErrorsAsync(2, null, model, null, ct);
+
+        var draft = ReadCheckoutDraft();
+        draft.AddressTitle = model.Title.Trim();
+        draft.AddressLine1 = model.Line1.Trim();
+        draft.AddressLine2 = (model.Line2 ?? "").Trim();
+        draft.City = model.City.Trim();
+        draft.PostalCode = (model.PostalCode ?? "").Trim();
+        draft.Country = model.Country.Trim();
+        WriteCheckoutDraft(draft);
+
+        return RedirectToAction(nameof(Checkout), new { step = 3 });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CheckoutPayment(CheckoutPaymentStepVm model, CancellationToken ct)
+    {
+        if (!(User.Identity?.IsAuthenticated ?? false))
+            return RedirectToAction("Login", "Account", new { area = "", returnUrl = "/Customer/Cart/Checkout" });
+
+        if (!TryValidateModel(model, nameof(CheckoutVm.Payment)))
+            return await RenderCheckoutStepWithModelErrorsAsync(3, null, null, model, ct);
+
+        var draft = ReadCheckoutDraft();
+        draft.PaymentMethod = model.Method.Trim();
+        draft.CardHolder = (model.CardHolder ?? "").Trim();
+        draft.CardLast4 = (model.CardLast4 ?? "").Trim();
+        WriteCheckoutDraft(draft);
+
+        return RedirectToAction(nameof(Checkout), new { step = 4 });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PlaceOrder(CancellationToken ct)
     {
         if (!(User.Identity?.IsAuthenticated ?? false))
         {
@@ -217,6 +309,14 @@ public sealed class CartController : Controller
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrWhiteSpace(userId))
             return Challenge();
+
+        var draft = ReadCheckoutDraft();
+        if (!IsUserStepComplete(draft))
+            return RedirectToAction(nameof(Checkout), new { step = 1 });
+        if (!IsAddressStepComplete(draft))
+            return RedirectToAction(nameof(Checkout), new { step = 2 });
+        if (!IsPaymentStepComplete(draft))
+            return RedirectToAction(nameof(Checkout), new { step = 3 });
 
         var cart = ReadCart();
         if (cart.Count == 0)
@@ -279,9 +379,10 @@ public sealed class CartController : Controller
         _db.Orders.Add(order);
         await _db.SaveChangesAsync(ct);
 
-        await TrySendOrderEmailAsync(userId, order, ct);
+        await TrySendOrderEmailAsync(userId, order, draft, ct);
 
         ClearCart();
+        ClearCheckoutDraft();
         TempData["CheckoutSuccess"] = $"Siparisiniz olusturuldu. Siparis no: #{order.Id}";
         return RedirectToAction(nameof(Index));
     }
@@ -311,6 +412,149 @@ public sealed class CartController : Controller
 
         var lambda = Expression.Lambda<Func<Product, bool>>(body, parameter);
         return query.Where(lambda);
+    }
+
+    private async Task<CartVm> BuildCartVmAsync(CancellationToken ct)
+    {
+        var cart = ReadCart();
+        if (cart.Count == 0)
+            return new CartVm();
+
+        var ids = cart.Select(x => x.ProductId).Distinct().ToArray();
+        var productQuery = ApplyProductIdFilter(_db.Products.AsNoTracking(), ids);
+        var products = await productQuery
+            .Where(p => p.IsActive && p.Category != null && p.Category.IsActive)
+            .Select(p => new
+            {
+                p.Id,
+                p.Name,
+                p.Sku,
+                p.Price
+            })
+            .ToListAsync(ct);
+
+        var productMap = products.ToDictionary(x => x.Id, x => x);
+        var lines = new List<CartLineVm>();
+        decimal total = 0;
+
+        foreach (var ci in cart)
+        {
+            if (!productMap.TryGetValue(ci.ProductId, out var p))
+                continue;
+
+            var qty = Math.Clamp(ci.Qty, 1, MaxQtyPerItem);
+            var sub = p.Price * qty;
+            lines.Add(new CartLineVm
+            {
+                ProductId = p.Id,
+                Name = p.Name,
+                Sku = p.Sku,
+                Color = ci.Color,
+                Size = ci.Size,
+                UnitPrice = p.Price,
+                Quantity = qty,
+                Subtotal = sub
+            });
+            total += sub;
+        }
+
+        return new CartVm
+        {
+            Lines = lines,
+            Total = total
+        };
+    }
+
+    private async Task<CheckoutDraft> GetOrCreateCheckoutDraftAsync(CancellationToken ct)
+    {
+        var draft = ReadCheckoutDraft();
+        if (IsUserStepComplete(draft))
+            return draft;
+
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userId))
+            return draft;
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+            return draft;
+
+        draft.FullName = string.IsNullOrWhiteSpace(draft.FullName) ? (user.UserName ?? "") : draft.FullName;
+        draft.Email = string.IsNullOrWhiteSpace(draft.Email) ? (user.Email ?? "") : draft.Email;
+        draft.Phone = string.IsNullOrWhiteSpace(draft.Phone) ? (user.PhoneNumber ?? "") : draft.Phone;
+        WriteCheckoutDraft(draft);
+        return draft;
+    }
+
+    private static bool IsUserStepComplete(CheckoutDraft draft)
+    {
+        return !string.IsNullOrWhiteSpace(draft.FullName)
+            && !string.IsNullOrWhiteSpace(draft.Email)
+            && !string.IsNullOrWhiteSpace(draft.Phone);
+    }
+
+    private static bool IsAddressStepComplete(CheckoutDraft draft)
+    {
+        return !string.IsNullOrWhiteSpace(draft.AddressTitle)
+            && !string.IsNullOrWhiteSpace(draft.AddressLine1)
+            && !string.IsNullOrWhiteSpace(draft.City)
+            && !string.IsNullOrWhiteSpace(draft.Country);
+    }
+
+    private static bool IsPaymentStepComplete(CheckoutDraft draft)
+    {
+        return !string.IsNullOrWhiteSpace(draft.PaymentMethod);
+    }
+
+    private static CheckoutVm CreateCheckoutVm(int step, CartVm cartVm, CheckoutDraft draft)
+    {
+        return new CheckoutVm
+        {
+            Step = step,
+            Cart = cartVm,
+            User = new CheckoutUserStepVm
+            {
+                FullName = draft.FullName,
+                Email = draft.Email,
+                Phone = draft.Phone
+            },
+            Address = new CheckoutAddressStepVm
+            {
+                Title = draft.AddressTitle,
+                Line1 = draft.AddressLine1,
+                Line2 = draft.AddressLine2,
+                City = draft.City,
+                PostalCode = draft.PostalCode,
+                Country = string.IsNullOrWhiteSpace(draft.Country) ? "TR" : draft.Country
+            },
+            Payment = new CheckoutPaymentStepVm
+            {
+                Method = string.IsNullOrWhiteSpace(draft.PaymentMethod) ? "Card" : draft.PaymentMethod,
+                CardHolder = draft.CardHolder,
+                CardLast4 = draft.CardLast4
+            }
+        };
+    }
+
+    private async Task<IActionResult> RenderCheckoutStepWithModelErrorsAsync(
+        int step,
+        CheckoutUserStepVm? user,
+        CheckoutAddressStepVm? address,
+        CheckoutPaymentStepVm? payment,
+        CancellationToken ct)
+    {
+        var cartVm = await BuildCartVmAsync(ct);
+        var draft = ReadCheckoutDraft();
+        var vm = CreateCheckoutVm(step, cartVm, draft);
+
+        if (user is not null)
+            vm.User = user;
+        if (address is not null)
+            vm.Address = address;
+        if (payment is not null)
+            vm.Payment = payment;
+
+        return View("Checkout", vm);
     }
 
     private List<CartCookieItem> ReadCart()
@@ -351,13 +595,48 @@ public sealed class CartController : Controller
         Response.Cookies.Delete(CartCookieKey);
     }
 
+    private CheckoutDraft ReadCheckoutDraft()
+    {
+        if (!Request.Cookies.TryGetValue(CheckoutDraftCookieKey, out var json) || string.IsNullOrWhiteSpace(json))
+            return new CheckoutDraft();
+
+        try
+        {
+            return JsonSerializer.Deserialize<CheckoutDraft>(json) ?? new CheckoutDraft();
+        }
+        catch
+        {
+            return new CheckoutDraft();
+        }
+    }
+
+    private void WriteCheckoutDraft(CheckoutDraft draft)
+    {
+        var json = JsonSerializer.Serialize(draft);
+        Response.Cookies.Append(
+            CheckoutDraftCookieKey,
+            json,
+            new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = Request.IsHttps,
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTimeOffset.UtcNow.AddDays(2)
+            });
+    }
+
+    private void ClearCheckoutDraft()
+    {
+        Response.Cookies.Delete(CheckoutDraftCookieKey);
+    }
+
     private static string? NormalizeOption(string? value)
     {
         var normalized = (value ?? "").Trim();
         return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
     }
 
-    private async Task TrySendOrderEmailAsync(string userId, Order order, CancellationToken ct)
+    private async Task TrySendOrderEmailAsync(string userId, Order order, CheckoutDraft draft, CancellationToken ct)
     {
         try
         {
@@ -373,6 +652,11 @@ public sealed class CartController : Controller
                         <p>Toplam tutar: <strong>{order.TotalAmount:0.00} {order.Currency}</strong></p>
                         <p>Durum: {order.Status}</p>
                         <p>Olusturma tarihi (UTC): {order.CreatedAt:yyyy-MM-dd HH:mm:ss}</p>
+                        <hr/>
+                        <p><strong>Ad Soyad:</strong> {draft.FullName}</p>
+                        <p><strong>Telefon:</strong> {draft.Phone}</p>
+                        <p><strong>Adres:</strong> {draft.AddressLine1} {draft.AddressLine2}, {draft.City}, {draft.PostalCode}, {draft.Country}</p>
+                        <p><strong>Odeme:</strong> {draft.PaymentMethod}</p>
                         """;
 
             await _emailSender.SendAsync(email, subject, body, ct);
@@ -389,5 +673,21 @@ public sealed class CartController : Controller
         public int Qty { get; set; }
         public string? Color { get; set; }
         public string? Size { get; set; }
+    }
+
+    private sealed class CheckoutDraft
+    {
+        public string FullName { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Phone { get; set; } = "";
+        public string AddressTitle { get; set; } = "";
+        public string AddressLine1 { get; set; } = "";
+        public string AddressLine2 { get; set; } = "";
+        public string City { get; set; } = "";
+        public string PostalCode { get; set; } = "";
+        public string Country { get; set; } = "";
+        public string PaymentMethod { get; set; } = "";
+        public string CardHolder { get; set; } = "";
+        public string CardLast4 { get; set; } = "";
     }
 }

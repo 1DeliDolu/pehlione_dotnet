@@ -107,10 +107,7 @@
         </table>
 
         <div class="d-flex justify-content-end">
-            <form asp-area="Customer" asp-controller="Cart" asp-action="Checkout" method="post">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-primary">Alisverisi Tamamla</button>
-            </form>
+            <a class="btn btn-primary" asp-area="Customer" asp-controller="Cart" asp-action="Checkout">Checkout</a>
         </div>
     }
 </div>
