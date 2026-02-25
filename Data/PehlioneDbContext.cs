@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Pehlione.Models.Catalog;
+using Pehlione.Models.Commerce;
 using Pehlione.Models.Identity;
 
 namespace Pehlione.Data;
@@ -22,6 +23,8 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
     public DbSet<Menu> Menus => Set<Menu>();
     public DbSet<MenuNode> MenuNodes => Set<MenuNode>();
     public DbSet<MenuNodeTranslation> MenuNodeTranslations => Set<MenuNodeTranslation>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<Pehlione.Models.TodoItem> TodoItems => Set<Pehlione.Models.TodoItem>();
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -233,6 +236,51 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
                 .WithMany(x => x.Translations)
                 .HasForeignKey(x => x.NodeId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<Order>(b =>
+        {
+            b.ToTable("orders");
+            b.Property(x => x.Id).HasColumnName("id");
+            b.Property(x => x.UserId).HasColumnName("user_id");
+            b.Property(x => x.TotalAmount).HasColumnName("total_amount").HasPrecision(18, 2);
+            b.Property(x => x.Currency).HasColumnName("currency").HasMaxLength(8).IsRequired();
+            b.Property(x => x.Status).HasColumnName("status").HasMaxLength(32).IsRequired();
+            b.Property(x => x.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+            b.HasIndex(x => x.UserId);
+            b.HasIndex(x => x.CreatedAt);
+
+            b.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<OrderItem>(b =>
+        {
+            b.ToTable("order_items");
+            b.Property(x => x.Id).HasColumnName("id");
+            b.Property(x => x.OrderId).HasColumnName("order_id");
+            b.Property(x => x.ProductId).HasColumnName("product_id");
+            b.Property(x => x.Name).HasColumnName("name").HasMaxLength(160).IsRequired();
+            b.Property(x => x.Sku).HasColumnName("sku").HasMaxLength(64).IsRequired();
+            b.Property(x => x.UnitPrice).HasColumnName("unit_price").HasPrecision(18, 2);
+            b.Property(x => x.Quantity).HasColumnName("quantity");
+            b.Property(x => x.Subtotal).HasColumnName("subtotal").HasPrecision(18, 2);
+
+            b.HasIndex(x => x.OrderId);
+            b.HasIndex(x => x.ProductId);
+
+            b.HasOne(x => x.Order)
+                .WithMany(x => x.Items)
+                .HasForeignKey(x => x.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne(x => x.Product)
+                .WithMany()
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

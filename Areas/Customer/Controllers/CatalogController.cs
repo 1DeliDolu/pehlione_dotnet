@@ -7,7 +7,7 @@ using Pehlione.Models.ViewModels.Customer;
 namespace Pehlione.Areas.Customer.Controllers;
 
 [Area("Customer")]
-[Authorize(Roles = IdentitySeed.RoleCustomer)]
+[AllowAnonymous]
 public sealed class CatalogController : Controller
 {
     private readonly PehlioneDbContext _db;
