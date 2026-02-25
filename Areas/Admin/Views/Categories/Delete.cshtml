@@ -18,23 +18,38 @@
                 <div class="alert alert-warning mb-3">
                     Bu kategoriye bagli urunler var. Silme islemi engellendi.
                 </div>
+
+                <a class="btn btn-outline-primary"
+                   asp-area="Admin"
+                   asp-controller="Categories"
+                   asp-action="MoveProducts"
+                   asp-route-id="@Model.Id">
+                    Urunleri baska kategoriye tasi
+                </a>
+
+                <a class="btn btn-outline-secondary ms-2"
+                   asp-area="Admin"
+                   asp-controller="Products"
+                   asp-action="Index">
+                    Urunlere git
+                </a>
             }
             else
             {
                 <div class="alert alert-danger mb-3">
                     Bu islem geri alinamaz. Silmek istediginden emin misin?
                 </div>
+
+                <form asp-area="Admin" asp-controller="Categories" asp-action="Delete" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">Sil</button>
+                        <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Categories" asp-action="Index">Iptal</a>
+                    </div>
+                </form>
             }
-
-            <form asp-area="Admin" asp-controller="Categories" asp-action="Delete" method="post">
-                @Html.AntiForgeryToken()
-                <input type="hidden" asp-for="Id" />
-
-                <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-danger" @(Model.HasProducts ? "disabled" : "")>Sil</button>
-                    <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Categories" asp-action="Index">Iptal</a>
-                </div>
-            </form>
         </div>
     </div>
 </div>
