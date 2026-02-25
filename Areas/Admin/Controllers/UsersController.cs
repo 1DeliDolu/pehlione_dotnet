@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -5,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
 using Pehlione.Models.Identity;
 using Pehlione.Models.ViewModels.Admin;
+using Pehlione.Security;
 
 namespace Pehlione.Areas.Admin.Controllers;
 
@@ -103,6 +105,13 @@ public sealed class UsersController : Controller
             }
 
             return View(model);
+        }
+
+        var claims = await _userManager.GetClaimsAsync(user);
+        var hasFlag = claims.Any(c => c.Type == PehlioneClaimTypes.MustChangePassword);
+        if (!hasFlag)
+        {
+            await _userManager.AddClaimAsync(user, new Claim(PehlioneClaimTypes.MustChangePassword, "true"));
         }
 
         return RedirectToAction(nameof(Index));
