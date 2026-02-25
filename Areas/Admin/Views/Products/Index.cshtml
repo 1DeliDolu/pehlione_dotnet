@@ -6,7 +6,7 @@
 <div class="container" style="max-width: 1100px;">
     <div class="d-flex align-items-center justify-content-between mb-3">
         <h1 class="h3 m-0">Urunler</h1>
-        <span class="text-muted">Simdilik sadece liste + silme</span>
+        <a class="btn btn-primary" asp-area="Admin" asp-controller="Products" asp-action="Create">Yeni urun</a>
     </div>
 
     <table class="table table-striped align-middle">
@@ -51,6 +51,6 @@
     </table>
 
     <p class="text-muted mb-0">
-        Kategori silmek icin once bu listeden kategoriye bagli urunleri sil (veya sonraki adimda "tasi" ekleyecegiz).
+        Not: "Kategori sil" engeli icin once bagli urunleri buradan silebilir (veya sonraki adimda tasiyabilirsin).
     </p>
 </div>

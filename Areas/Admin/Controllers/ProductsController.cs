@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
+using Pehlione.Models.Catalog;
 using Pehlione.Models.ViewModels.Admin;
 
 namespace Pehlione.Areas.Admin.Controllers;
@@ -35,6 +36,64 @@ public sealed class ProductsController : Controller
             .ToListAsync(ct);
 
         return View(items);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Create(CancellationToken ct)
+    {
+        var vm = new ProductCreateVm
+        {
+            CategoryOptions = await LoadCategoryOptionsAsync(ct)
+        };
+
+        return View(vm);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(ProductCreateVm model, CancellationToken ct)
+    {
+        model.CategoryOptions = await LoadCategoryOptionsAsync(ct);
+
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var sku = (model.Sku ?? "").Trim().ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(sku))
+        {
+            ModelState.AddModelError(nameof(model.Sku), "SKU zorunludur.");
+            return View(model);
+        }
+
+        var categoryExists = await _db.Categories.AsNoTracking().AnyAsync(c => c.Id == model.CategoryId, ct);
+        if (!categoryExists)
+        {
+            ModelState.AddModelError(nameof(model.CategoryId), "Gecersiz kategori secimi.");
+            return View(model);
+        }
+
+        var skuExists = await _db.Products.AsNoTracking().AnyAsync(p => p.Sku == sku, ct);
+        if (skuExists)
+        {
+            ModelState.AddModelError(nameof(model.Sku), "Bu SKU zaten kullaniliyor.");
+            return View(model);
+        }
+
+        var entity = new Product
+        {
+            CategoryId = model.CategoryId,
+            Name = model.Name.Trim(),
+            Sku = sku,
+            Price = model.Price,
+            IsActive = model.IsActive
+        };
+
+        _db.Products.Add(entity);
+        await _db.SaveChangesAsync(ct);
+
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpGet]
@@ -74,5 +133,15 @@ public sealed class ProductsController : Controller
         await _db.SaveChangesAsync(ct);
 
         return RedirectToAction(nameof(Index));
+    }
+
+    private async Task<IReadOnlyList<ProductCategoryOptionVm>> LoadCategoryOptionsAsync(CancellationToken ct)
+    {
+        return await _db.Categories
+            .AsNoTracking()
+            .Where(c => c.IsActive)
+            .OrderBy(c => c.Name)
+            .Select(c => new ProductCategoryOptionVm { Id = c.Id, Name = c.Name })
+            .ToListAsync(ct);
     }
 }
