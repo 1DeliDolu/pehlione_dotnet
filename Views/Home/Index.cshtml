@@ -1,47 +1,89 @@
 @{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Pehlione";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Pehlione</h1>
-    <p>Prototip alisveris sitesi - bolum iskeletleri</p>
+<section class="py-4 py-md-5">
+    <div class="row g-4 align-items-center">
+        <div class="col-lg-7">
+            <span class="badge text-bg-dark mb-3">Outdoor ve Sehir Yasami</span>
+            <h1 class="display-5 fw-semibold mb-3">Pehlione ile dogru ekipmani dogru urunle bul.</h1>
+            <p class="lead text-muted mb-4">
+                Pehlione, gunluk yasamdan zorlu hava kosullarina kadar ihtiyac duydugun urunleri
+                kalite, fiyat dengesi ve guvenli alisveris deneyimiyle bir araya getirir.
+            </p>
 
-    <hr />
-
-    @if (User?.Identity?.IsAuthenticated == true)
-    {
-        <p class="mb-2">
-            Giris yapildi: <strong>@User.Identity!.Name</strong>
-        </p>
-
-        <div class="d-flex justify-content-center gap-2 flex-wrap mb-3">
-            <a class="btn btn-outline-primary" asp-controller="Token" asp-action="Index">JWT Token</a>
-
-            <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-outline-dark">Cikis</button>
-            </form>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary btn-lg" asp-area="Customer" asp-controller="Catalog" asp-action="Index">Katalogu Incele</a>
+                <a class="btn btn-outline-secondary btn-lg" asp-controller="Home" asp-action="Privacy">Hakkimizda</a>
+            </div>
         </div>
 
-        <h2 class="h4">Bolumler (Rolune gore)</h2>
-        <div class="d-flex justify-content-center gap-3 flex-wrap">
-            @if (User.IsInRole("Customer"))
-            {
-                <a class="btn btn-outline-primary" asp-area="Customer" asp-controller="Home" asp-action="Index">Musteri</a>
-            }
-            @if (User.IsInRole("Staff"))
-            {
-                <a class="btn btn-outline-secondary" asp-area="Staff" asp-controller="Home" asp-action="Index">Calisanlar</a>
-            }
-            @if (User.IsInRole("Admin"))
-            {
-                <a class="btn btn-outline-danger" asp-area="Admin" asp-controller="Home" asp-action="Index">Admin</a>
-            }
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h2 class="h5 mb-3">Neden Pehlione?</h2>
+                    <ul class="mb-0">
+                        <li>Secili urunlerde hizli kargo ve kolay iade</li>
+                        <li>Aktif kategori yapisiyla hizli urun kesfi</li>
+                        <li>Guvenli odeme altyapisi ve takip edilebilir siparis sureci</li>
+                        <li>Sezonluk koleksiyonlar ve ozel kampanyalar</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="pb-4 pb-md-5">
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="border rounded-3 p-3 h-100">
+                <h3 class="h6">Misyonumuz</h3>
+                <p class="text-muted mb-0">
+                    Dogru urune ulasimi kolaylastirarak herkes icin daha erisilebilir bir alisveris deneyimi sunmak.
+                </p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="border rounded-3 p-3 h-100">
+                <h3 class="h6">Vizyonumuz</h3>
+                <p class="text-muted mb-0">
+                    Turkiye'de outdoor ve yasam stili kategorilerinde guvenilen dijital marka olmak.
+                </p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="border rounded-3 p-3 h-100">
+                <h3 class="h6">Degerlerimiz</h3>
+                <p class="text-muted mb-0">
+                    Seffaflik, kalite odagi, surekli gelisim ve musteri memnuniyeti.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="pb-2">
+    @if (User?.Identity?.IsAuthenticated == true)
+    {
+        <div class="alert alert-light border d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div>
+                Hos geldin, <strong>@User.Identity!.Name</strong>. Kaldigin yerden devam edebilirsin.
+            </div>
+            <div class="d-flex gap-2">
+                <a class="btn btn-sm btn-outline-primary" asp-area="Customer" asp-controller="Catalog" asp-action="Index">Alisverise Basla</a>
+                <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-dark">Cikis</button>
+                </form>
+            </div>
         </div>
     }
     else
     {
-        <p class="mb-3">Bolumler rol ile korunuyor. Devam etmek icin giris yap.</p>
-        <a class="btn btn-primary" asp-controller="Account" asp-action="Login">Giris</a>
+        <div class="alert alert-light border d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div>Uyeligin varsa giris yapip alisverise hemen baslayabilirsin.</div>
+            <a class="btn btn-sm btn-primary" asp-controller="Account" asp-action="Login">Giris Yap</a>
+        </div>
     }
-</div>
+</section>

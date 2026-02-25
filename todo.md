@@ -1,6 +1,6 @@
 ### A) Hedef
 
-Columbia örneğindeki gibi **üstte ince bir kampanya/duyuru şeridi** ve altında **solda logo, ortada yuvarlatılmış menü, sağda ikonlar** olan modern bir header’ı `_Layout` üzerinden tüm siteye uygulamak. Proje yapın bu dosyaları zaten içeriyor. 
+Header’daki ortadaki “pill” menüyü **DB’deki Category kayıtlarından dinamik üretmek** ve mevcut sayfanın kategori slug’ına göre ilgili menü öğesini **active** göstermek (hardcoded menüyü kaldırmak).
 
 ---
 
@@ -14,7 +14,134 @@ dotnet watch run
 
 ### C) Dosya Değişiklikleri
 
-#### 1) `./Views/Shared/_Layout.cshtml`
+#### 1) `./ViewComponents/MainNavViewComponent.cs`
+
+```csharp
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using Pehlione.ViewModels.Navigation;
+
+namespace Pehlione.ViewComponents;
+
+public sealed class MainNavViewComponent : ViewComponent
+{
+    private readonly PehlioneDbContext _db;
+
+    public MainNavViewComponent(PehlioneDbContext db)
+    {
+        _db = db;
+    }
+
+    [ViewContext]
+    public ViewContext ViewContext { get; set; } = default!;
+
+    public async Task<IViewComponentResult> InvokeAsync()
+    {
+        var activeSlug = GetActiveSlug();
+
+        var categories = await _db.Set<Category>()
+            .AsNoTracking()
+            .OrderBy(c => c.Name)
+            .Select(c => new MainNavItemVm
+            {
+                Name = c.Name,
+                Slug = c.Slug
+            })
+            .ToListAsync();
+
+        var vm = new MainNavVm
+        {
+            ActiveSlug = activeSlug,
+            Categories = categories
+        };
+
+        return View(vm);
+    }
+
+    private string? GetActiveSlug()
+    {
+        // Route -> Query fallback (esnek olsun diye birden fazla anahtar deniyoruz)
+        var keys = new[] { "categorySlug", "slug", "category" };
+
+        foreach (var key in keys)
+        {
+            if (ViewContext.RouteData.Values.TryGetValue(key, out var val) && val is not null)
+            {
+                var s = val.ToString();
+                if (!string.IsNullOrWhiteSpace(s)) return s;
+            }
+        }
+
+        var qs = HttpContext?.Request?.Query;
+        if (qs is not null)
+        {
+            foreach (var key in keys)
+            {
+                var s = qs[key].ToString();
+                if (!string.IsNullOrWhiteSpace(s)) return s;
+            }
+        }
+
+        return null;
+    }
+}
+```
+
+#### 2) `./ViewModels/Navigation/MainNavItemVm.cs`
+
+```csharp
+namespace Pehlione.ViewModels.Navigation;
+
+public sealed class MainNavItemVm
+{
+    public string Name { get; init; } = "";
+    public string Slug { get; init; } = "";
+}
+```
+
+#### 3) `./ViewModels/Navigation/MainNavVm.cs`
+
+```csharp
+namespace Pehlione.ViewModels.Navigation;
+
+public sealed class MainNavVm
+{
+    public string? ActiveSlug { get; init; }
+    public IReadOnlyList<MainNavItemVm> Categories { get; init; } = Array.Empty<MainNavItemVm>();
+}
+```
+
+#### 4) `./Views/Shared/Components/MainNav/Default.cshtml`
+
+```cshtml
+@model Pehlione.ViewModels.Navigation.MainNavVm
+
+<div class="ph-navsurface mx-lg-auto my-3 my-lg-0">
+    <ul class="navbar-nav ph-navsurface__nav">
+        <li class="nav-item">
+            <a class="nav-link ph-navsurface__link @(Model.ActiveSlug is null ? "active" : "")"
+               asp-controller="Catalog" asp-action="Index">
+                Neu &amp; angesagt
+            </a>
+        </li>
+
+        @foreach (var c in Model.Categories)
+        {
+            var isActive = string.Equals(Model.ActiveSlug, c.Slug, StringComparison.OrdinalIgnoreCase);
+
+            <li class="nav-item">
+                <a class="nav-link ph-navsurface__link @(isActive ? "active" : "")"
+                   asp-controller="Catalog" asp-action="Index" asp-route-categorySlug="@c.Slug">
+                    @c.Name
+                </a>
+            </li>
+        }
+    </ul>
+</div>
+```
+
+#### 5) `./Views/Shared/_Layout.cshtml`
 
 ```cshtml
 <!DOCTYPE html>
@@ -53,21 +180,8 @@ dotnet watch run
             </button>
 
             <div class="collapse navbar-collapse" id="phMainNav">
-                <!-- Center nav (pill surface) -->
-                <div class="ph-navsurface mx-lg-auto my-3 my-lg-0">
-                    <ul class="navbar-nav ph-navsurface__nav">
-                        <li class="nav-item">
-                            <a class="nav-link ph-navsurface__link active" aria-current="page" href="#">Neu &amp; angesagt</a>
-                        </li>
-                        <li class="nav-item"><a class="nav-link ph-navsurface__link" href="#">Männer</a></li>
-                        <li class="nav-item"><a class="nav-link ph-navsurface__link" href="#">Frauen</a></li>
-                        <li class="nav-item"><a class="nav-link ph-navsurface__link" href="#">Kinder</a></li>
-                        <li class="nav-item"><a class="nav-link ph-navsurface__link" href="#">Schuhe</a></li>
-                        <li class="nav-item"><a class="nav-link ph-navsurface__link" href="#">Accessoires</a></li>
-                        <li class="nav-item"><a class="nav-link ph-navsurface__link" href="#">Outlet</a></li>
-                        <li class="nav-item"><a class="nav-link ph-navsurface__link" href="#">Über uns</a></li>
-                    </ul>
-                </div>
+                <!-- Center nav (dynamic categories) -->
+                @await Component.InvokeAsync("MainNav")
 
                 <!-- Right icon actions -->
                 <ul class="navbar-nav ms-lg-auto align-items-lg-center gap-lg-1">
@@ -118,7 +232,7 @@ dotnet watch run
 </html>
 ```
 
-#### 2) `./Views/Shared/_Layout.cshtml.css`
+#### 6) `./Views/Shared/_Layout.cshtml.css`
 
 ```css
 /* Header shell */
@@ -201,6 +315,7 @@ dotnet watch run
   font-weight: 600;
   border-radius: 999px;
   padding: 8px 10px;
+  text-decoration: none;
 }
 
 .ph-navsurface__link:hover {
@@ -242,20 +357,18 @@ dotnet watch run
 
 ### D) Kısa Açıklama
 
-* `_Layout.cshtml` üstüne **topbar + navbar** koyduk; böylece tüm sayfalarda aynı header görünür.
-* Menü ortada “pill surface” hissi için ayrı bir `div.ph-navsurface` kullandık (Columbia benzeri).
-* İkonları **inline SVG** yaptık: ekstra kütüphane/CDN gerektirmez.
-* CSS’i `_Layout.cshtml.css` içine aldık; bu dosya Razor scoped css olarak `Pehlione.styles.css` ile sayfaya eklenir.
-* `dotnet watch run` ile anında görüp ince ayar yapabilirsin.
+* Hardcoded menü yerine **ViewComponent** kullandık: layout sade kalır, menü logic’i tek yerde olur.
+* Kategorileri EF Core ile `Set<Category>()` üzerinden çektik; DbSet adından bağımsız çalışır.
+* `ActiveSlug` route/query’den okunuyor; kategori sayfasında ilgili link otomatik **active** oluyor.
+* Menü linkleri `asp-controller/asp-action` ile üretildi (route-safe).
+* Bu adım sadece header menüsünü dinamikleştirir; kategoriye tıklayınca hangi sayfaya gideceğini bir sonraki adımda netleştireceğiz.
 
 ---
 
 ### E) Git Commit
 
-**Commit mesajı:** `Add Columbia-style topbar and centered pill navbar`
+**Commit mesajı:** `Make header nav dynamic from categories`
 
 ```bash
-git add -A && git commit -m "Add Columbia-style topbar and centered pill navbar"
+git add -A && git commit -m "Make header nav dynamic from categories"
 ```
-
-“bitti” yaz; bir sonraki adımda bunu **dinamikleştirelim**: menü linklerini Category’lerden üretelim (DB’den), aktif menüyü route’a göre otomatik işaretleyelim.
