@@ -1,42 +1,101 @@
-﻿/* Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
-for details on configuring this project to bundle and minify static web assets. */
-
-a.navbar-brand {
-  white-space: normal;
-  text-align: center;
-  word-break: break-all;
+﻿.ph-header {
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  background: #fff;
 }
 
-a {
-  color: #0077cc;
+.ph-topbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  background: #f2f2f2;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-.btn-primary {
-  color: #fff;
-  background-color: #1b6ec2;
-  border-color: #1861ac;
+.ph-topbar__link {
+  color: #111;
+  text-decoration: none;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  padding: 0 56px;
 }
 
-.nav-pills .nav-link.active, .nav-pills .show > .nav-link {
-  color: #fff;
-  background-color: #1b6ec2;
-  border-color: #1861ac;
+.ph-topbar__link:hover {
+  text-decoration: underline;
 }
 
-.border-top {
-  border-top: 1px solid #e5e5e5;
-}
-.border-bottom {
-  border-bottom: 1px solid #e5e5e5;
+.ph-topbar__plus {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #fff;
+  color: #111;
+  font-size: 18px;
+  line-height: 1;
 }
 
-.box-shadow {
-  box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05);
+.ph-navbar {
+  background: #e9e9e9;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-button.accept-policy {
-  font-size: 1rem;
-  line-height: inherit;
+.ph-brand {
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.ph-brand__mark {
+  display: inline-block;
+}
+
+.ph-navsurface {
+  background: #fff;
+  border-radius: 14px;
+  padding: 8px 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.ph-navsurface__nav {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ph-navsurface__link {
+  color: #111;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 8px 10px;
+}
+
+.ph-navsurface__link:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.ph-navsurface__link.active {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.ph-iconbtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #111;
+}
+
+.ph-iconbtn:hover {
+  background: rgba(255, 255, 255, 0.65);
 }
 
 .footer {
@@ -45,4 +104,14 @@ button.accept-policy {
   width: 100%;
   white-space: nowrap;
   line-height: 60px;
+}
+
+@media (max-width: 991.98px) {
+  .ph-navsurface {
+    border-radius: 16px;
+  }
+
+  .ph-navsurface__nav {
+    justify-content: center;
+  }
 }
