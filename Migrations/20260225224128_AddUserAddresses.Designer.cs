@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Pehlione.Data;
 
@@ -11,9 +12,11 @@ using Pehlione.Data;
 namespace Pehlione.Migrations
 {
     [DbContext(typeof(PehlioneDbContext))]
-    partial class PehlioneDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260225224128_AddUserAddresses")]
+    partial class AddUserAddresses
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -848,76 +851,6 @@ namespace Pehlione.Migrations
                     b.ToTable("user_addresses", (string)null);
                 });
 
-            modelBuilder.Entity("Pehlione.Models.UserPaymentMethod", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CardLast4")
-                        .HasMaxLength(4)
-                        .HasColumnType("varchar(4)")
-                        .HasColumnName("card_last4");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("created_at_utc")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("varchar(80)")
-                        .HasColumnName("display_name");
-
-                    b.Property<int?>("ExpMonth")
-                        .HasColumnType("int")
-                        .HasColumnName("exp_month");
-
-                    b.Property<int?>("ExpYear")
-                        .HasColumnType("int")
-                        .HasColumnName("exp_year");
-
-                    b.Property<bool>("IsDefault")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("tinyint(1)")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_default");
-
-                    b.Property<string>("ProviderReference")
-                        .HasMaxLength(120)
-                        .HasColumnType("varchar(120)")
-                        .HasColumnName("provider_reference");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("int")
-                        .HasColumnName("type");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("updated_at_utc")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("UserId", "Type", "IsDefault");
-
-                    b.ToTable("user_payment_methods", (string)null);
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -1079,17 +1012,6 @@ namespace Pehlione.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Pehlione.Models.UserPaymentMethod", b =>
-                {
-                    b.HasOne("Pehlione.Models.Identity.ApplicationUser", "User")
-                        .WithMany("PaymentMethods")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Pehlione.Models.Catalog.Category", b =>
                 {
                     b.Navigation("Children");
@@ -1122,8 +1044,6 @@ namespace Pehlione.Migrations
             modelBuilder.Entity("Pehlione.Models.Identity.ApplicationUser", b =>
                 {
                     b.Navigation("Addresses");
-
-                    b.Navigation("PaymentMethods");
                 });
 #pragma warning restore 612, 618
         }

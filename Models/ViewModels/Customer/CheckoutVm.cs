@@ -9,6 +9,8 @@ public sealed class CheckoutVm
     public CheckoutUserStepVm User { get; set; } = new();
     public CheckoutAddressStepVm Address { get; set; } = new();
     public CheckoutPaymentStepVm Payment { get; set; } = new();
+    public IReadOnlyList<CheckoutAddressOptionVm> SavedAddresses { get; set; } = Array.Empty<CheckoutAddressOptionVm>();
+    public IReadOnlyList<CheckoutPaymentMethodOptionVm> SavedPaymentMethods { get; set; } = Array.Empty<CheckoutPaymentMethodOptionVm>();
 }
 
 public sealed class CheckoutUserStepVm
@@ -29,6 +31,8 @@ public sealed class CheckoutUserStepVm
 
 public sealed class CheckoutAddressStepVm
 {
+    public int? SelectedAddressId { get; set; }
+
     [Required]
     [Display(Name = "Adres Basligi")]
     public string Title { get; set; } = "";
@@ -67,9 +71,11 @@ public sealed class CheckoutAddressStepVm
 
 public sealed class CheckoutPaymentStepVm
 {
+    public int? SelectedPaymentMethodId { get; set; }
+
     [Required]
     [Display(Name = "Odeme Yontemi")]
-    public string Method { get; set; } = "Card";
+    public string Method { get; set; } = "Visa";
 
     [Display(Name = "Kart Uzerindeki Isim")]
     public string? CardHolder { get; set; }
@@ -77,4 +83,19 @@ public sealed class CheckoutPaymentStepVm
     [Display(Name = "Kart Son 4 Hane")]
     [StringLength(4, MinimumLength = 4)]
     public string? CardLast4 { get; set; }
+}
+
+public sealed class CheckoutAddressOptionVm
+{
+    public int Id { get; set; }
+    public bool IsDefault { get; set; }
+    public string Label { get; set; } = "";
+}
+
+public sealed class CheckoutPaymentMethodOptionVm
+{
+    public int Id { get; set; }
+    public bool IsDefault { get; set; }
+    public string Label { get; set; } = "";
+    public string Type { get; set; } = "";
 }

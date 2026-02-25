@@ -234,12 +234,14 @@ public sealed class CartController : Controller
         if (step > 3 && !IsPaymentStepComplete(draft))
             return RedirectToAction(nameof(Checkout), new { step = 3 });
 
-        return View(CreateCheckoutVm(step, cartVm, draft));
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var (savedAddresses, savedPaymentMethods) = await LoadSavedCheckoutOptionsAsync(userId, ct);
+        return View(CreateCheckoutVm(step, cartVm, draft, savedAddresses, savedPaymentMethods));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CheckoutUser(CheckoutUserStepVm model, CancellationToken ct)
+    public async Task<IActionResult> CheckoutUser([Bind(Prefix = "User")] CheckoutUserStepVm model, CancellationToken ct)
     {
         if (!(User.Identity?.IsAuthenticated ?? false))
             return RedirectToAction("Login", "Account", new { area = "", returnUrl = "/Customer/Cart/Checkout" });
@@ -277,10 +279,42 @@ public sealed class CartController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CheckoutAddress(CheckoutAddressStepVm model, CancellationToken ct)
+    public async Task<IActionResult> CheckoutAddress([Bind(Prefix = "Address")] CheckoutAddressStepVm model, CancellationToken ct)
     {
         if (!(User.Identity?.IsAuthenticated ?? false))
             return RedirectToAction("Login", "Account", new { area = "", returnUrl = "/Customer/Cart/Checkout" });
+
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userId))
+            return Challenge();
+
+        if (model.SelectedAddressId.HasValue)
+        {
+            var selectedAddress = await _db.UserAddresses
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == model.SelectedAddressId.Value && x.UserId == userId, ct);
+
+            if (selectedAddress is null)
+            {
+                ModelState.AddModelError(nameof(CheckoutVm.Address) + "." + nameof(CheckoutAddressStepVm.SelectedAddressId), "Secilen adres bulunamadi.");
+                return await RenderCheckoutStepWithModelErrorsAsync(2, null, model, null, ct);
+            }
+
+            var draftFromSelection = ReadCheckoutDraft();
+            draftFromSelection.AddressTitle = string.IsNullOrWhiteSpace(selectedAddress.Company) ? "Teslimat" : selectedAddress.Company!;
+            draftFromSelection.Street = selectedAddress.Street;
+            draftFromSelection.HouseNumber = selectedAddress.HouseNumber;
+            draftFromSelection.AddressLine2 = selectedAddress.AddressLine2 ?? "";
+            draftFromSelection.City = selectedAddress.City;
+            draftFromSelection.PostalCode = selectedAddress.PostalCode;
+            draftFromSelection.State = selectedAddress.State ?? "";
+            draftFromSelection.CountryCode = selectedAddress.CountryCode;
+            draftFromSelection.AddressPhone = selectedAddress.PhoneNumber ?? "";
+            draftFromSelection.SelectedAddressId = selectedAddress.Id;
+            WriteCheckoutDraft(draftFromSelection);
+
+            return RedirectToAction(nameof(Checkout), new { step = 3 });
+        }
 
         model.Title = (model.Title ?? "").Trim();
         model.Street = (model.Street ?? "").Trim();
@@ -294,10 +328,6 @@ public sealed class CartController : Controller
 
         if (!TryValidateModel(model, nameof(CheckoutVm.Address)))
             return await RenderCheckoutStepWithModelErrorsAsync(2, null, model, null, ct);
-
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrWhiteSpace(userId))
-            return Challenge();
 
         var draft = ReadCheckoutDraft();
         draft.AddressTitle = model.Title.Trim();
@@ -333,7 +363,7 @@ public sealed class CartController : Controller
         existingDefault.Street = model.Street;
         existingDefault.HouseNumber = model.HouseNumber;
         existingDefault.AddressLine2 = string.IsNullOrWhiteSpace(model.Line2) ? null : model.Line2;
-        existingDefault.PostalCode = model.PostalCode;
+        existingDefault.PostalCode = model.PostalCode ?? "";
         existingDefault.City = model.City;
         existingDefault.State = string.IsNullOrWhiteSpace(model.State) ? null : model.State;
         existingDefault.CountryCode = model.CountryCode;
@@ -342,15 +372,44 @@ public sealed class CartController : Controller
 
         await _db.SaveChangesAsync(ct);
 
+        draft.SelectedAddressId = existingDefault.Id;
+        WriteCheckoutDraft(draft);
+
         return RedirectToAction(nameof(Checkout), new { step = 3 });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CheckoutPayment(CheckoutPaymentStepVm model, CancellationToken ct)
+    public async Task<IActionResult> CheckoutPayment([Bind(Prefix = "Payment")] CheckoutPaymentStepVm model, CancellationToken ct)
     {
         if (!(User.Identity?.IsAuthenticated ?? false))
             return RedirectToAction("Login", "Account", new { area = "", returnUrl = "/Customer/Cart/Checkout" });
+
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userId))
+            return Challenge();
+
+        if (model.SelectedPaymentMethodId.HasValue)
+        {
+            var selectedPaymentMethod = await _db.UserPaymentMethods
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == model.SelectedPaymentMethodId.Value && x.UserId == userId, ct);
+
+            if (selectedPaymentMethod is null)
+            {
+                ModelState.AddModelError(nameof(CheckoutVm.Payment) + "." + nameof(CheckoutPaymentStepVm.SelectedPaymentMethodId), "Secilen odeme yontemi bulunamadi.");
+                return await RenderCheckoutStepWithModelErrorsAsync(3, null, null, model, ct);
+            }
+
+            var draftFromSelection = ReadCheckoutDraft();
+            draftFromSelection.PaymentMethod = selectedPaymentMethod.Type.ToString();
+            draftFromSelection.CardHolder = selectedPaymentMethod.DisplayName;
+            draftFromSelection.CardLast4 = selectedPaymentMethod.CardLast4 ?? "";
+            draftFromSelection.SelectedPaymentMethodId = selectedPaymentMethod.Id;
+            WriteCheckoutDraft(draftFromSelection);
+
+            return RedirectToAction(nameof(Checkout), new { step = 4 });
+        }
 
         if (!TryValidateModel(model, nameof(CheckoutVm.Payment)))
             return await RenderCheckoutStepWithModelErrorsAsync(3, null, null, model, ct);
@@ -359,6 +418,36 @@ public sealed class CartController : Controller
         draft.PaymentMethod = model.Method.Trim();
         draft.CardHolder = (model.CardHolder ?? "").Trim();
         draft.CardLast4 = (model.CardLast4 ?? "").Trim();
+        draft.SelectedPaymentMethodId = null;
+        WriteCheckoutDraft(draft);
+
+        var type = ParsePaymentMethodTypeOrDefault(model.Method);
+        var displayName = BuildPaymentDisplayName(type, draft.CardLast4, draft.CardHolder);
+
+        var existingDefaultMethod = await _db.UserPaymentMethods
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.Type == type && x.IsDefault, ct);
+
+        if (existingDefaultMethod is null)
+        {
+            existingDefaultMethod = new UserPaymentMethod
+            {
+                UserId = userId,
+                Type = type,
+                IsDefault = true,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+            _db.UserPaymentMethods.Add(existingDefaultMethod);
+        }
+
+        existingDefaultMethod.DisplayName = displayName;
+        existingDefaultMethod.ProviderReference = null;
+        existingDefaultMethod.CardLast4 = string.IsNullOrWhiteSpace(draft.CardLast4) ? null : draft.CardLast4;
+        existingDefaultMethod.ExpMonth = null;
+        existingDefaultMethod.ExpYear = null;
+        existingDefaultMethod.UpdatedAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+
+        draft.SelectedPaymentMethodId = existingDefaultMethod.Id;
         WriteCheckoutDraft(draft);
 
         return RedirectToAction(nameof(Checkout), new { step = 4 });
@@ -536,20 +625,69 @@ public sealed class CartController : Controller
     private async Task<CheckoutDraft> GetOrCreateCheckoutDraftAsync(CancellationToken ct)
     {
         var draft = ReadCheckoutDraft();
-        if (IsUserStepComplete(draft))
-            return draft;
-
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrWhiteSpace(userId))
             return draft;
 
         var user = await _userManager.FindByIdAsync(userId);
-        if (user is null)
-            return draft;
+        if (user is not null)
+        {
+            if (string.IsNullOrWhiteSpace(draft.FullName))
+                draft.FullName = BuildDisplayName(user.UserName, user.Email);
+            if (string.IsNullOrWhiteSpace(draft.Email))
+                draft.Email = user.Email ?? "";
+            if (string.IsNullOrWhiteSpace(draft.Phone))
+                draft.Phone = user.PhoneNumber ?? "";
+        }
 
-        draft.FullName = string.IsNullOrWhiteSpace(draft.FullName) ? (user.UserName ?? "") : draft.FullName;
-        draft.Email = string.IsNullOrWhiteSpace(draft.Email) ? (user.Email ?? "") : draft.Email;
-        draft.Phone = string.IsNullOrWhiteSpace(draft.Phone) ? (user.PhoneNumber ?? "") : draft.Phone;
+        var defaultShipping = await _db.UserAddresses
+            .AsNoTracking()
+            .Where(x => x.UserId == userId && x.Type == AddressType.Shipping && x.IsDefault)
+            .OrderByDescending(x => x.UpdatedAtUtc)
+            .FirstOrDefaultAsync(ct);
+
+        if (defaultShipping is not null)
+        {
+            if (string.IsNullOrWhiteSpace(draft.AddressTitle))
+                draft.AddressTitle = defaultShipping.Company ?? "Teslimat";
+            if (string.IsNullOrWhiteSpace(draft.Street))
+                draft.Street = defaultShipping.Street;
+            if (string.IsNullOrWhiteSpace(draft.HouseNumber))
+                draft.HouseNumber = defaultShipping.HouseNumber;
+            if (string.IsNullOrWhiteSpace(draft.AddressLine2))
+                draft.AddressLine2 = defaultShipping.AddressLine2 ?? "";
+            if (string.IsNullOrWhiteSpace(draft.City))
+                draft.City = defaultShipping.City;
+            if (string.IsNullOrWhiteSpace(draft.PostalCode))
+                draft.PostalCode = defaultShipping.PostalCode;
+            if (string.IsNullOrWhiteSpace(draft.State))
+                draft.State = defaultShipping.State ?? "";
+            if (string.IsNullOrWhiteSpace(draft.CountryCode))
+                draft.CountryCode = defaultShipping.CountryCode;
+            if (string.IsNullOrWhiteSpace(draft.AddressPhone))
+                draft.AddressPhone = defaultShipping.PhoneNumber ?? "";
+            if (!draft.SelectedAddressId.HasValue)
+                draft.SelectedAddressId = defaultShipping.Id;
+        }
+
+        var defaultPaymentMethod = await _db.UserPaymentMethods
+            .AsNoTracking()
+            .Where(x => x.UserId == userId && x.IsDefault)
+            .OrderByDescending(x => x.UpdatedAtUtc)
+            .FirstOrDefaultAsync(ct);
+
+        if (defaultPaymentMethod is not null)
+        {
+            if (string.IsNullOrWhiteSpace(draft.PaymentMethod))
+                draft.PaymentMethod = defaultPaymentMethod.Type.ToString();
+            if (string.IsNullOrWhiteSpace(draft.CardHolder))
+                draft.CardHolder = defaultPaymentMethod.DisplayName;
+            if (string.IsNullOrWhiteSpace(draft.CardLast4))
+                draft.CardLast4 = defaultPaymentMethod.CardLast4 ?? "";
+            if (!draft.SelectedPaymentMethodId.HasValue)
+                draft.SelectedPaymentMethodId = defaultPaymentMethod.Id;
+        }
+
         WriteCheckoutDraft(draft);
         return draft;
     }
@@ -564,9 +702,11 @@ public sealed class CartController : Controller
     private static bool IsAddressStepComplete(CheckoutDraft draft)
     {
         return !string.IsNullOrWhiteSpace(draft.AddressTitle)
-            && !string.IsNullOrWhiteSpace(draft.AddressLine1)
+            && !string.IsNullOrWhiteSpace(draft.Street)
+            && !string.IsNullOrWhiteSpace(draft.HouseNumber)
             && !string.IsNullOrWhiteSpace(draft.City)
-            && !string.IsNullOrWhiteSpace(draft.Country);
+            && !string.IsNullOrWhiteSpace(draft.PostalCode)
+            && !string.IsNullOrWhiteSpace(draft.CountryCode);
     }
 
     private static bool IsPaymentStepComplete(CheckoutDraft draft)
@@ -574,12 +714,19 @@ public sealed class CartController : Controller
         return !string.IsNullOrWhiteSpace(draft.PaymentMethod);
     }
 
-    private static CheckoutVm CreateCheckoutVm(int step, CartVm cartVm, CheckoutDraft draft)
+    private static CheckoutVm CreateCheckoutVm(
+        int step,
+        CartVm cartVm,
+        CheckoutDraft draft,
+        IReadOnlyList<CheckoutAddressOptionVm> savedAddresses,
+        IReadOnlyList<CheckoutPaymentMethodOptionVm> savedPaymentMethods)
     {
         return new CheckoutVm
         {
             Step = step,
             Cart = cartVm,
+            SavedAddresses = savedAddresses,
+            SavedPaymentMethods = savedPaymentMethods,
             User = new CheckoutUserStepVm
             {
                 FullName = draft.FullName,
@@ -588,16 +735,21 @@ public sealed class CartController : Controller
             },
             Address = new CheckoutAddressStepVm
             {
+                SelectedAddressId = draft.SelectedAddressId,
                 Title = draft.AddressTitle,
-                Line1 = draft.AddressLine1,
+                Street = draft.Street,
+                HouseNumber = draft.HouseNumber,
                 Line2 = draft.AddressLine2,
                 City = draft.City,
                 PostalCode = draft.PostalCode,
-                Country = string.IsNullOrWhiteSpace(draft.Country) ? "TR" : draft.Country
+                State = draft.State,
+                CountryCode = string.IsNullOrWhiteSpace(draft.CountryCode) ? "DE" : draft.CountryCode,
+                PhoneNumber = draft.AddressPhone
             },
             Payment = new CheckoutPaymentStepVm
             {
-                Method = string.IsNullOrWhiteSpace(draft.PaymentMethod) ? "Card" : draft.PaymentMethod,
+                SelectedPaymentMethodId = draft.SelectedPaymentMethodId,
+                Method = string.IsNullOrWhiteSpace(draft.PaymentMethod) ? PaymentMethodType.Visa.ToString() : draft.PaymentMethod,
                 CardHolder = draft.CardHolder,
                 CardLast4 = draft.CardLast4
             }
@@ -613,7 +765,9 @@ public sealed class CartController : Controller
     {
         var cartVm = await BuildCartVmAsync(ct);
         var draft = ReadCheckoutDraft();
-        var vm = CreateCheckoutVm(step, cartVm, draft);
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var (savedAddresses, savedPaymentMethods) = await LoadSavedCheckoutOptionsAsync(userId, ct);
+        var vm = CreateCheckoutVm(step, cartVm, draft, savedAddresses, savedPaymentMethods);
 
         if (user is not null)
             vm.User = user;
@@ -623,6 +777,43 @@ public sealed class CartController : Controller
             vm.Payment = payment;
 
         return View("Checkout", vm);
+    }
+
+    private async Task<(IReadOnlyList<CheckoutAddressOptionVm> addresses, IReadOnlyList<CheckoutPaymentMethodOptionVm> payments)> LoadSavedCheckoutOptionsAsync(
+        string? userId,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            return (Array.Empty<CheckoutAddressOptionVm>(), Array.Empty<CheckoutPaymentMethodOptionVm>());
+
+        var addresses = await _db.UserAddresses
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .OrderByDescending(x => x.IsDefault)
+            .ThenByDescending(x => x.UpdatedAtUtc)
+            .Select(x => new CheckoutAddressOptionVm
+            {
+                Id = x.Id,
+                IsDefault = x.IsDefault,
+                Label = $"{x.Street} {x.HouseNumber}, {x.PostalCode} {x.City} ({x.CountryCode})"
+            })
+            .ToListAsync(ct);
+
+        var paymentMethods = await _db.UserPaymentMethods
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .OrderByDescending(x => x.IsDefault)
+            .ThenByDescending(x => x.UpdatedAtUtc)
+            .Select(x => new CheckoutPaymentMethodOptionVm
+            {
+                Id = x.Id,
+                IsDefault = x.IsDefault,
+                Label = x.DisplayName,
+                Type = x.Type.ToString()
+            })
+            .ToListAsync(ct);
+
+        return (addresses, paymentMethods);
     }
 
     private List<CartCookieItem> ReadCart()
@@ -704,6 +895,53 @@ public sealed class CartController : Controller
         return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
     }
 
+    private static PaymentMethodType ParsePaymentMethodTypeOrDefault(string? value)
+    {
+        if (Enum.TryParse<PaymentMethodType>((value ?? "").Trim(), true, out var parsed))
+            return parsed;
+
+        return PaymentMethodType.Visa;
+    }
+
+    private static string BuildPaymentDisplayName(PaymentMethodType type, string? cardLast4, string? cardHolder)
+    {
+        if (type is PaymentMethodType.Visa or PaymentMethodType.Mastercard)
+        {
+            var last4 = (cardLast4 ?? "").Trim();
+            return string.IsNullOrWhiteSpace(last4) ? type.ToString() : $"{type} •••• {last4}";
+        }
+
+        var holder = (cardHolder ?? "").Trim();
+        return string.IsNullOrWhiteSpace(holder) ? type.ToString() : $"{type} ({holder})";
+    }
+
+    private static string BuildDisplayName(string? userName, string? email)
+    {
+        var normalizedUserName = (userName ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedUserName))
+            return normalizedUserName;
+
+        var normalizedEmail = (email ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(normalizedEmail))
+            return "";
+
+        var at = normalizedEmail.IndexOf('@');
+        return at > 0 ? normalizedEmail[..at] : normalizedEmail;
+    }
+
+    private static (string firstName, string lastName) SplitName(string fullName)
+    {
+        var normalized = (fullName ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+            return ("Musteri", "Hesabi");
+
+        var parts = normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 1)
+            return (parts[0], parts[0]);
+
+        return (parts[0], string.Join(' ', parts.Skip(1)));
+    }
+
     private async Task TrySendOrderEmailAsync(string userId, Order order, CheckoutDraft draft, CancellationToken ct)
     {
         try
@@ -723,7 +961,7 @@ public sealed class CartController : Controller
                         <hr/>
                         <p><strong>Ad Soyad:</strong> {draft.FullName}</p>
                         <p><strong>Telefon:</strong> {draft.Phone}</p>
-                        <p><strong>Adres:</strong> {draft.AddressLine1} {draft.AddressLine2}, {draft.City}, {draft.PostalCode}, {draft.Country}</p>
+                        <p><strong>Adres:</strong> {draft.Street} {draft.HouseNumber} {draft.AddressLine2}, {draft.City}, {draft.PostalCode}, {draft.CountryCode}</p>
                         <p><strong>Odeme:</strong> {draft.PaymentMethod}</p>
                         """;
 
@@ -748,12 +986,17 @@ public sealed class CartController : Controller
         public string FullName { get; set; } = "";
         public string Email { get; set; } = "";
         public string Phone { get; set; } = "";
+        public int? SelectedAddressId { get; set; }
         public string AddressTitle { get; set; } = "";
-        public string AddressLine1 { get; set; } = "";
+        public string Street { get; set; } = "";
+        public string HouseNumber { get; set; } = "";
         public string AddressLine2 { get; set; } = "";
         public string City { get; set; } = "";
         public string PostalCode { get; set; } = "";
-        public string Country { get; set; } = "";
+        public string State { get; set; } = "";
+        public string CountryCode { get; set; } = "";
+        public string AddressPhone { get; set; } = "";
+        public int? SelectedPaymentMethodId { get; set; }
         public string PaymentMethod { get; set; } = "";
         public string CardHolder { get; set; } = "";
         public string CardLast4 { get; set; } = "";
