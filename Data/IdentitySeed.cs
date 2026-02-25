@@ -21,21 +21,28 @@ public static class IdentitySeed
 
         await EnsureUserAsync(
             userManager,
-            email: config["Seed:AdminEmail"] ?? "admin@pehlione.local",
-            password: config["Seed:AdminPassword"] ?? string.Empty,
+            email: GetSeedValue(config, "AdminEmail", "admin@pehlione.local"),
+            password: GetSeedValue(config, "AdminPassword", string.Empty),
             role: RoleAdmin);
 
         await EnsureUserAsync(
             userManager,
-            email: config["Seed:StaffEmail"] ?? "staff@pehlione.local",
-            password: config["Seed:StaffPassword"] ?? string.Empty,
+            email: GetSeedValue(config, "StaffEmail", "staff@pehlione.local"),
+            password: GetSeedValue(config, "StaffPassword", string.Empty),
             role: RoleStaff);
 
         await EnsureUserAsync(
             userManager,
-            email: config["Seed:CustomerEmail"] ?? "customer@pehlione.local",
-            password: config["Seed:CustomerPassword"] ?? string.Empty,
+            email: GetSeedValue(config, "CustomerEmail", "customer@pehlione.local"),
+            password: GetSeedValue(config, "CustomerPassword", string.Empty),
             role: RoleCustomer);
+    }
+
+    private static string GetSeedValue(IConfiguration config, string key, string fallback)
+    {
+        return Environment.GetEnvironmentVariable($"SEED__{key.ToUpperInvariant()}") ??
+               config[$"Seed:{key}"] ??
+               fallback;
     }
 
     private static async Task EnsureRoleAsync(RoleManager<IdentityRole> roleManager, string roleName)

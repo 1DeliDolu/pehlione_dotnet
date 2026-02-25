@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "ItY3cb6/7JI=",
+  "dgSpecHash": "hkZnDY/Dd2M=",
   "success": true,
   "projectFilePath": "/home/project/Pehlione/Pehlione.csproj",
   "expectedPackageFiles": [
@@ -16,11 +16,11 @@
     "/home/delione/.nuget/packages/microsoft.codeanalysis.csharp.workspaces/4.8.0/microsoft.codeanalysis.csharp.workspaces.4.8.0.nupkg.sha512",
     "/home/delione/.nuget/packages/microsoft.codeanalysis.workspaces.common/4.8.0/microsoft.codeanalysis.workspaces.common.4.8.0.nupkg.sha512",
     "/home/delione/.nuget/packages/microsoft.codeanalysis.workspaces.msbuild/4.8.0/microsoft.codeanalysis.workspaces.msbuild.4.8.0.nupkg.sha512",
-    "/home/delione/.nuget/packages/microsoft.entityframeworkcore/10.0.3/microsoft.entityframeworkcore.10.0.3.nupkg.sha512",
-    "/home/delione/.nuget/packages/microsoft.entityframeworkcore.abstractions/10.0.3/microsoft.entityframeworkcore.abstractions.10.0.3.nupkg.sha512",
-    "/home/delione/.nuget/packages/microsoft.entityframeworkcore.analyzers/10.0.3/microsoft.entityframeworkcore.analyzers.10.0.3.nupkg.sha512",
+    "/home/delione/.nuget/packages/microsoft.entityframeworkcore/9.0.3/microsoft.entityframeworkcore.9.0.3.nupkg.sha512",
+    "/home/delione/.nuget/packages/microsoft.entityframeworkcore.abstractions/9.0.3/microsoft.entityframeworkcore.abstractions.9.0.3.nupkg.sha512",
+    "/home/delione/.nuget/packages/microsoft.entityframeworkcore.analyzers/9.0.3/microsoft.entityframeworkcore.analyzers.9.0.3.nupkg.sha512",
     "/home/delione/.nuget/packages/microsoft.entityframeworkcore.design/9.0.3/microsoft.entityframeworkcore.design.9.0.3.nupkg.sha512",
-    "/home/delione/.nuget/packages/microsoft.entityframeworkcore.inmemory/10.0.3/microsoft.entityframeworkcore.inmemory.10.0.3.nupkg.sha512",
+    "/home/delione/.nuget/packages/microsoft.entityframeworkcore.inmemory/9.0.3/microsoft.entityframeworkcore.inmemory.9.0.3.nupkg.sha512",
     "/home/delione/.nuget/packages/microsoft.entityframeworkcore.relational/9.0.3/microsoft.entityframeworkcore.relational.9.0.3.nupkg.sha512",
     "/home/delione/.nuget/packages/microsoft.extensions.dependencymodel/9.0.3/microsoft.extensions.dependencymodel.9.0.3.nupkg.sha512",
     "/home/delione/.nuget/packages/mono.texttemplating/3.0.0/mono.texttemplating.3.0.0.nupkg.sha512",

@@ -7,7 +7,9 @@
     <h1 class="h3 mb-3">Giris</h1>
 
     <div class="alert alert-info">
-        Dev kullanicilari seed edildiyse: Admin / Staff / Customer e-postalari <code>appsettings.Development.json</code> icindeki <code>Seed</code> bolumundedir.
+        Dev kullanicilari seed edildiyse: Admin / Staff / Customer bilgileri once <code>.env</code>
+        degiskenlerinden (<code>SEED__*</code>) okunur; yoksa <code>appsettings.Development.json</code>
+        icindeki <code>Seed</code> bolumu kullanilir.
     </div>
 
     <form asp-action="Login" method="post">
