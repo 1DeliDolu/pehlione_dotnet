@@ -43,7 +43,7 @@ public sealed class ProductsController : Controller
     {
         var vm = new ProductCreateVm
         {
-            CategoryOptions = await LoadCategoryOptionsAsync(ct)
+            CategoryOptions = await LoadCategoryOptionsAsync(includeCategoryId: null, ct)
         };
 
         return View(vm);
@@ -53,7 +53,7 @@ public sealed class ProductsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(ProductCreateVm model, CancellationToken ct)
     {
-        model.CategoryOptions = await LoadCategoryOptionsAsync(ct);
+        model.CategoryOptions = await LoadCategoryOptionsAsync(includeCategoryId: null, ct);
 
         if (!ModelState.IsValid)
         {
@@ -91,6 +91,76 @@ public sealed class ProductsController : Controller
         };
 
         _db.Products.Add(entity);
+        await _db.SaveChangesAsync(ct);
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Edit(int id, CancellationToken ct)
+    {
+        var entity = await _db.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, ct);
+        if (entity is null)
+        {
+            return NotFound();
+        }
+
+        return View(new ProductEditVm
+        {
+            Id = entity.Id,
+            CategoryId = entity.CategoryId,
+            Name = entity.Name,
+            Sku = entity.Sku,
+            Price = entity.Price,
+            IsActive = entity.IsActive,
+            CategoryOptions = await LoadCategoryOptionsAsync(includeCategoryId: entity.CategoryId, ct)
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(ProductEditVm model, CancellationToken ct)
+    {
+        model.CategoryOptions = await LoadCategoryOptionsAsync(includeCategoryId: model.CategoryId, ct);
+
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var entity = await _db.Products.FirstOrDefaultAsync(p => p.Id == model.Id, ct);
+        if (entity is null)
+        {
+            return NotFound();
+        }
+
+        var sku = (model.Sku ?? "").Trim().ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(sku))
+        {
+            ModelState.AddModelError(nameof(model.Sku), "SKU zorunludur.");
+            return View(model);
+        }
+
+        var categoryExists = await _db.Categories.AsNoTracking().AnyAsync(c => c.Id == model.CategoryId, ct);
+        if (!categoryExists)
+        {
+            ModelState.AddModelError(nameof(model.CategoryId), "Gecersiz kategori secimi.");
+            return View(model);
+        }
+
+        var skuExists = await _db.Products.AsNoTracking().AnyAsync(p => p.Sku == sku && p.Id != model.Id, ct);
+        if (skuExists)
+        {
+            ModelState.AddModelError(nameof(model.Sku), "Bu SKU zaten kullaniliyor.");
+            return View(model);
+        }
+
+        entity.CategoryId = model.CategoryId;
+        entity.Name = model.Name.Trim();
+        entity.Sku = sku;
+        entity.Price = model.Price;
+        entity.IsActive = model.IsActive;
+
         await _db.SaveChangesAsync(ct);
 
         return RedirectToAction(nameof(Index));
@@ -135,11 +205,11 @@ public sealed class ProductsController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    private async Task<IReadOnlyList<ProductCategoryOptionVm>> LoadCategoryOptionsAsync(CancellationToken ct)
+    private async Task<IReadOnlyList<ProductCategoryOptionVm>> LoadCategoryOptionsAsync(int? includeCategoryId, CancellationToken ct)
     {
         return await _db.Categories
             .AsNoTracking()
-            .Where(c => c.IsActive)
+            .Where(c => c.IsActive || (includeCategoryId.HasValue && c.Id == includeCategoryId.Value))
             .OrderBy(c => c.Name)
             .Select(c => new ProductCategoryOptionVm { Id = c.Id, Name = c.Name })
             .ToListAsync(ct);
