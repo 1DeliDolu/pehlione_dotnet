@@ -1,248 +1,312 @@
 A) **Hedef (Türkçe)**
-Microsoft’un “First Web API” eğitimindeki gibi, mevcut MVC uygulamanın içine **controller-based Web API** ekleyip `TodoItem` tablosunu EF Core ile yöneteceğiz: `/api/todoitems` altında **CRUD** endpoint’leri çalışacak (DB kullanır). ([Microsoft Learn][1])
+“Kişiler (Customer) / Çalışanlar (Staff) / Admin” bölümlerini **rol bazlı** korumaya alıp, Identity ile **Login/Logout** UI’si ekleyeceğiz; böylece her rol yalnızca kendi Area’sına erişebilecek.
 
 B) **CLI Komutu (maksimum 1 komut)**
 
 ```bash
-dotnet build
+dotnet run
 ```
 
 C) **Dosya Değişiklikleri (sadece değişen/eklenen dosyalar, TAM içerik)**
 
-`./Controllers/TodoItemsController.cs`
+`./Areas/Admin/Controllers/HomeController.cs`
 
 ```csharp
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
-using Pehlione.Models;
+
+namespace Pehlione.Areas.Admin.Controllers;
+
+[Area("Admin")]
+[Authorize(Roles = IdentitySeed.RoleAdmin)]
+public sealed class HomeController : Controller
+{
+    public IActionResult Index()
+    {
+        return View();
+    }
+}
+```
+
+`./Areas/Staff/Controllers/HomeController.cs`
+
+```csharp
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Pehlione.Data;
+
+namespace Pehlione.Areas.Staff.Controllers;
+
+[Area("Staff")]
+[Authorize(Roles = IdentitySeed.RoleStaff)]
+public sealed class HomeController : Controller
+{
+    public IActionResult Index()
+    {
+        return View();
+    }
+}
+```
+
+`./Areas/Customer/Controllers/HomeController.cs`
+
+```csharp
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Pehlione.Data;
+
+namespace Pehlione.Areas.Customer.Controllers;
+
+[Area("Customer")]
+[Authorize(Roles = IdentitySeed.RoleCustomer)]
+public sealed class HomeController : Controller
+{
+    public IActionResult Index()
+    {
+        return View();
+    }
+}
+```
+
+`./Controllers/AccountController.cs`
+
+```csharp
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Pehlione.Models.Identity;
+using Pehlione.Models.ViewModels;
 
 namespace Pehlione.Controllers;
 
-[ApiController]
-[Route("api/[controller]")]
-public sealed class TodoItemsController : ControllerBase
+public sealed class AccountController : Controller
 {
-    private readonly PehlioneDbContext _db;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly SignInManager<ApplicationUser> _signInManager;
 
-    public TodoItemsController(PehlioneDbContext db)
+    public AccountController(
+        UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager)
     {
-        _db = db;
+        _userManager = userManager;
+        _signInManager = signInManager;
     }
 
-    // GET: /api/todoitems
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<TodoItem>>> GetTodoItems(CancellationToken ct)
+    [AllowAnonymous]
+    public IActionResult Login(string? returnUrl = null)
     {
-        return await _db.TodoItems.AsNoTracking().ToListAsync(ct);
+        return View(new LoginViewModel
+        {
+            ReturnUrl = string.IsNullOrWhiteSpace(returnUrl) ? Url.Content("~/") : returnUrl
+        });
     }
 
-    // GET: /api/todoitems/{id}
-    [HttpGet("{id:int}")]
-    public async Task<ActionResult<TodoItem>> GetTodoItem(int id, CancellationToken ct)
-    {
-        var todoItem = await _db.TodoItems.FindAsync([id], ct);
-        if (todoItem is null)
-            return NotFound();
-
-        return todoItem;
-    }
-
-    // POST: /api/todoitems
     [HttpPost]
-    public async Task<ActionResult<TodoItem>> PostTodoItem(TodoItem todoItem, CancellationToken ct)
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Login(LoginViewModel model)
     {
-        _db.TodoItems.Add(todoItem);
-        await _db.SaveChangesAsync(ct);
+        if (!ModelState.IsValid)
+            return View(model);
 
-        return CreatedAtAction(nameof(GetTodoItem), new { id = todoItem.Id }, todoItem);
-    }
+        // Email ile dene, yoksa username olarak dene
+        var user = await _userManager.FindByEmailAsync(model.EmailOrUserName)
+                   ?? await _userManager.FindByNameAsync(model.EmailOrUserName);
 
-    // PUT: /api/todoitems/{id}
-    [HttpPut("{id:int}")]
-    public async Task<IActionResult> PutTodoItem(int id, TodoItem todoItem, CancellationToken ct)
-    {
-        if (id != todoItem.Id)
-            return BadRequest();
-
-        _db.Entry(todoItem).State = EntityState.Modified;
-
-        try
+        if (user is null)
         {
-            await _db.SaveChangesAsync(ct);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            var exists = await _db.TodoItems.AnyAsync(x => x.Id == id, ct);
-            if (!exists)
-                return NotFound();
-
-            throw;
+            ModelState.AddModelError(string.Empty, "Kullanıcı adı/e-posta veya parola hatalı.");
+            return View(model);
         }
 
-        return NoContent();
+        var result = await _signInManager.PasswordSignInAsync(
+            userName: user.UserName!,
+            password: model.Password,
+            isPersistent: model.RememberMe,
+            lockoutOnFailure: false);
+
+        if (result.Succeeded)
+        {
+            if (!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+                return Redirect(model.ReturnUrl);
+
+            return RedirectToAction("Index", "Home");
+        }
+
+        ModelState.AddModelError(string.Empty, "Kullanıcı adı/e-posta veya parola hatalı.");
+        return View(model);
     }
 
-    // DELETE: /api/todoitems/{id}
-    [HttpDelete("{id:int}")]
-    public async Task<IActionResult> DeleteTodoItem(int id, CancellationToken ct)
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Logout()
     {
-        var todoItem = await _db.TodoItems.FindAsync([id], ct);
-        if (todoItem is null)
-            return NotFound();
+        await _signInManager.SignOutAsync();
+        return RedirectToAction("Index", "Home");
+    }
 
-        _db.TodoItems.Remove(todoItem);
-        await _db.SaveChangesAsync(ct);
-
-        return NoContent();
+    [HttpGet]
+    [AllowAnonymous]
+    public IActionResult Denied()
+    {
+        return View();
     }
 }
 ```
 
-`./Models/TodoItem.cs`
+`./Models/ViewModels/LoginViewModel.cs`
 
 ```csharp
-namespace Pehlione.Models;
+using System.ComponentModel.DataAnnotations;
 
-public sealed class TodoItem
+namespace Pehlione.Models.ViewModels;
+
+public sealed class LoginViewModel
 {
-    public int Id { get; set; }
-    public string Name { get; set; } = "";
-    public bool IsComplete { get; set; }
+    [Required]
+    [Display(Name = "E-posta veya kullanıcı adı")]
+    public string EmailOrUserName { get; set; } = "";
+
+    [Required]
+    [DataType(DataType.Password)]
+    [Display(Name = "Parola")]
+    public string Password { get; set; } = "";
+
+    [Display(Name = "Beni hatırla")]
+    public bool RememberMe { get; set; }
+
+    public string? ReturnUrl { get; set; }
 }
 ```
 
-`./Data/PehlioneDbContext.cs`
+`./Views/Account/Login.cshtml`
 
-```csharp
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore;
-using Pehlione.Models;
-using Pehlione.Models.Identity;
+```cshtml
+@model Pehlione.Models.ViewModels.LoginViewModel
+@{
+    ViewData["Title"] = "Giriş";
+}
 
-namespace Pehlione.Data;
+<div class="container" style="max-width: 520px;">
+    <h1 class="h3 mb-3">Giriş</h1>
 
-public sealed class PehlioneDbContext
-    : IdentityDbContext<ApplicationUser, IdentityRole, string>
-{
-    public PehlioneDbContext(DbContextOptions<PehlioneDbContext> options)
-        : base(options)
-    {
-    }
+    <div class="alert alert-info">
+        Dev kullanıcıları seed edildiyse: Admin / Staff / Customer e-postaları <code>appsettings.Development.json</code> içindeki <code>Seed</code> bölümündedir.
+    </div>
 
-    public DbSet<TodoItem> TodoItems => Set<TodoItem>();
+    <form asp-action="Login" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="ReturnUrl" />
 
-    // İleride e-ticaret domain DbSet'leri buraya gelecek (Products, Orders, vb.)
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+        <div class="mb-3">
+            <label asp-for="EmailOrUserName" class="form-label"></label>
+            <input asp-for="EmailOrUserName" class="form-control" autocomplete="username" />
+            <span asp-validation-for="EmailOrUserName" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Password" class="form-label"></label>
+            <input asp-for="Password" class="form-control" autocomplete="current-password" />
+            <span asp-validation-for="Password" class="text-danger"></span>
+        </div>
+
+        <div class="form-check mb-3">
+            <input asp-for="RememberMe" class="form-check-input" />
+            <label asp-for="RememberMe" class="form-check-label"></label>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Giriş yap</button>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
 }
 ```
 
-`./Program.cs`
+`./Views/Account/Denied.cshtml`
 
-```csharp
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Pehlione.Data;
-using Pehlione.Models.Identity;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-builder.Services.AddControllersWithViews();
-
-// EF Core + MySQL
-var connectionString = builder.Configuration.GetConnectionString("PehlioneDb")
-    ?? throw new InvalidOperationException("Connection string 'PehlioneDb' not found.");
-
-builder.Services.AddDbContext<PehlioneDbContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
-
-// Identity (Users + Roles)
-builder.Services
-    .AddIdentity<ApplicationUser, IdentityRole>(options =>
-    {
-        options.User.RequireUniqueEmail = true;
-        options.SignIn.RequireConfirmedAccount = false;
-    })
-    .AddEntityFrameworkStores<PehlioneDbContext>()
-    .AddDefaultTokenProviders();
-
-builder.Services.ConfigureApplicationCookie(options =>
-{
-    options.LoginPath = "/Account/Login";
-    options.AccessDeniedPath = "/Account/Denied";
-});
-
-// EF Core hata tanılama (dev)
-builder.Services.AddDatabaseDeveloperPageExceptionFilter();
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Home/Error");
-    app.UseHsts();
+```cshtml
+@{
+    ViewData["Title"] = "Erişim Reddedildi";
 }
 
-app.UseHttpsRedirection();
-app.UseStaticFiles();
+<div class="container" style="max-width: 820px;">
+    <h1 class="h3 mb-3">Erişim reddedildi</h1>
+    <p>Bu sayfaya erişim yetkin yok. Doğru rol ile giriş yapmalısın.</p>
 
-app.UseRouting();
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary" asp-controller="Account" asp-action="Login">Giriş</a>
+        <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Ana sayfa</a>
+    </div>
+</div>
+```
 
-app.UseAuthentication();
-app.UseAuthorization();
+`./Views/Home/Index.cshtml`
 
-// DEV: Migration varsa uygula + demo kullanıcıları seed et.
-if (app.Environment.IsDevelopment())
-{
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<PehlioneDbContext>();
+```cshtml
+@{
+    ViewData["Title"] = "Home Page";
+}
 
-    var hasMigrations = (await db.Database.GetMigrationsAsync()).Any();
-    if (hasMigrations)
+<div class="text-center">
+    <h1 class="display-4">Pehlione</h1>
+    <p>Prototip alışveriş sitesi - bölüm iskeletleri</p>
+
+    <hr />
+
+    @if (User?.Identity?.IsAuthenticated == true)
     {
-        await db.Database.MigrateAsync();
-        await IdentitySeed.SeedAsync(scope.ServiceProvider);
+        <p class="mb-2">
+            Giriş yapıldı: <strong>@User.Identity!.Name</strong>
+        </p>
+
+        <form asp-controller="Account" asp-action="Logout" method="post" class="mb-3">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-dark">Çıkış</button>
+        </form>
+
+        <h2 class="h4">Bölümler (Rolüne göre)</h2>
+        <div class="d-flex justify-content-center gap-3 flex-wrap">
+            @if (User.IsInRole("Customer"))
+            {
+                <a class="btn btn-outline-primary" asp-area="Customer" asp-controller="Home" asp-action="Index">Müşteri</a>
+            }
+            @if (User.IsInRole("Staff"))
+            {
+                <a class="btn btn-outline-secondary" asp-area="Staff" asp-controller="Home" asp-action="Index">Çalışanlar</a>
+            }
+            @if (User.IsInRole("Admin"))
+            {
+                <a class="btn btn-outline-danger" asp-area="Admin" asp-controller="Home" asp-action="Index">Admin</a>
+            }
+        </div>
     }
-}
-
-// Attribute-routed API controller'lar için (api/*)
-app.MapControllers();
-
-// Areas routing (Admin / Staff / Customer)
-app.MapControllerRoute(
-    name: "areas",
-    pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}");
-
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
-
-app.Run();
+    else
+    {
+        <p class="mb-3">Bölümler rol ile korunuyor. Devam etmek için giriş yap.</p>
+        <a class="btn btn-primary" asp-controller="Account" asp-action="Login">Giriş</a>
+    }
+</div>
 ```
 
 D) **Kısa Açıklama (en fazla 5 madde, öğretici)**
 
-* Microsoft’un tutorial’ı, controller tabanlı Web API’de tipik CRUD yüzeyini `GET/POST/PUT/DELETE` olarak kurar; biz aynı deseni `/api/todoitems` altında uyguladık. ([Microsoft Learn][1])
-* `[ApiController]` + `[Route("api/[controller]")]` ile route ve model binding “API modu”nda standartlaşır. ([Microsoft Learn][2])
-* `AsNoTracking()` sadece okuma için daha hafif sorgu üretir.
-* `CreatedAtAction(...)` POST sonrası resource URL’ini doğru şekilde döndürür (REST pratiği). ([Microsoft Learn][1])
-* `app.MapControllers()` attribute routing’i aktif eder; MVC route’larıyla çakışmadan API endpoint’lerini ekler. ([Microsoft Learn][2])
+* Area controller’larına `[Authorize(Roles="...")]` ekleyerek rol bazlı erişimi netleştirdik. ([Microsoft Learn][1])
+* `AccountController` içinde `SignInManager` ile `PasswordSignInAsync` yapıp cookie tabanlı oturum açıyoruz (JWT’ye sonra geçeceğiz). ([Microsoft Learn][2])
+* `ConfigureApplicationCookie`’deki `LoginPath` ve `AccessDeniedPath` artık gerçek endpoint’lere bağlı. ([Microsoft Learn][3])
+* Ana sayfada butonları `User.IsInRole(...)` ile role göre gösteriyoruz; böylece UI tarafında da “kendi bölümün” kuralı görünür oluyor. ([Microsoft Learn][1])
+* Not: Login’in gerçekten çalışması için Identity tablolarının DB’de olması gerekir; bir sonraki adım migration + database update olacak.
 
 E) **Git Commit**
 
-* Commit mesajı: `Add TodoItems Web API (CRUD) backed by EF Core`
+* Commit mesajı: `Add login UI and role-guarded areas (Admin/Staff/Customer)`
 * Komut:
 
 ```bash
-git add -A && git commit -m "Add TodoItems Web API (CRUD) backed by EF Core"
+git add -A && git commit -m "Add login UI and role-guarded areas (Admin/Staff/Customer)"
 ```
-
-`dotnet run` sonrası hızlı test:
-
-* `GET /api/todoitems` (şimdilik boş döner; migration sonra)
-* `POST /api/todoitems` body: `{ "name": "ilk", "isComplete": false }`
-
-Bunu uyguladıktan sonra **“bitti”** yaz; sonraki adımda **migration** ile hem Identity hem TodoItems tablolarını MySQL’e basacağız (`dotnet ef migrations add ...` + `dotnet ef database update`).
-
