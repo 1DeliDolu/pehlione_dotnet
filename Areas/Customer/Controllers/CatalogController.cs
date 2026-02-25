@@ -60,7 +60,7 @@ public sealed class CatalogController : Controller
 
         var products = await _db.Products
             .AsNoTracking()
-            .Where(p => p.IsActive && p.Category != null && p.Category.Slug == slug)
+            .Where(p => p.IsActive && p.Category != null && p.Category.Slug == slug && p.Category.IsActive)
             .OrderBy(p => p.Name)
             .Select(p => new CatalogProductListItemVm
             {
@@ -76,6 +76,31 @@ public sealed class CatalogController : Controller
             Category = category,
             Products = products
         };
+
+        return View(vm);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Details(int id, CancellationToken ct)
+    {
+        var vm = await _db.Products
+            .AsNoTracking()
+            .Where(p => p.Id == id && p.IsActive && p.Category != null && p.Category.IsActive)
+            .Select(p => new CatalogProductDetailsVm
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Sku = p.Sku,
+                Price = p.Price,
+                CategoryName = p.Category!.Name,
+                CategorySlug = p.Category!.Slug
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (vm is null)
+        {
+            return NotFound();
+        }
 
         return View(vm);
     }
