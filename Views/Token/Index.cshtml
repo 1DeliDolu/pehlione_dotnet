@@ -1,0 +1,46 @@
+@model Pehlione.Models.ViewModels.TokenViewModel
+@{
+    ViewData["Title"] = "JWT Token";
+}
+
+<div class="container" style="max-width: 900px;">
+    <h1 class="h3 mb-3">JWT (Bearer) Token</h1>
+
+    <div class="alert alert-warning">
+        Bu token dev/test icindir. Paylasma. Sure bitince yeniden uret.
+    </div>
+
+    <div class="mb-2">
+        <strong>Roller:</strong> @(Model.Roles.Length == 0 ? "-" : string.Join(", ", Model.Roles))
+    </div>
+    <div class="mb-3">
+        <strong>Expires (UTC):</strong> @Model.ExpiresAtUtc.ToString("u")
+    </div>
+
+    <div class="mb-2">
+        <label class="form-label">Access Token</label>
+        <textarea id="tokenBox" class="form-control" rows="6" readonly>@Model.AccessToken</textarea>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-primary" onclick="copyToken()">Kopyala</button>
+        <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Ana sayfa</a>
+    </div>
+
+    <hr />
+
+    <p class="mb-1"><strong>Ornek kullanim</strong></p>
+    <ul class="mb-0">
+        <li><code>Authorization: Bearer &lt;token&gt;</code> header ile cagir</li>
+        <li>Test endpoint: <code>/api/secure/me</code>, <code>/api/secure/admin</code>, <code>/api/secure/staff</code>, <code>/api/secure/customer</code></li>
+    </ul>
+</div>
+
+<script>
+    function copyToken() {
+        const el = document.getElementById('tokenBox');
+        el.select();
+        el.setSelectionRange(0, 999999);
+        document.execCommand('copy');
+    }
+</script>

@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
@@ -7,6 +9,9 @@ namespace Pehlione.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(
+    AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+    Roles = $"{IdentitySeed.RoleStaff},{IdentitySeed.RoleAdmin}")]
 public sealed class TodoItemsController : ControllerBase
 {
     private readonly PehlioneDbContext _db;

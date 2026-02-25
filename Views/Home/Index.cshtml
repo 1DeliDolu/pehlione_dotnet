@@ -14,10 +14,14 @@
             Giris yapildi: <strong>@User.Identity!.Name</strong>
         </p>
 
-        <form asp-controller="Account" asp-action="Logout" method="post" class="mb-3">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-outline-dark">Cikis</button>
-        </form>
+        <div class="d-flex justify-content-center gap-2 flex-wrap mb-3">
+            <a class="btn btn-outline-primary" asp-controller="Token" asp-action="Index">JWT Token</a>
+
+            <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-dark">Cikis</button>
+            </form>
+        </div>
 
         <h2 class="h4">Bolumler (Rolune gore)</h2>
         <div class="d-flex justify-content-center gap-3 flex-wrap">

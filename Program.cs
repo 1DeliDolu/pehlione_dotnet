@@ -1,7 +1,12 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Pehlione.Data;
 using Pehlione.Models.Identity;
+using Pehlione.Models.Security;
+using Pehlione.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +39,42 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Account/Denied";
 });
 
+// JWT options
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
+var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
+          ?? throw new InvalidOperationException("Jwt configuration missing.");
+
+if (string.IsNullOrWhiteSpace(jwt.SigningKey) || jwt.SigningKey.Length < 32)
+{
+    throw new InvalidOperationException("Jwt:SigningKey must be set and at least 32 characters.");
+}
+
+// JWT bearer (API)
+builder.Services.AddAuthentication()
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwt.Issuer,
+
+            ValidateAudience = true,
+            ValidAudience = jwt.Audience,
+
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
+
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1),
+
+            NameClaimType = System.Security.Claims.ClaimTypes.Name,
+            RoleClaimType = System.Security.Claims.ClaimTypes.Role
+        };
+    });
+
+builder.Services.AddAuthorization();
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+
 // EF Core hata tanilama (dev)
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -50,6 +91,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
