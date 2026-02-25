@@ -113,6 +113,54 @@ public sealed class CartController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Update(int productId, int qty, string? returnUrl = null, CancellationToken ct = default)
+    {
+        qty = Math.Clamp(qty, 1, MaxQtyPerItem);
+
+        var exists = await _db.Products
+            .AsNoTracking()
+            .AnyAsync(p => p.Id == productId && p.IsActive && p.Category != null && p.Category.IsActive, ct);
+
+        var cart = ReadCart();
+        var item = cart.FirstOrDefault(x => x.ProductId == productId);
+
+        if (item is null)
+            return RedirectToReturnUrlOrCart(returnUrl);
+
+        if (!exists)
+        {
+            cart.Remove(item);
+            WriteCart(cart);
+            return RedirectToReturnUrlOrCart(returnUrl);
+        }
+
+        item.Qty = qty;
+        WriteCart(cart);
+
+        return RedirectToReturnUrlOrCart(returnUrl);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult Remove(int productId, string? returnUrl = null)
+    {
+        var cart = ReadCart();
+        cart.RemoveAll(x => x.ProductId == productId);
+        WriteCart(cart);
+
+        return RedirectToReturnUrlOrCart(returnUrl);
+    }
+
+    private IActionResult RedirectToReturnUrlOrCart(string? returnUrl)
+    {
+        if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+            return Redirect(returnUrl);
+
+        return RedirectToAction(nameof(Index));
+    }
+
     private List<CartCookieItem> ReadCart()
     {
         if (!Request.Cookies.TryGetValue(CartCookieKey, out var json) || string.IsNullOrWhiteSpace(json))

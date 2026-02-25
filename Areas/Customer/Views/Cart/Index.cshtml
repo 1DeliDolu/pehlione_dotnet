@@ -23,6 +23,7 @@
                 <th class="text-end">Birim Fiyat</th>
                 <th class="text-end">Adet</th>
                 <th class="text-end">Ara Toplam</th>
+                <th class="text-end">Islem</th>
             </tr>
             </thead>
             <tbody>
@@ -37,8 +38,43 @@
                     </td>
                     <td><code>@l.Sku</code></td>
                     <td class="text-end">@l.UnitPrice.ToString("0.00")</td>
-                    <td class="text-end">@l.Quantity</td>
+
+                    <td class="text-end" style="width: 220px;">
+                        <form asp-area="Customer"
+                              asp-controller="Cart"
+                              asp-action="Update"
+                              method="post"
+                              class="d-flex justify-content-end gap-2">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="productId" value="@l.ProductId" />
+                            <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+
+                            <input type="number"
+                                   name="qty"
+                                   value="@l.Quantity"
+                                   min="1"
+                                   max="99"
+                                   class="form-control"
+                                   style="width: 110px;" />
+
+                            <button type="submit" class="btn btn-outline-primary">Guncelle</button>
+                        </form>
+                    </td>
+
                     <td class="text-end">@l.Subtotal.ToString("0.00")</td>
+
+                    <td class="text-end" style="width: 140px;">
+                        <form asp-area="Customer"
+                              asp-controller="Cart"
+                              asp-action="Remove"
+                              method="post"
+                              class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="productId" value="@l.ProductId" />
+                            <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                            <button type="submit" class="btn btn-outline-danger">Cikar</button>
+                        </form>
+                    </td>
                 </tr>
             }
             </tbody>
@@ -46,12 +82,9 @@
             <tr>
                 <th colspan="4" class="text-end">Toplam</th>
                 <th class="text-end">@Model.Total.ToString("0.00")</th>
+                <th></th>
             </tr>
             </tfoot>
         </table>
-
-        <div class="text-muted">
-            Not: Bu adimda "adet guncelle / sepetten cikar" yok. Sonraki adimda ekleyecegiz.
-        </div>
     }
 </div>
