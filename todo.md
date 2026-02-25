@@ -1,5 +1,5 @@
 A) **Hedef (Türkçe)**
-Haklısın — bundan sonra adımları **küçük parçalara** böleceğim. Bu adımda sadece **Admin** tarafına “kullanıcıları ve rollerini gör” ekranı ekliyoruz: `/Admin/Users` sayfası, `Admin/Staff/Customer` demo kullanıcılarını listeler.
+Admin panelinde `/Admin/Users` üzerinden **yeni kullanıcı oluşturma** (Customer / Staff / Admin rolü seçerek) ekranını ekleyeceğiz. Böylece “kişiler/çalışanlar/admin” için demo seed’e bağlı kalmadan kullanıcı açabileceksin.
 
 B) **CLI Komutu (maksimum 1 komut)**
 
@@ -26,6 +26,13 @@ namespace Pehlione.Areas.Admin.Controllers;
 [Authorize(Roles = IdentitySeed.RoleAdmin)]
 public sealed class UsersController : Controller
 {
+    private static readonly string[] AllowedRoles =
+    [
+        IdentitySeed.RoleCustomer,
+        IdentitySeed.RoleStaff,
+        IdentitySeed.RoleAdmin
+    ];
+
     private readonly UserManager<ApplicationUser> _userManager;
 
     public UsersController(UserManager<ApplicationUser> userManager)
@@ -55,19 +62,85 @@ public sealed class UsersController : Controller
 
         return View(items);
     }
+
+    [HttpGet]
+    public IActionResult Create()
+    {
+        return View(new CreateUserVm());
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(CreateUserVm model, CancellationToken ct)
+    {
+        if (!AllowedRoles.Contains(model.Role))
+        {
+            ModelState.AddModelError(nameof(model.Role), "Geçersiz rol seçimi.");
+        }
+
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var existing = await _userManager.FindByEmailAsync(model.Email);
+        if (existing is not null)
+        {
+            ModelState.AddModelError(nameof(model.Email), "Bu e-posta zaten kayıtlı.");
+            return View(model);
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = model.Email,
+            Email = model.Email,
+            EmailConfirmed = true
+        };
+
+        var create = await _userManager.CreateAsync(user, model.Password);
+        if (!create.Succeeded)
+        {
+            foreach (var err in create.Errors)
+                ModelState.AddModelError(string.Empty, err.Description);
+
+            return View(model);
+        }
+
+        var addRole = await _userManager.AddToRoleAsync(user, model.Role);
+        if (!addRole.Succeeded)
+        {
+            foreach (var err in addRole.Errors)
+                ModelState.AddModelError(string.Empty, err.Description);
+
+            return View(model);
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
 }
 ```
 
-`./Models/ViewModels/Admin/UserListItemVm.cs`
+`./Models/ViewModels/Admin/CreateUserVm.cs`
 
 ```csharp
+using System.ComponentModel.DataAnnotations;
+using Pehlione.Data;
+
 namespace Pehlione.Models.ViewModels.Admin;
 
-public sealed class UserListItemVm
+public sealed class CreateUserVm
 {
+    [Required]
+    [EmailAddress]
+    [Display(Name = "E-posta")]
     public string Email { get; set; } = "";
-    public string UserName { get; set; } = "";
-    public string[] Roles { get; set; } = Array.Empty<string>();
+
+    [Required]
+    [DataType(DataType.Password)]
+    [Display(Name = "Parola")]
+    public string Password { get; set; } = "";
+
+    [Required]
+    [Display(Name = "Rol")]
+    public string Role { get; set; } = IdentitySeed.RoleCustomer;
 }
 ```
 
@@ -80,10 +153,13 @@ public sealed class UserListItemVm
 }
 
 <div class="container" style="max-width: 980px;">
-    <h1 class="h3 mb-3">Kullanıcılar</h1>
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h1 class="h3 m-0">Kullanıcılar</h1>
+        <a class="btn btn-primary" asp-area="Admin" asp-controller="Users" asp-action="Create">Yeni kullanıcı</a>
+    </div>
 
     <p class="text-muted">
-        Bu liste, Identity kullanıcılarını ve rollerini gösterir (dev seed dahil).
+        Bu liste, Identity kullanıcılarını ve rollerini gösterir.
     </p>
 
     <table class="table table-striped align-middle">
@@ -108,21 +184,72 @@ public sealed class UserListItemVm
 </div>
 ```
 
+`./Areas/Admin/Views/Users/Create.cshtml`
+
+```cshtml
+@model Pehlione.Models.ViewModels.Admin.CreateUserVm
+@{
+    ViewData["Title"] = "Yeni Kullanıcı";
+}
+
+<div class="container" style="max-width: 620px;">
+    <h1 class="h3 mb-3">Yeni kullanıcı</h1>
+
+    <form asp-area="Admin" asp-controller="Users" asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+        <div class="mb-3">
+            <label asp-for="Email" class="form-label"></label>
+            <input asp-for="Email" class="form-control" autocomplete="email" />
+            <span asp-validation-for="Email" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Password" class="form-label"></label>
+            <input asp-for="Password" class="form-control" autocomplete="new-password" />
+            <span asp-validation-for="Password" class="text-danger"></span>
+            <div class="form-text">Parola politikası Identity ayarlarına göre doğrulanır.</div>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Role" class="form-label"></label>
+            <select asp-for="Role" class="form-select">
+                <option value="Customer">Customer</option>
+                <option value="Staff">Staff</option>
+                <option value="Admin">Admin</option>
+            </select>
+            <span asp-validation-for="Role" class="text-danger"></span>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Oluştur</button>
+            <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Users" asp-action="Index">İptal</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+```
+
 D) **Kısa Açıklama (en fazla 5 madde, öğretici)**
 
-* Bu ekran sadece **Admin rolü** ile erişilebilir (`[Authorize(Roles=...)]`).
-* `UserManager.Users` üzerinden kullanıcıları çekiyoruz; `GetRolesAsync` ile rollerini alıyoruz.
-* Şimdilik N+1 (her kullanıcı için rol sorgusu) var; demo için sorun değil, ileride optimize ederiz.
-* URL: `/Admin/Users`
-* Sonraki adımda istersen **Admin panelinden yeni Staff/Customer oluşturma** (Create form) ekleyebiliriz.
+* `/Admin/Users/Create` sadece **Admin** rolüne açık.
+* Rol seçimini `AllowedRoles` ile whitelist yaptık (kötü niyetli “başka rol adı” post edilemesin).
+* `UserName = Email` yaparak login tarafını basit tuttuk.
+* Hata mesajlarını Identity’nin `Errors` listesinden ModelState’e aktardık.
+* Sonraki adım: oluşturulan kullanıcıya **“ilk girişte şifre değiştir”** zorunluluğu koyacağız (MustChangePassword akışı).
 
 E) **Git Commit**
 
-* Commit mesajı: `Add Admin users list page (users + roles)`
+* Commit mesajı: `Add Admin create-user page with role assignment`
 * Komut:
 
 ```bash
-git add -A && git commit -m "Add Admin users list page (users + roles)"
+git add -A && git commit -m "Add Admin create-user page with role assignment"
 ```
 
-Bunu uygulayıp `/Admin/Users` sayfasında listeyi gördüysen **“bitti”** yaz.
+Bunu uygulayıp `/Admin/Users/Create` ile bir **Staff** ve bir **Customer** kullanıcı oluşturabildiysen **“bitti”** yaz. Sonraki adımda “ilk girişte şifre değişimi zorunlu” akışına geçelim.
