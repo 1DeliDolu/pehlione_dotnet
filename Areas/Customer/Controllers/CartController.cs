@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
+using Pehlione.Models;
 using Pehlione.Models.Catalog;
 using Pehlione.Models.Commerce;
 using Pehlione.Models.Identity;
@@ -243,6 +244,25 @@ public sealed class CartController : Controller
         if (!(User.Identity?.IsAuthenticated ?? false))
             return RedirectToAction("Login", "Account", new { area = "", returnUrl = "/Customer/Cart/Checkout" });
 
+        model.FullName = (model.FullName ?? "").Trim();
+        model.Email = (model.Email ?? "").Trim();
+        model.Phone = (model.Phone ?? "").Trim();
+
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user is not null)
+            {
+                if (string.IsNullOrWhiteSpace(model.FullName))
+                    model.FullName = BuildDisplayName(user.UserName, user.Email);
+                if (string.IsNullOrWhiteSpace(model.Email))
+                    model.Email = user.Email ?? "";
+                if (string.IsNullOrWhiteSpace(model.Phone))
+                    model.Phone = user.PhoneNumber ?? "";
+            }
+        }
+
         if (!TryValidateModel(model, nameof(CheckoutVm.User)))
             return await RenderCheckoutStepWithModelErrorsAsync(1, model, null, null, ct);
 
@@ -262,17 +282,65 @@ public sealed class CartController : Controller
         if (!(User.Identity?.IsAuthenticated ?? false))
             return RedirectToAction("Login", "Account", new { area = "", returnUrl = "/Customer/Cart/Checkout" });
 
+        model.Title = (model.Title ?? "").Trim();
+        model.Street = (model.Street ?? "").Trim();
+        model.HouseNumber = (model.HouseNumber ?? "").Trim();
+        model.Line2 = (model.Line2 ?? "").Trim();
+        model.City = (model.City ?? "").Trim();
+        model.PostalCode = (model.PostalCode ?? "").Trim();
+        model.State = (model.State ?? "").Trim();
+        model.CountryCode = (model.CountryCode ?? "").Trim().ToUpperInvariant();
+        model.PhoneNumber = (model.PhoneNumber ?? "").Trim();
+
         if (!TryValidateModel(model, nameof(CheckoutVm.Address)))
             return await RenderCheckoutStepWithModelErrorsAsync(2, null, model, null, ct);
 
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userId))
+            return Challenge();
+
         var draft = ReadCheckoutDraft();
         draft.AddressTitle = model.Title.Trim();
-        draft.AddressLine1 = model.Line1.Trim();
+        draft.Street = model.Street.Trim();
+        draft.HouseNumber = model.HouseNumber.Trim();
         draft.AddressLine2 = (model.Line2 ?? "").Trim();
         draft.City = model.City.Trim();
         draft.PostalCode = (model.PostalCode ?? "").Trim();
-        draft.Country = model.Country.Trim();
+        draft.State = (model.State ?? "").Trim();
+        draft.CountryCode = model.CountryCode.Trim().ToUpperInvariant();
+        draft.AddressPhone = (model.PhoneNumber ?? "").Trim();
         WriteCheckoutDraft(draft);
+
+        var (firstName, lastName) = SplitName(draft.FullName);
+        var existingDefault = await _db.UserAddresses
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.Type == AddressType.Shipping && x.IsDefault, ct);
+
+        if (existingDefault is null)
+        {
+            existingDefault = new UserAddress
+            {
+                UserId = userId,
+                Type = AddressType.Shipping,
+                IsDefault = true,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+            _db.UserAddresses.Add(existingDefault);
+        }
+
+        existingDefault.FirstName = firstName;
+        existingDefault.LastName = lastName;
+        existingDefault.Company = model.Title;
+        existingDefault.Street = model.Street;
+        existingDefault.HouseNumber = model.HouseNumber;
+        existingDefault.AddressLine2 = string.IsNullOrWhiteSpace(model.Line2) ? null : model.Line2;
+        existingDefault.PostalCode = model.PostalCode;
+        existingDefault.City = model.City;
+        existingDefault.State = string.IsNullOrWhiteSpace(model.State) ? null : model.State;
+        existingDefault.CountryCode = model.CountryCode;
+        existingDefault.PhoneNumber = string.IsNullOrWhiteSpace(model.PhoneNumber) ? null : model.PhoneNumber;
+        existingDefault.UpdatedAtUtc = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
 
         return RedirectToAction(nameof(Checkout), new { step = 3 });
     }

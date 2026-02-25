@@ -34,22 +34,35 @@ public sealed class CheckoutAddressStepVm
     public string Title { get; set; } = "";
 
     [Required]
-    [Display(Name = "Adres Satiri 1")]
-    public string Line1 { get; set; } = "";
+    [Display(Name = "Sokak / Cadde (Strasse)")]
+    public string Street { get; set; } = "";
+
+    [Required]
+    [Display(Name = "Kapi No (Hausnummer)")]
+    public string HouseNumber { get; set; } = "";
 
     [Display(Name = "Adres Satiri 2")]
     public string? Line2 { get; set; }
 
     [Required]
-    [Display(Name = "Sehir")]
+    [Display(Name = "Sehir (Ort)")]
     public string City { get; set; } = "";
 
-    [Display(Name = "Posta Kodu")]
-    public string? PostalCode { get; set; }
+    [Required]
+    [RegularExpression(@"^\d{5}$", ErrorMessage = "PLZ 5 haneli olmali (ornek: 10115).")]
+    [Display(Name = "Posta Kodu (PLZ)")]
+    public string PostalCode { get; set; } = "";
+
+    [Display(Name = "Eyalet (Bundesland)")]
+    public string? State { get; set; }
 
     [Required]
-    [Display(Name = "Ulke")]
-    public string Country { get; set; } = "TR";
+    [RegularExpression(@"^[A-Z]{2}$", ErrorMessage = "Ulke kodu 2 harf olmali (DE).")]
+    [Display(Name = "Ulke Kodu")]
+    public string CountryCode { get; set; } = "DE";
+
+    [Display(Name = "Telefon (opsiyonel)")]
+    public string? PhoneNumber { get; set; }
 }
 
 public sealed class CheckoutPaymentStepVm

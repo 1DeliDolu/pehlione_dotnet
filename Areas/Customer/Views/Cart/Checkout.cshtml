@@ -61,9 +61,14 @@
                         <span asp-validation-for="Address.Title" class="text-danger small"></span>
                     </div>
                     <div class="col-12">
-                        <label asp-for="Address.Line1" class="form-label"></label>
-                        <input asp-for="Address.Line1" class="form-control" />
-                        <span asp-validation-for="Address.Line1" class="text-danger small"></span>
+                        <label asp-for="Address.Street" class="form-label"></label>
+                        <input asp-for="Address.Street" class="form-control" />
+                        <span asp-validation-for="Address.Street" class="text-danger small"></span>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label asp-for="Address.HouseNumber" class="form-label"></label>
+                        <input asp-for="Address.HouseNumber" class="form-control" />
+                        <span asp-validation-for="Address.HouseNumber" class="text-danger small"></span>
                     </div>
                     <div class="col-12">
                         <label asp-for="Address.Line2" class="form-label"></label>
@@ -77,11 +82,20 @@
                     <div class="col-12 col-md-4">
                         <label asp-for="Address.PostalCode" class="form-label"></label>
                         <input asp-for="Address.PostalCode" class="form-control" />
+                        <span asp-validation-for="Address.PostalCode" class="text-danger small"></span>
                     </div>
                     <div class="col-12 col-md-4">
-                        <label asp-for="Address.Country" class="form-label"></label>
-                        <input asp-for="Address.Country" class="form-control" />
-                        <span asp-validation-for="Address.Country" class="text-danger small"></span>
+                        <label asp-for="Address.State" class="form-label"></label>
+                        <input asp-for="Address.State" class="form-control" />
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label asp-for="Address.CountryCode" class="form-label"></label>
+                        <input asp-for="Address.CountryCode" class="form-control text-uppercase" maxlength="2" />
+                        <span asp-validation-for="Address.CountryCode" class="text-danger small"></span>
+                    </div>
+                    <div class="col-12 col-md-8">
+                        <label asp-for="Address.PhoneNumber" class="form-label"></label>
+                        <input asp-for="Address.PhoneNumber" class="form-control" />
                     </div>
                 </div>
                 <div class="mt-3 d-flex justify-content-between">
@@ -136,10 +150,12 @@
                         <div class="mb-2"><strong>Telefon:</strong> @Model.User.Phone</div>
                         <hr />
                         <div class="mb-2"><strong>Adres Basligi:</strong> @Model.Address.Title</div>
-                        <div class="mb-2"><strong>Adres:</strong> @Model.Address.Line1 @Model.Address.Line2</div>
+                        <div class="mb-2"><strong>Adres:</strong> @Model.Address.Street @Model.Address.HouseNumber @Model.Address.Line2</div>
                         <div class="mb-2"><strong>Sehir:</strong> @Model.Address.City</div>
                         <div class="mb-2"><strong>Posta Kodu:</strong> @Model.Address.PostalCode</div>
-                        <div class="mb-2"><strong>Ulke:</strong> @Model.Address.Country</div>
+                        <div class="mb-2"><strong>Eyalet:</strong> @Model.Address.State</div>
+                        <div class="mb-2"><strong>Ulke Kodu:</strong> @Model.Address.CountryCode</div>
+                        <div class="mb-2"><strong>Telefon:</strong> @Model.Address.PhoneNumber</div>
                         <hr />
                         <div class="mb-2"><strong>Odeme:</strong> @Model.Payment.Method</div>
                         @if (!string.IsNullOrWhiteSpace(Model.Payment.CardHolder))

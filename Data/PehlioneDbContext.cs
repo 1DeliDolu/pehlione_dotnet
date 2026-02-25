@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Pehlione.Models;
 using Pehlione.Models.Catalog;
 using Pehlione.Models.Commerce;
 using Pehlione.Models.Identity;
@@ -25,6 +26,7 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
     public DbSet<MenuNodeTranslation> MenuNodeTranslations => Set<MenuNodeTranslation>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<UserAddress> UserAddresses => Set<UserAddress>();
     public DbSet<Pehlione.Models.TodoItem> TodoItems => Set<Pehlione.Models.TodoItem>();
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -281,6 +283,36 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
                 .WithMany()
                 .HasForeignKey(x => x.ProductId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<UserAddress>(b =>
+        {
+            b.ToTable("user_addresses");
+            b.Property(x => x.Id).HasColumnName("id");
+            b.Property(x => x.UserId).HasColumnName("user_id").HasMaxLength(255).IsRequired();
+            b.Property(x => x.FirstName).HasColumnName("first_name").HasMaxLength(60).IsRequired();
+            b.Property(x => x.LastName).HasColumnName("last_name").HasMaxLength(60).IsRequired();
+            b.Property(x => x.Company).HasColumnName("company").HasMaxLength(120);
+            b.Property(x => x.Street).HasColumnName("street").HasMaxLength(120).IsRequired();
+            b.Property(x => x.HouseNumber).HasColumnName("house_number").HasMaxLength(15).IsRequired();
+            b.Property(x => x.AddressLine2).HasColumnName("address_line2").HasMaxLength(120);
+            b.Property(x => x.PostalCode).HasColumnName("postal_code").HasMaxLength(10).IsRequired();
+            b.Property(x => x.City).HasColumnName("city").HasMaxLength(80).IsRequired();
+            b.Property(x => x.State).HasColumnName("state").HasMaxLength(80);
+            b.Property(x => x.CountryCode).HasColumnName("country_code").HasMaxLength(2).IsRequired();
+            b.Property(x => x.PhoneNumber).HasColumnName("phone_number").HasMaxLength(30);
+            b.Property(x => x.Type).HasColumnName("type").HasConversion<int>().IsRequired();
+            b.Property(x => x.IsDefault).HasColumnName("is_default").HasDefaultValue(false);
+            b.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            b.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc").HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+            b.HasIndex(x => x.UserId);
+            b.HasIndex(x => new { x.UserId, x.Type, x.IsDefault });
+
+            b.HasOne(x => x.User)
+                .WithMany(x => x.Addresses)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
