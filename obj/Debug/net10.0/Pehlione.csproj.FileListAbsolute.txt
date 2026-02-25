@@ -189,3 +189,17 @@
 /home/project/Pehlione/bin/Debug/net10.0/zh-Hant/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
 /home/project/Pehlione/bin/Debug/net10.0/Microsoft.AspNetCore.Identity.EntityFrameworkCore.dll
 /home/project/Pehlione/bin/Debug/net10.0/Microsoft.EntityFrameworkCore.InMemory.dll
+/home/project/Pehlione/bin/Debug/net10.0/Namotion.Reflection.dll
+/home/project/Pehlione/bin/Debug/net10.0/Newtonsoft.Json.dll
+/home/project/Pehlione/bin/Debug/net10.0/NJsonSchema.dll
+/home/project/Pehlione/bin/Debug/net10.0/NJsonSchema.Annotations.dll
+/home/project/Pehlione/bin/Debug/net10.0/NJsonSchema.NewtonsoftJson.dll
+/home/project/Pehlione/bin/Debug/net10.0/NJsonSchema.Yaml.dll
+/home/project/Pehlione/bin/Debug/net10.0/NSwag.Annotations.dll
+/home/project/Pehlione/bin/Debug/net10.0/NSwag.AspNetCore.dll
+/home/project/Pehlione/bin/Debug/net10.0/NSwag.Core.dll
+/home/project/Pehlione/bin/Debug/net10.0/NSwag.Core.Yaml.dll
+/home/project/Pehlione/bin/Debug/net10.0/NSwag.Generation.dll
+/home/project/Pehlione/bin/Debug/net10.0/NSwag.Generation.AspNetCore.dll
+/home/project/Pehlione/bin/Debug/net10.0/YamlDotNet.dll
+/home/project/Pehlione/obj/Debug/net10.0/Pehlione.MvcApplicationPartsAssemblyInfo.cs
