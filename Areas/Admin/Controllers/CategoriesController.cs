@@ -77,4 +77,60 @@ public sealed class CategoriesController : Controller
 
         return RedirectToAction(nameof(Index));
     }
+
+    [HttpGet]
+    public async Task<IActionResult> Edit(int id, CancellationToken ct)
+    {
+        var entity = await _db.Categories.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (entity is null)
+        {
+            return NotFound();
+        }
+
+        return View(new CategoryEditVm
+        {
+            Id = entity.Id,
+            Name = entity.Name,
+            Slug = entity.Slug,
+            IsActive = entity.IsActive
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(CategoryEditVm model, CancellationToken ct)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var entity = await _db.Categories.FirstOrDefaultAsync(x => x.Id == model.Id, ct);
+        if (entity is null)
+        {
+            return NotFound();
+        }
+
+        var slug = (model.Slug ?? "").Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            ModelState.AddModelError(nameof(model.Slug), "Slug zorunludur.");
+            return View(model);
+        }
+
+        var slugExists = await _db.Categories.AnyAsync(x => x.Slug == slug && x.Id != model.Id, ct);
+        if (slugExists)
+        {
+            ModelState.AddModelError(nameof(model.Slug), "Bu slug zaten kullaniliyor.");
+            return View(model);
+        }
+
+        entity.Name = model.Name.Trim();
+        entity.Slug = slug;
+        entity.IsActive = model.IsActive;
+
+        await _db.SaveChangesAsync(ct);
+
+        return RedirectToAction(nameof(Index));
+    }
 }

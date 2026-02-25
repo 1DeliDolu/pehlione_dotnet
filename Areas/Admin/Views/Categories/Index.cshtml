@@ -15,6 +15,7 @@
             <th>Ad</th>
             <th>Slug</th>
             <th>Durum</th>
+            <th class="text-end">Islem</th>
         </tr>
         </thead>
         <tbody>
@@ -33,12 +34,15 @@
                         <span class="badge bg-secondary">Pasif</span>
                     }
                 </td>
+                <td class="text-end">
+                    <a class="btn btn-sm btn-outline-primary"
+                       asp-area="Admin"
+                       asp-controller="Categories"
+                       asp-action="Edit"
+                       asp-route-id="@c.Id">Duzenle</a>
+                </td>
             </tr>
         }
         </tbody>
     </table>
-
-    <p class="text-muted mb-0">
-        Not: Eger burada "table doesn't exist" hatasi gorursen, bir sonraki adimda migration ile tabloyu MySQL'e basacagiz.
-    </p>
 </div>
