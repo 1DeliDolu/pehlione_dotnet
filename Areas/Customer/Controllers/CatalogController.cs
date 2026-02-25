@@ -22,8 +22,9 @@ public sealed class CatalogController : Controller
     {
         var categories = await _db.Categories
             .AsNoTracking()
-            .Where(c => c.IsActive)
-            .OrderBy(c => c.Name)
+            .Where(c => c.IsActive && c.ParentId == null)
+            .OrderBy(c => c.SortOrder)
+            .ThenBy(c => c.Name)
             .Select(c => new CatalogCategoryListItemVm
             {
                 Name = c.Name,
@@ -43,24 +44,41 @@ public sealed class CatalogController : Controller
             return NotFound();
         }
 
-        var category = await _db.Categories
+        var allActiveCategories = await _db.Categories
             .AsNoTracking()
-            .Where(c => c.IsActive && c.Slug == slug)
-            .Select(c => new CatalogCategoryVm
+            .Where(c => c.IsActive)
+            .Select(c => new ActiveCategoryRow
             {
+                Id = c.Id,
+                ParentId = c.ParentId,
                 Name = c.Name,
-                Slug = c.Slug
+                Slug = c.Slug,
+                SortOrder = c.SortOrder
             })
-            .FirstOrDefaultAsync(ct);
+            .ToListAsync(ct);
 
-        if (category is null)
+        var categoryRow = allActiveCategories.FirstOrDefault(c => c.Slug == slug);
+        if (categoryRow is null)
         {
             return NotFound();
         }
 
+        var childCategories = allActiveCategories
+            .Where(c => c.ParentId == categoryRow.Id)
+            .OrderBy(c => c.SortOrder)
+            .ThenBy(c => c.Name)
+            .Select(c => new CatalogCategoryListItemVm
+            {
+                Name = c.Name,
+                Slug = c.Slug
+            })
+            .ToList();
+
+        var descendantCategoryIds = GetDescendantCategoryIds(categoryRow.Id, allActiveCategories);
+
         var products = await _db.Products
             .AsNoTracking()
-            .Where(p => p.IsActive && p.Category != null && p.Category.Slug == slug && p.Category.IsActive)
+            .Where(p => p.IsActive && descendantCategoryIds.Contains(p.CategoryId) && p.Category != null && p.Category.IsActive)
             .OrderBy(p => p.Name)
             .Select(p => new CatalogProductListItemVm
             {
@@ -73,7 +91,12 @@ public sealed class CatalogController : Controller
 
         var vm = new CatalogCategoryDetailsVm
         {
-            Category = category,
+            Category = new CatalogCategoryVm
+            {
+                Name = categoryRow.Name,
+                Slug = categoryRow.Slug
+            },
+            ChildCategories = childCategories,
             Products = products
         };
 
@@ -103,5 +126,45 @@ public sealed class CatalogController : Controller
         }
 
         return View(vm);
+    }
+
+    private static HashSet<int> GetDescendantCategoryIds(
+        int rootCategoryId,
+        IReadOnlyList<ActiveCategoryRow> allActiveCategories)
+    {
+        var childrenMap = allActiveCategories
+            .Where(c => c.ParentId != null)
+            .GroupBy(c => c.ParentId!.Value)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Id).ToList());
+
+        var result = new HashSet<int> { rootCategoryId };
+        var queue = new Queue<int>();
+        queue.Enqueue(rootCategoryId);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (!childrenMap.TryGetValue(current, out var children))
+                continue;
+
+            foreach (var childId in children)
+            {
+                if (!result.Add(childId))
+                    continue;
+
+                queue.Enqueue(childId);
+            }
+        }
+
+        return result;
+    }
+
+    private sealed class ActiveCategoryRow
+    {
+        public int Id { get; set; }
+        public int? ParentId { get; set; }
+        public string Name { get; set; } = "";
+        public string Slug { get; set; } = "";
+        public int SortOrder { get; set; }
     }
 }

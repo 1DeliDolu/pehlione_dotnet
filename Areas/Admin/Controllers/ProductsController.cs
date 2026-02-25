@@ -60,6 +60,13 @@ public sealed class ProductsController : Controller
             return View(model);
         }
 
+        var name = (model.Name ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            ModelState.AddModelError(nameof(model.Name), "Ürün adı zorunludur.");
+            return View(model);
+        }
+
         var sku = (model.Sku ?? "").Trim().ToUpperInvariant();
         if (string.IsNullOrWhiteSpace(sku))
         {
@@ -70,21 +77,21 @@ public sealed class ProductsController : Controller
         var categoryExists = await _db.Categories.AsNoTracking().AnyAsync(c => c.Id == model.CategoryId, ct);
         if (!categoryExists)
         {
-            ModelState.AddModelError(nameof(model.CategoryId), "Gecersiz kategori secimi.");
+            ModelState.AddModelError(nameof(model.CategoryId), "Geçersiz kategori seçimi.");
             return View(model);
         }
 
         var skuExists = await _db.Products.AsNoTracking().AnyAsync(p => p.Sku == sku, ct);
         if (skuExists)
         {
-            ModelState.AddModelError(nameof(model.Sku), "Bu SKU zaten kullaniliyor.");
+            ModelState.AddModelError(nameof(model.Sku), "Bu SKU zaten kullanılıyor.");
             return View(model);
         }
 
         var entity = new Product
         {
             CategoryId = model.CategoryId,
-            Name = model.Name.Trim(),
+            Name = name,
             Sku = sku,
             Price = model.Price,
             IsActive = model.IsActive
@@ -134,6 +141,13 @@ public sealed class ProductsController : Controller
             return NotFound();
         }
 
+        var name = (model.Name ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            ModelState.AddModelError(nameof(model.Name), "Ürün adı zorunludur.");
+            return View(model);
+        }
+
         var sku = (model.Sku ?? "").Trim().ToUpperInvariant();
         if (string.IsNullOrWhiteSpace(sku))
         {
@@ -144,19 +158,19 @@ public sealed class ProductsController : Controller
         var categoryExists = await _db.Categories.AsNoTracking().AnyAsync(c => c.Id == model.CategoryId, ct);
         if (!categoryExists)
         {
-            ModelState.AddModelError(nameof(model.CategoryId), "Gecersiz kategori secimi.");
+            ModelState.AddModelError(nameof(model.CategoryId), "Geçersiz kategori seçimi.");
             return View(model);
         }
 
         var skuExists = await _db.Products.AsNoTracking().AnyAsync(p => p.Sku == sku && p.Id != model.Id, ct);
         if (skuExists)
         {
-            ModelState.AddModelError(nameof(model.Sku), "Bu SKU zaten kullaniliyor.");
+            ModelState.AddModelError(nameof(model.Sku), "Bu SKU zaten kullanılıyor.");
             return View(model);
         }
 
         entity.CategoryId = model.CategoryId;
-        entity.Name = model.Name.Trim();
+        entity.Name = name;
         entity.Sku = sku;
         entity.Price = model.Price;
         entity.IsActive = model.IsActive;

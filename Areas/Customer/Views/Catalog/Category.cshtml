@@ -15,6 +15,26 @@
            asp-action="Index">Kategoriler</a>
     </div>
 
+    @if (Model.ChildCategories.Count > 0)
+    {
+        <div class="mb-3">
+            <h2 class="h6 text-muted mb-2">Alt kategoriler</h2>
+            <div class="list-group">
+                @foreach (var c in Model.ChildCategories)
+                {
+                    <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                       asp-area="Customer"
+                       asp-controller="Catalog"
+                       asp-action="Category"
+                       asp-route-slug="@c.Slug">
+                        <span>@c.Name</span>
+                        <span class="text-muted"><code>@c.Slug</code></span>
+                    </a>
+                }
+            </div>
+        </div>
+    }
+
     @if (Model.Products.Count == 0)
     {
         <div class="alert alert-info">
