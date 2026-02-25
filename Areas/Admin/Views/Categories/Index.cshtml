@@ -1,0 +1,44 @@
+@model IReadOnlyList<Pehlione.Models.ViewModels.Admin.CategoryListItemVm>
+@{
+    ViewData["Title"] = "Kategoriler";
+}
+
+<div class="container" style="max-width: 980px;">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h1 class="h3 m-0">Kategoriler</h1>
+        <a class="btn btn-primary" asp-area="Admin" asp-controller="Categories" asp-action="Create">Yeni kategori</a>
+    </div>
+
+    <table class="table table-striped align-middle">
+        <thead>
+        <tr>
+            <th>Ad</th>
+            <th>Slug</th>
+            <th>Durum</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var c in Model)
+        {
+            <tr>
+                <td>@c.Name</td>
+                <td><code>@c.Slug</code></td>
+                <td>
+                    @if (c.IsActive)
+                    {
+                        <span class="badge bg-success">Aktif</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">Pasif</span>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+
+    <p class="text-muted mb-0">
+        Not: Eger burada "table doesn't exist" hatasi gorursen, bir sonraki adimda migration ile tabloyu MySQL'e basacagiz.
+    </p>
+</div>
