@@ -193,4 +193,73 @@ public sealed class CategoriesController : Controller
 
         return RedirectToAction(nameof(Index));
     }
+
+    [HttpGet]
+    public async Task<IActionResult> MoveProducts(int id, CancellationToken ct)
+    {
+        var source = await _db.Categories.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (source is null)
+        {
+            return NotFound();
+        }
+
+        var count = await _db.Products.AsNoTracking().CountAsync(p => p.CategoryId == id, ct);
+
+        var targets = await _db.Categories
+            .AsNoTracking()
+            .Where(c => c.Id != id && c.IsActive)
+            .OrderBy(c => c.Name)
+            .Select(c => new CategoryOptionVm { Id = c.Id, Name = c.Name })
+            .ToListAsync(ct);
+
+        return View(new CategoryMoveProductsVm
+        {
+            SourceCategoryId = source.Id,
+            SourceName = source.Name,
+            ProductCount = count,
+            TargetOptions = targets
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MoveProducts(CategoryMoveProductsVm model, CancellationToken ct)
+    {
+        model.TargetOptions = await _db.Categories
+            .AsNoTracking()
+            .Where(c => c.Id != model.SourceCategoryId && c.IsActive)
+            .OrderBy(c => c.Name)
+            .Select(c => new CategoryOptionVm { Id = c.Id, Name = c.Name })
+            .ToListAsync(ct);
+
+        var sourceExists = await _db.Categories.AsNoTracking().AnyAsync(c => c.Id == model.SourceCategoryId, ct);
+        if (!sourceExists)
+        {
+            return NotFound();
+        }
+
+        var targetExists = await _db.Categories.AsNoTracking().AnyAsync(c => c.Id == model.TargetCategoryId && c.IsActive, ct);
+        if (!targetExists)
+        {
+            ModelState.AddModelError(nameof(model.TargetCategoryId), "Gecersiz hedef kategori.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var products = await _db.Products
+            .Where(p => p.CategoryId == model.SourceCategoryId)
+            .ToListAsync(ct);
+
+        foreach (var p in products)
+        {
+            p.CategoryId = model.TargetCategoryId;
+        }
+
+        await _db.SaveChangesAsync(ct);
+
+        return RedirectToAction(nameof(Delete), new { id = model.SourceCategoryId });
+    }
 }

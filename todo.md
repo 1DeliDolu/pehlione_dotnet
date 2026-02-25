@@ -1,5 +1,5 @@
 A) **Hedef (Türkçe)**
-Admin tarafında **Ürün Oluşturma (Create)** ekranını ekleyeceğiz: `/Admin/Products/Create`. Ürün eklerken **kategori seçimi**, **SKU benzersizliği** ve **fiyat doğrulaması** yapılacak.
+Admin tarafında “kategori silinemiyor çünkü ürün bağlı” durumunu çözmek için **ürünleri başka bir kategoriye taşı (Move)** ekranını ekliyoruz. Böylece örn. `Man` kategorisindeki ürünleri `Men` kategorisine taşıyıp sonra `Man` kategorisini silebileceksin.
 
 B) **CLI Komutu (maksimum 1 komut)**
 
@@ -9,7 +9,38 @@ dotnet build
 
 C) **Dosya Değişiklikleri (sadece değişen/eklenen dosyalar, TAM içerik)**
 
-`./Areas/Admin/Controllers/ProductsController.cs`
+`./Models/ViewModels/Admin/CategoryMoveProductsVm.cs`
+
+```csharp
+using System.ComponentModel.DataAnnotations;
+
+namespace Pehlione.Models.ViewModels.Admin;
+
+public sealed class CategoryMoveProductsVm
+{
+    [Required]
+    public int SourceCategoryId { get; set; }
+
+    public string SourceName { get; set; } = "";
+
+    public int ProductCount { get; set; }
+
+    [Required]
+    [Range(1, int.MaxValue, ErrorMessage = "Hedef kategori seçmelisin.")]
+    [Display(Name = "Hedef kategori")]
+    public int TargetCategoryId { get; set; }
+
+    public IReadOnlyList<CategoryOptionVm> TargetOptions { get; set; } = Array.Empty<CategoryOptionVm>();
+}
+
+public sealed class CategoryOptionVm
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+}
+```
+
+`./Areas/Admin/Controllers/CategoriesController.cs`
 
 ```csharp
 using Microsoft.AspNetCore.Authorization;
@@ -23,11 +54,11 @@ namespace Pehlione.Areas.Admin.Controllers;
 
 [Area("Admin")]
 [Authorize(Roles = IdentitySeed.RoleAdmin)]
-public sealed class ProductsController : Controller
+public sealed class CategoriesController : Controller
 {
     private readonly PehlioneDbContext _db;
 
-    public ProductsController(PehlioneDbContext db)
+    public CategoriesController(PehlioneDbContext db)
     {
         _db = db;
     }
@@ -35,17 +66,15 @@ public sealed class ProductsController : Controller
     [HttpGet]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var items = await _db.Products
+        var items = await _db.Categories
             .AsNoTracking()
-            .OrderBy(p => p.Name)
-            .Select(p => new ProductListItemVm
+            .OrderBy(x => x.Name)
+            .Select(x => new CategoryListItemVm
             {
-                Id = p.Id,
-                Name = p.Name,
-                Sku = p.Sku,
-                CategoryName = p.Category != null ? p.Category.Name : "",
-                Price = p.Price,
-                IsActive = p.IsActive
+                Id = x.Id,
+                Name = x.Name,
+                Slug = x.Slug,
+                IsActive = x.IsActive
             })
             .ToListAsync(ct);
 
@@ -53,57 +82,90 @@ public sealed class ProductsController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Create(CancellationToken ct)
+    public IActionResult Create()
     {
-        var vm = new ProductCreateVm
-        {
-            CategoryOptions = await LoadCategoryOptionsAsync(ct)
-        };
-
-        return View(vm);
+        return View(new CategoryCreateVm());
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(ProductCreateVm model, CancellationToken ct)
+    public async Task<IActionResult> Create(CategoryCreateVm model, CancellationToken ct)
     {
-        // Dropdown verisini her durumda dolduralım (validation fail olursa view tekrar lazım)
-        model.CategoryOptions = await LoadCategoryOptionsAsync(ct);
-
         if (!ModelState.IsValid)
             return View(model);
 
-        var sku = (model.Sku ?? "").Trim().ToUpperInvariant();
-        if (string.IsNullOrWhiteSpace(sku))
+        var slug = (model.Slug ?? "").Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(slug))
         {
-            ModelState.AddModelError(nameof(model.Sku), "SKU zorunludur.");
+            ModelState.AddModelError(nameof(model.Slug), "Slug zorunludur.");
             return View(model);
         }
 
-        var categoryExists = await _db.Categories.AsNoTracking().AnyAsync(c => c.Id == model.CategoryId, ct);
-        if (!categoryExists)
+        var slugExists = await _db.Categories.AnyAsync(x => x.Slug == slug, ct);
+        if (slugExists)
         {
-            ModelState.AddModelError(nameof(model.CategoryId), "Geçersiz kategori seçimi.");
+            ModelState.AddModelError(nameof(model.Slug), "Bu slug zaten kullanılıyor.");
             return View(model);
         }
 
-        var skuExists = await _db.Products.AsNoTracking().AnyAsync(p => p.Sku == sku, ct);
-        if (skuExists)
+        var entity = new Category
         {
-            ModelState.AddModelError(nameof(model.Sku), "Bu SKU zaten kullanılıyor.");
-            return View(model);
-        }
-
-        var entity = new Product
-        {
-            CategoryId = model.CategoryId,
             Name = model.Name.Trim(),
-            Sku = sku,
-            Price = model.Price,
+            Slug = slug,
             IsActive = model.IsActive
         };
 
-        _db.Products.Add(entity);
+        _db.Categories.Add(entity);
+        await _db.SaveChangesAsync(ct);
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Edit(int id, CancellationToken ct)
+    {
+        var entity = await _db.Categories.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (entity is null)
+            return NotFound();
+
+        return View(new CategoryEditVm
+        {
+            Id = entity.Id,
+            Name = entity.Name,
+            Slug = entity.Slug,
+            IsActive = entity.IsActive
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(CategoryEditVm model, CancellationToken ct)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var entity = await _db.Categories.FirstOrDefaultAsync(x => x.Id == model.Id, ct);
+        if (entity is null)
+            return NotFound();
+
+        var slug = (model.Slug ?? "").Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            ModelState.AddModelError(nameof(model.Slug), "Slug zorunludur.");
+            return View(model);
+        }
+
+        var slugExists = await _db.Categories.AnyAsync(x => x.Slug == slug && x.Id != model.Id, ct);
+        if (slugExists)
+        {
+            ModelState.AddModelError(nameof(model.Slug), "Bu slug zaten kullanılıyor.");
+            return View(model);
+        }
+
+        entity.Name = model.Name.Trim();
+        entity.Slug = slug;
+        entity.IsActive = model.IsActive;
+
         await _db.SaveChangesAsync(ct);
 
         return RedirectToAction(nameof(Index));
@@ -112,128 +174,212 @@ public sealed class ProductsController : Controller
     [HttpGet]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
-        var item = await _db.Products
-            .AsNoTracking()
-            .Where(p => p.Id == id)
-            .Select(p => new ProductDeleteVm
-            {
-                Id = p.Id,
-                Name = p.Name,
-                Sku = p.Sku,
-                CategoryName = p.Category != null ? p.Category.Name : ""
-            })
-            .FirstOrDefaultAsync(ct);
-
-        if (item is null)
+        var entity = await _db.Categories.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (entity is null)
             return NotFound();
 
-        return View(item);
+        var hasProducts = await _db.Products.AsNoTracking().AnyAsync(p => p.CategoryId == id, ct);
+
+        return View(new CategoryDeleteVm
+        {
+            Id = entity.Id,
+            Name = entity.Name,
+            Slug = entity.Slug,
+            HasProducts = hasProducts
+        });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Delete(ProductDeleteVm model, CancellationToken ct)
+    public async Task<IActionResult> Delete(CategoryDeleteVm model, CancellationToken ct)
     {
-        var entity = await _db.Products.FirstOrDefaultAsync(p => p.Id == model.Id, ct);
+        var entity = await _db.Categories.FirstOrDefaultAsync(x => x.Id == model.Id, ct);
         if (entity is null)
             return NotFound();
 
-        _db.Products.Remove(entity);
-        await _db.SaveChangesAsync(ct);
+        var hasProducts = await _db.Products.AsNoTracking().AnyAsync(p => p.CategoryId == model.Id, ct);
+        if (hasProducts)
+        {
+            model.Name = entity.Name;
+            model.Slug = entity.Slug;
+            model.HasProducts = true;
+
+            ModelState.AddModelError(string.Empty, "Bu kategoriye bağlı ürünler var. Önce ürünleri taşıyın veya silin.");
+            return View(model);
+        }
+
+        _db.Categories.Remove(entity);
+
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            model.Name = entity.Name;
+            model.Slug = entity.Slug;
+            model.HasProducts = true;
+
+            ModelState.AddModelError(string.Empty, "Silme engellendi (ilişkili kayıt olabilir).");
+            return View(model);
+        }
 
         return RedirectToAction(nameof(Index));
     }
 
-    private async Task<IReadOnlyList<ProductCategoryOptionVm>> LoadCategoryOptionsAsync(CancellationToken ct)
+    [HttpGet]
+    public async Task<IActionResult> MoveProducts(int id, CancellationToken ct)
     {
-        return await _db.Categories
+        var source = await _db.Categories.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (source is null)
+            return NotFound();
+
+        var count = await _db.Products.AsNoTracking().CountAsync(p => p.CategoryId == id, ct);
+
+        var targets = await _db.Categories
             .AsNoTracking()
-            .Where(c => c.IsActive)
+            .Where(c => c.Id != id && c.IsActive)
             .OrderBy(c => c.Name)
-            .Select(c => new ProductCategoryOptionVm { Id = c.Id, Name = c.Name })
+            .Select(c => new CategoryOptionVm { Id = c.Id, Name = c.Name })
             .ToListAsync(ct);
+
+        return View(new CategoryMoveProductsVm
+        {
+            SourceCategoryId = source.Id,
+            SourceName = source.Name,
+            ProductCount = count,
+            TargetOptions = targets
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MoveProducts(CategoryMoveProductsVm model, CancellationToken ct)
+    {
+        // View tekrar gösterilecekse dropdown lazım
+        model.TargetOptions = await _db.Categories
+            .AsNoTracking()
+            .Where(c => c.Id != model.SourceCategoryId && c.IsActive)
+            .OrderBy(c => c.Name)
+            .Select(c => new CategoryOptionVm { Id = c.Id, Name = c.Name })
+            .ToListAsync(ct);
+
+        var sourceExists = await _db.Categories.AsNoTracking().AnyAsync(c => c.Id == model.SourceCategoryId, ct);
+        if (!sourceExists)
+            return NotFound();
+
+        var targetExists = await _db.Categories.AsNoTracking().AnyAsync(c => c.Id == model.TargetCategoryId && c.IsActive, ct);
+        if (!targetExists)
+            ModelState.AddModelError(nameof(model.TargetCategoryId), "Geçersiz hedef kategori.");
+
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var products = await _db.Products
+            .Where(p => p.CategoryId == model.SourceCategoryId)
+            .ToListAsync(ct);
+
+        foreach (var p in products)
+            p.CategoryId = model.TargetCategoryId;
+
+        await _db.SaveChangesAsync(ct);
+
+        return RedirectToAction(nameof(Delete), new { id = model.SourceCategoryId });
     }
 }
 ```
 
-`./Models/ViewModels/Admin/ProductCreateVm.cs`
-
-```csharp
-using System.ComponentModel.DataAnnotations;
-
-namespace Pehlione.Models.ViewModels.Admin;
-
-public sealed class ProductCreateVm
-{
-    [Required]
-    [Range(1, int.MaxValue, ErrorMessage = "Kategori seçmelisin.")]
-    [Display(Name = "Kategori")]
-    public int CategoryId { get; set; }
-
-    [Required]
-    [MaxLength(160)]
-    [Display(Name = "Ürün adı")]
-    public string Name { get; set; } = "";
-
-    [Required]
-    [MaxLength(64)]
-    [Display(Name = "SKU")]
-    public string Sku { get; set; } = "";
-
-    [Required]
-    [Range(typeof(decimal), "0.01", "9999999", ErrorMessage = "Fiyat 0.01 ve üzeri olmalı.")]
-    [Display(Name = "Fiyat")]
-    public decimal Price { get; set; }
-
-    [Display(Name = "Aktif mi?")]
-    public bool IsActive { get; set; } = true;
-
-    // Dropdown için
-    public IReadOnlyList<ProductCategoryOptionVm> CategoryOptions { get; set; } = Array.Empty<ProductCategoryOptionVm>();
-}
-
-public sealed class ProductCategoryOptionVm
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = "";
-}
-```
-
-`./Areas/Admin/Views/Products/Index.cshtml`
+`./Areas/Admin/Views/Categories/Delete.cshtml`
 
 ```cshtml
-@model IReadOnlyList<Pehlione.Models.ViewModels.Admin.ProductListItemVm>
+@model Pehlione.Models.ViewModels.Admin.CategoryDeleteVm
 @{
-    ViewData["Title"] = "Ürünler";
+    ViewData["Title"] = "Kategori Sil";
 }
 
-<div class="container" style="max-width: 1100px;">
+<div class="container" style="max-width: 720px;">
+    <h1 class="h3 mb-3">Kategori sil</h1>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+    <div class="card">
+        <div class="card-body">
+            <p class="mb-1"><strong>Ad:</strong> @Model.Name</p>
+            <p class="mb-3"><strong>Slug:</strong> <code>@Model.Slug</code></p>
+
+            @if (Model.HasProducts)
+            {
+                <div class="alert alert-warning mb-3">
+                    Bu kategoriye bağlı ürünler var. Silme işlemi engellendi.
+                </div>
+
+                <a class="btn btn-outline-primary"
+                   asp-area="Admin"
+                   asp-controller="Categories"
+                   asp-action="MoveProducts"
+                   asp-route-id="@Model.Id">
+                    Ürünleri başka kategoriye taşı
+                </a>
+
+                <a class="btn btn-outline-secondary ms-2"
+                   asp-area="Admin"
+                   asp-controller="Products"
+                   asp-action="Index">
+                    Ürünlere git
+                </a>
+            }
+            else
+            {
+                <div class="alert alert-danger mb-3">
+                    Bu işlem geri alınamaz. Silmek istediğinden emin misin?
+                </div>
+
+                <form asp-area="Admin" asp-controller="Categories" asp-action="Delete" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">Sil</button>
+                        <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Categories" asp-action="Index">İptal</a>
+                    </div>
+                </form>
+            }
+        </div>
+    </div>
+</div>
+```
+
+`./Areas/Admin/Views/Categories/Index.cshtml`
+
+```cshtml
+@model IReadOnlyList<Pehlione.Models.ViewModels.Admin.CategoryListItemVm>
+@{
+    ViewData["Title"] = "Kategoriler";
+}
+
+<div class="container" style="max-width: 980px;">
     <div class="d-flex align-items-center justify-content-between mb-3">
-        <h1 class="h3 m-0">Ürünler</h1>
-        <a class="btn btn-primary" asp-area="Admin" asp-controller="Products" asp-action="Create">Yeni ürün</a>
+        <h1 class="h3 m-0">Kategoriler</h1>
+        <a class="btn btn-primary" asp-area="Admin" asp-controller="Categories" asp-action="Create">Yeni kategori</a>
     </div>
 
     <table class="table table-striped align-middle">
         <thead>
         <tr>
             <th>Ad</th>
-            <th>SKU</th>
-            <th>Kategori</th>
-            <th class="text-end">Fiyat</th>
+            <th>Slug</th>
             <th>Durum</th>
             <th class="text-end">İşlem</th>
         </tr>
         </thead>
         <tbody>
-        @foreach (var p in Model)
+        @foreach (var c in Model)
         {
             <tr>
-                <td>@p.Name</td>
-                <td><code>@p.Sku</code></td>
-                <td>@p.CategoryName</td>
-                <td class="text-end">@p.Price.ToString("0.00")</td>
+                <td>@c.Name</td>
+                <td><code>@c.Slug</code></td>
                 <td>
-                    @if (p.IsActive)
+                    @if (c.IsActive)
                     {
                         <span class="badge bg-success">Aktif</span>
                     }
@@ -243,80 +389,73 @@ public sealed class ProductCategoryOptionVm
                     }
                 </td>
                 <td class="text-end">
-                    <a class="btn btn-sm btn-outline-danger"
-                       asp-area="Admin"
-                       asp-controller="Products"
-                       asp-action="Delete"
-                       asp-route-id="@p.Id">Sil</a>
+                    <div class="d-inline-flex gap-2">
+                        <a class="btn btn-sm btn-outline-primary"
+                           asp-area="Admin"
+                           asp-controller="Categories"
+                           asp-action="Edit"
+                           asp-route-id="@c.Id">Düzenle</a>
+
+                        <a class="btn btn-sm btn-outline-danger"
+                           asp-area="Admin"
+                           asp-controller="Categories"
+                           asp-action="Delete"
+                           asp-route-id="@c.Id">Sil</a>
+                    </div>
                 </td>
             </tr>
         }
         </tbody>
     </table>
-
-    <p class="text-muted mb-0">
-        Not: “Kategori sil” engeli için önce bağlı ürünleri buradan silebilir (veya sonraki adımda taşıyabilirsin).
-    </p>
 </div>
 ```
 
-`./Areas/Admin/Views/Products/Create.cshtml`
+`./Areas/Admin/Views/Categories/MoveProducts.cshtml`
 
 ```cshtml
-@model Pehlione.Models.ViewModels.Admin.ProductCreateVm
+@model Pehlione.Models.ViewModels.Admin.CategoryMoveProductsVm
 @{
-    ViewData["Title"] = "Yeni Ürün";
+    ViewData["Title"] = "Ürünleri Taşı";
 }
 
-<div class="container" style="max-width: 720px;">
-    <h1 class="h3 mb-3">Yeni ürün</h1>
+<div class="container" style="max-width: 760px;">
+    <h1 class="h3 mb-3">Ürünleri başka kategoriye taşı</h1>
 
-    <form asp-area="Admin" asp-controller="Products" asp-action="Create" method="post">
+    <div class="alert alert-info">
+        Kaynak kategori: <strong>@Model.SourceName</strong> —
+        Ürün sayısı: <strong>@Model.ProductCount</strong>
+    </div>
+
+    <form asp-area="Admin" asp-controller="Categories" asp-action="MoveProducts" method="post">
         @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="SourceCategoryId" />
+        <input type="hidden" asp-for="SourceName" />
+        <input type="hidden" asp-for="ProductCount" />
 
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
         <div class="mb-3">
-            <label asp-for="CategoryId" class="form-label"></label>
-            <select asp-for="CategoryId" class="form-select">
-                <option value="0">-- seç --</option>
-                @foreach (var c in Model.CategoryOptions)
+            <label asp-for="TargetCategoryId" class="form-label"></label>
+            <select asp-for="TargetCategoryId" class="form-select">
+                <option value="0">-- hedef seç --</option>
+                @foreach (var c in Model.TargetOptions)
                 {
-                    <option value="@c.Id" selected="@(Model.CategoryId == c.Id)">
-                        @c.Name
-                    </option>
+                    <option value="@c.Id" selected="@(Model.TargetCategoryId == c.Id)">@c.Name</option>
                 }
             </select>
-            <span asp-validation-for="CategoryId" class="text-danger"></span>
-        </div>
-
-        <div class="mb-3">
-            <label asp-for="Name" class="form-label"></label>
-            <input asp-for="Name" class="form-control" />
-            <span asp-validation-for="Name" class="text-danger"></span>
-        </div>
-
-        <div class="mb-3">
-            <label asp-for="Sku" class="form-label"></label>
-            <input asp-for="Sku" class="form-control" />
-            <span asp-validation-for="Sku" class="text-danger"></span>
-            <div class="form-text">SKU otomatik olarak büyük harfe çevrilir.</div>
-        </div>
-
-        <div class="mb-3">
-            <label asp-for="Price" class="form-label"></label>
-            <input asp-for="Price" class="form-control" />
-            <span asp-validation-for="Price" class="text-danger"></span>
-        </div>
-
-        <div class="form-check mb-3">
-            <input asp-for="IsActive" class="form-check-input" />
-            <label asp-for="IsActive" class="form-check-label"></label>
+            <span asp-validation-for="TargetCategoryId" class="text-danger"></span>
+            <div class="form-text">Sadece aktif kategoriler hedef olarak listelenir.</div>
         </div>
 
         <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary">Kaydet</button>
-            <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Products" asp-action="Index">İptal</a>
+            <button type="submit" class="btn btn-primary" @(Model.ProductCount == 0 ? "disabled" : "")>
+                Taşı
+            </button>
+            <a class="btn btn-outline-secondary"
+               asp-area="Admin"
+               asp-controller="Categories"
+               asp-action="Delete"
+               asp-route-id="@Model.SourceCategoryId">Geri</a>
         </div>
     </form>
 </div>
@@ -328,19 +467,19 @@ public sealed class ProductCategoryOptionVm
 
 D) **Kısa Açıklama (en fazla 5 madde, öğretici)**
 
-* Create formunda sadece **aktif kategoriler** listelenir.
-* SKU hem uygulamada kontrol ediliyor hem de DB tarafında unique index var (çakışmayı iki kat güvenceye alır).
-* Validation fail olunca dropdown boş kalmaması için `CategoryOptions` POST’ta da dolduruluyor.
-* URL: `/Admin/Products/Create`
-* Sonraki küçük adım: **Product Edit (Update)**.
+* “Silinemiyor” durumunda artık **tek tıkla taşıma** sayfasına gidebilirsin: `/Admin/Categories/MoveProducts/{id}`
+* Taşıma işlemi: kaynak kategorideki tüm ürünlerin `CategoryId` alanı hedef kategoriye güncellenir.
+* Hedef kategori sadece **aktif** kategorilerden seçilir (yanlış hedefe taşıma azaltılır).
+* Taşıma sonrası otomatik olarak tekrar **Delete** ekranına dönersin; ürün kalmadıysa artık silinebilir.
+* Sonraki adım: istersen “**Kategori pasif yapınca ürünler otomatik pasif olsun mu?**” gibi business kuralı ekleriz.
 
 E) **Git Commit**
 
-* Commit mesajı: `Add Admin product create page with category selection and SKU check`
+* Commit mesajı: `Add move-products flow to unblock category deletion`
 * Komut:
 
 ```bash
-git add -A && git commit -m "Add Admin product create page with category selection and SKU check"
+git add -A && git commit -m "Add move-products flow to unblock category deletion"
 ```
 
-Bir ürün ekleyip `/Admin/Products` listesinde görüyorsan **“bitti”** yaz; sonraki adımda sadece **Product Edit (Update)** ekleyelim.
+Bu adımı uygulayıp: `Man` kategorisi → “Ürünleri başka kategoriye taşı” → taşıma sonrası `Man` kategorisini silebildiysen **“bitti”** yaz.
