@@ -1,5 +1,5 @@
 A) **Hedef (Türkçe)**
-Admin tarafında **Kategori Silme (Delete)** akışını ekleyeceğiz. Kural: Kategoriye bağlı **ürün varsa silme yok** (uyarı göster).
+Kategori silmenin “ürün bağlı” olduğu için engellenmesi doğru. Şimdi bunu yönetebilmek için **Admin → Ürün Listesi + Ürün Silme** ekranını ekliyoruz. Böylece kategoriye bağlı ürünleri silip (veya sonraki adımda taşıyıp) kategoriyi silebileceksin.
 
 B) **CLI Komutu (maksimum 1 komut)**
 
@@ -9,39 +9,54 @@ dotnet build
 
 C) **Dosya Değişiklikleri (sadece değişen/eklenen dosyalar, TAM içerik)**
 
-`./Models/ViewModels/Admin/CategoryDeleteVm.cs`
+`./Models/ViewModels/Admin/ProductListItemVm.cs`
 
 ```csharp
 namespace Pehlione.Models.ViewModels.Admin;
 
-public sealed class CategoryDeleteVm
+public sealed class ProductListItemVm
 {
     public int Id { get; set; }
     public string Name { get; set; } = "";
-    public string Slug { get; set; } = "";
-    public bool HasProducts { get; set; }
+    public string Sku { get; set; } = "";
+    public string CategoryName { get; set; } = "";
+    public decimal Price { get; set; }
+    public bool IsActive { get; set; }
 }
 ```
 
-`./Areas/Admin/Controllers/CategoriesController.cs`
+`./Models/ViewModels/Admin/ProductDeleteVm.cs`
+
+```csharp
+namespace Pehlione.Models.ViewModels.Admin;
+
+public sealed class ProductDeleteVm
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public string Sku { get; set; } = "";
+    public string CategoryName { get; set; } = "";
+}
+```
+
+`./Areas/Admin/Controllers/ProductsController.cs`
 
 ```csharp
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
-using Pehlione.Models.Catalog;
 using Pehlione.Models.ViewModels.Admin;
 
 namespace Pehlione.Areas.Admin.Controllers;
 
 [Area("Admin")]
 [Authorize(Roles = IdentitySeed.RoleAdmin)]
-public sealed class CategoriesController : Controller
+public sealed class ProductsController : Controller
 {
     private readonly PehlioneDbContext _db;
 
-    public CategoriesController(PehlioneDbContext db)
+    public ProductsController(PehlioneDbContext db)
     {
         _db = db;
     }
@@ -49,15 +64,17 @@ public sealed class CategoriesController : Controller
     [HttpGet]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var items = await _db.Categories
+        var items = await _db.Products
             .AsNoTracking()
-            .OrderBy(x => x.Name)
-            .Select(x => new CategoryListItemVm
+            .OrderBy(p => p.Name)
+            .Select(p => new ProductListItemVm
             {
-                Id = x.Id,
-                Name = x.Name,
-                Slug = x.Slug,
-                IsActive = x.IsActive
+                Id = p.Id,
+                Name = p.Name,
+                Sku = p.Sku,
+                CategoryName = p.Category != null ? p.Category.Name : "",
+                Price = p.Price,
+                IsActive = p.IsActive
             })
             .ToListAsync(ct);
 
@@ -65,185 +82,77 @@ public sealed class CategoriesController : Controller
     }
 
     [HttpGet]
-    public IActionResult Create()
-    {
-        return View(new CategoryCreateVm());
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(CategoryCreateVm model, CancellationToken ct)
-    {
-        if (!ModelState.IsValid)
-            return View(model);
-
-        var slug = (model.Slug ?? "").Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(slug))
-        {
-            ModelState.AddModelError(nameof(model.Slug), "Slug zorunludur.");
-            return View(model);
-        }
-
-        var slugExists = await _db.Categories.AnyAsync(x => x.Slug == slug, ct);
-        if (slugExists)
-        {
-            ModelState.AddModelError(nameof(model.Slug), "Bu slug zaten kullanılıyor.");
-            return View(model);
-        }
-
-        var entity = new Category
-        {
-            Name = model.Name.Trim(),
-            Slug = slug,
-            IsActive = model.IsActive
-        };
-
-        _db.Categories.Add(entity);
-        await _db.SaveChangesAsync(ct);
-
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> Edit(int id, CancellationToken ct)
-    {
-        var entity = await _db.Categories.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (entity is null)
-            return NotFound();
-
-        return View(new CategoryEditVm
-        {
-            Id = entity.Id,
-            Name = entity.Name,
-            Slug = entity.Slug,
-            IsActive = entity.IsActive
-        });
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(CategoryEditVm model, CancellationToken ct)
-    {
-        if (!ModelState.IsValid)
-            return View(model);
-
-        var entity = await _db.Categories.FirstOrDefaultAsync(x => x.Id == model.Id, ct);
-        if (entity is null)
-            return NotFound();
-
-        var slug = (model.Slug ?? "").Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(slug))
-        {
-            ModelState.AddModelError(nameof(model.Slug), "Slug zorunludur.");
-            return View(model);
-        }
-
-        var slugExists = await _db.Categories.AnyAsync(x => x.Slug == slug && x.Id != model.Id, ct);
-        if (slugExists)
-        {
-            ModelState.AddModelError(nameof(model.Slug), "Bu slug zaten kullanılıyor.");
-            return View(model);
-        }
-
-        entity.Name = model.Name.Trim();
-        entity.Slug = slug;
-        entity.IsActive = model.IsActive;
-
-        await _db.SaveChangesAsync(ct);
-
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpGet]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
-        var entity = await _db.Categories.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (entity is null)
+        var item = await _db.Products
+            .AsNoTracking()
+            .Where(p => p.Id == id)
+            .Select(p => new ProductDeleteVm
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Sku = p.Sku,
+                CategoryName = p.Category != null ? p.Category.Name : ""
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (item is null)
             return NotFound();
 
-        var hasProducts = await _db.Products.AsNoTracking().AnyAsync(p => p.CategoryId == id, ct);
-
-        return View(new CategoryDeleteVm
-        {
-            Id = entity.Id,
-            Name = entity.Name,
-            Slug = entity.Slug,
-            HasProducts = hasProducts
-        });
+        return View(item);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Delete(CategoryDeleteVm model, CancellationToken ct)
+    public async Task<IActionResult> Delete(ProductDeleteVm model, CancellationToken ct)
     {
-        var entity = await _db.Categories.FirstOrDefaultAsync(x => x.Id == model.Id, ct);
+        var entity = await _db.Products.FirstOrDefaultAsync(p => p.Id == model.Id, ct);
         if (entity is null)
             return NotFound();
 
-        var hasProducts = await _db.Products.AsNoTracking().AnyAsync(p => p.CategoryId == model.Id, ct);
-        if (hasProducts)
-        {
-            model.Name = entity.Name;
-            model.Slug = entity.Slug;
-            model.HasProducts = true;
-
-            ModelState.AddModelError(string.Empty, "Bu kategoriye bağlı ürünler var. Önce ürünleri taşıyın veya silin.");
-            return View(model);
-        }
-
-        _db.Categories.Remove(entity);
-
-        try
-        {
-            await _db.SaveChangesAsync(ct);
-        }
-        catch (DbUpdateException)
-        {
-            // DB tarafında FK Restrict devreye girerse kullanıcı dostu hata
-            model.Name = entity.Name;
-            model.Slug = entity.Slug;
-            model.HasProducts = true;
-
-            ModelState.AddModelError(string.Empty, "Silme engellendi (ilişkili kayıt olabilir).");
-            return View(model);
-        }
+        _db.Products.Remove(entity);
+        await _db.SaveChangesAsync(ct);
 
         return RedirectToAction(nameof(Index));
     }
 }
 ```
 
-`./Areas/Admin/Views/Categories/Index.cshtml`
+`./Areas/Admin/Views/Products/Index.cshtml`
 
 ```cshtml
-@model IReadOnlyList<Pehlione.Models.ViewModels.Admin.CategoryListItemVm>
+@model IReadOnlyList<Pehlione.Models.ViewModels.Admin.ProductListItemVm>
 @{
-    ViewData["Title"] = "Kategoriler";
+    ViewData["Title"] = "Ürünler";
 }
 
-<div class="container" style="max-width: 980px;">
+<div class="container" style="max-width: 1100px;">
     <div class="d-flex align-items-center justify-content-between mb-3">
-        <h1 class="h3 m-0">Kategoriler</h1>
-        <a class="btn btn-primary" asp-area="Admin" asp-controller="Categories" asp-action="Create">Yeni kategori</a>
+        <h1 class="h3 m-0">Ürünler</h1>
+        <span class="text-muted">Şimdilik sadece liste + silme</span>
     </div>
 
     <table class="table table-striped align-middle">
         <thead>
         <tr>
             <th>Ad</th>
-            <th>Slug</th>
+            <th>SKU</th>
+            <th>Kategori</th>
+            <th class="text-end">Fiyat</th>
             <th>Durum</th>
             <th class="text-end">İşlem</th>
         </tr>
         </thead>
         <tbody>
-        @foreach (var c in Model)
+        @foreach (var p in Model)
         {
             <tr>
-                <td>@c.Name</td>
-                <td><code>@c.Slug</code></td>
+                <td>@p.Name</td>
+                <td><code>@p.Sku</code></td>
+                <td>@p.CategoryName</td>
+                <td class="text-end">@p.Price.ToString("0.00")</td>
                 <td>
-                    @if (c.IsActive)
+                    @if (p.IsActive)
                     {
                         <span class="badge bg-success">Aktif</span>
                     }
@@ -253,65 +162,51 @@ public sealed class CategoriesController : Controller
                     }
                 </td>
                 <td class="text-end">
-                    <div class="d-inline-flex gap-2">
-                        <a class="btn btn-sm btn-outline-primary"
-                           asp-area="Admin"
-                           asp-controller="Categories"
-                           asp-action="Edit"
-                           asp-route-id="@c.Id">Düzenle</a>
-
-                        <a class="btn btn-sm btn-outline-danger"
-                           asp-area="Admin"
-                           asp-controller="Categories"
-                           asp-action="Delete"
-                           asp-route-id="@c.Id">Sil</a>
-                    </div>
+                    <a class="btn btn-sm btn-outline-danger"
+                       asp-area="Admin"
+                       asp-controller="Products"
+                       asp-action="Delete"
+                       asp-route-id="@p.Id">Sil</a>
                 </td>
             </tr>
         }
         </tbody>
     </table>
+
+    <p class="text-muted mb-0">
+        Kategori silmek için önce bu listeden kategoriye bağlı ürünleri sil (veya sonraki adımda “taşı” ekleyeceğiz).
+    </p>
 </div>
 ```
 
-`./Areas/Admin/Views/Categories/Delete.cshtml`
+`./Areas/Admin/Views/Products/Delete.cshtml`
 
 ```cshtml
-@model Pehlione.Models.ViewModels.Admin.CategoryDeleteVm
+@model Pehlione.Models.ViewModels.Admin.ProductDeleteVm
 @{
-    ViewData["Title"] = "Kategori Sil";
+    ViewData["Title"] = "Ürün Sil";
 }
 
-<div class="container" style="max-width: 720px;">
-    <h1 class="h3 mb-3">Kategori sil</h1>
-
-    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+<div class="container" style="max-width: 760px;">
+    <h1 class="h3 mb-3">Ürün sil</h1>
 
     <div class="card">
         <div class="card-body">
             <p class="mb-1"><strong>Ad:</strong> @Model.Name</p>
-            <p class="mb-3"><strong>Slug:</strong> <code>@Model.Slug</code></p>
+            <p class="mb-1"><strong>SKU:</strong> <code>@Model.Sku</code></p>
+            <p class="mb-3"><strong>Kategori:</strong> @Model.CategoryName</p>
 
-            @if (Model.HasProducts)
-            {
-                <div class="alert alert-warning mb-3">
-                    Bu kategoriye bağlı ürünler var. Silme işlemi engellendi.
-                </div>
-            }
-            else
-            {
-                <div class="alert alert-danger mb-3">
-                    Bu işlem geri alınamaz. Silmek istediğinden emin misin?
-                </div>
-            }
+            <div class="alert alert-danger mb-3">
+                Bu işlem geri alınamaz. Silmek istediğinden emin misin?
+            </div>
 
-            <form asp-area="Admin" asp-controller="Categories" asp-action="Delete" method="post">
+            <form asp-area="Admin" asp-controller="Products" asp-action="Delete" method="post">
                 @Html.AntiForgeryToken()
                 <input type="hidden" asp-for="Id" />
 
                 <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-danger" @(Model.HasProducts ? "disabled" : "")>Sil</button>
-                    <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Categories" asp-action="Index">İptal</a>
+                    <button type="submit" class="btn btn-danger">Sil</button>
+                    <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Products" asp-action="Index">İptal</a>
                 </div>
             </form>
         </div>
@@ -321,19 +216,19 @@ public sealed class CategoriesController : Controller
 
 D) **Kısa Açıklama (en fazla 5 madde, öğretici)**
 
-* Silme için **GET = onay ekranı**, **POST = gerçek silme** kullandık (güvenli pattern).
-* `Products.Any(CategoryId==id)` varsa silmeyi uygulama seviyesinde engelliyoruz.
-* DB tarafında da FK `Restrict` devredeyse `DbUpdateException` ile yakalayıp kullanıcı dostu mesaj dönüyoruz.
-* URL: `/Admin/Categories/Delete/{id}`
-* Sonraki adım: **Ürün CRUD** (önce liste + create) — yine küçük adımlarla.
+* `/Admin/Products` ile kategoriye bağlı ürünleri görüp silebilirsin; böylece kategori silme engeli kalkar.
+* Silme akışı güvenli pattern: **GET onay** + **POST sil**.
+* Bu adımda “Create/Edit” yok; bir sonraki adımda **Ürün ekleme**yi ekleyelim.
+* Eğer kategori silmek istiyorsan: önce ürünleri sil → sonra kategori sil.
+* Sonraki adım: `/Admin/Products/Create` (ürün oluşturma + kategori seçimi + SKU unique kontrol).
 
 E) **Git Commit**
 
-* Commit mesajı: `Add Admin category delete with product guard`
+* Commit mesajı: `Add Admin products list and delete pages`
 * Komut:
 
 ```bash
-git add -A && git commit -m "Add Admin category delete with product guard"
+git add -A && git commit -m "Add Admin products list and delete pages"
 ```
 
-Bir kategoriyi silebildiysen (ürün yokken) ve ürün bağlıysa silmenin engellendiğini gördüysen **“bitti”** yaz; sonraki adımda **Product: List + Create** ile devam edelim.
+`/Admin/Products` ekranından, “Man” kategorisine bağlı ürünü/ürünleri silip sonra tekrar kategori silmeyi denediğinde başarılıysa **“bitti”** yaz; bir sonraki adımda **Ürün Create** ekleyelim.
