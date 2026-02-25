@@ -1,13 +1,16 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Pehlione.Models.Identity;
 
 namespace Pehlione.Data;
 
-public sealed class PehlioneDbContext : DbContext
+public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, IdentityRole, string>
 {
     public PehlioneDbContext(DbContextOptions<PehlioneDbContext> options)
         : base(options)
     {
     }
 
-    // Simdilik DbSet yok: once baglanti testi yapiliyor.
+    // Ileride e-ticaret domain DbSet'leri buraya gelecek.
 }
