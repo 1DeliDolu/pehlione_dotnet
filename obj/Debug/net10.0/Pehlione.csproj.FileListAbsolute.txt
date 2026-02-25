@@ -83,8 +83,6 @@
 /home/project/Pehlione/obj/Debug/net10.0/compressed/u2bdls3tda-{0}-muycvpuwrr-muycvpuwrr.gz
 /home/project/Pehlione/obj/Debug/net10.0/compressed/f0ods92ae4-{0}-87fc7y1x7t-87fc7y1x7t.gz
 /home/project/Pehlione/obj/Debug/net10.0/compressed/334v9qjra6-{0}-jfsiqqwiad-jfsiqqwiad.gz
-/home/project/Pehlione/obj/Debug/net10.0/compressed/71drsy9b8p-{0}-5spkfqs05s-5spkfqs05s.gz
-/home/project/Pehlione/obj/Debug/net10.0/compressed/bxwivw0opt-{0}-5spkfqs05s-5spkfqs05s.gz
 /home/project/Pehlione/obj/Debug/net10.0/staticwebassets.build.json
 /home/project/Pehlione/obj/Debug/net10.0/staticwebassets.build.json.cache
 /home/project/Pehlione/obj/Debug/net10.0/staticwebassets.development.json
@@ -211,3 +209,5 @@
 /home/project/Pehlione/bin/Debug/net10.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
 /home/project/Pehlione/bin/Debug/net10.0/Microsoft.IdentityModel.Tokens.dll
 /home/project/Pehlione/bin/Debug/net10.0/System.IdentityModel.Tokens.Jwt.dll
+/home/project/Pehlione/obj/Debug/net10.0/compressed/71drsy9b8p-{0}-23f888mx9e-23f888mx9e.gz
+/home/project/Pehlione/obj/Debug/net10.0/compressed/bxwivw0opt-{0}-23f888mx9e-23f888mx9e.gz
