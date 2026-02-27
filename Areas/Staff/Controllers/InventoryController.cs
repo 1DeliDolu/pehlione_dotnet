@@ -10,7 +10,7 @@ using Pehlione.Services;
 namespace Pehlione.Areas.Staff.Controllers;
 
 [Area("Staff")]
-[Authorize(Roles = $"{IdentitySeed.RolePurchasing},{IdentitySeed.RoleAdmin}")]
+[Authorize]
 public sealed class InventoryController : Controller
 {
     private readonly PehlioneDbContext _db;
@@ -23,6 +23,7 @@ public sealed class InventoryController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = $"{IdentitySeed.RolePurchasing},{IdentitySeed.RoleIt},{IdentitySeed.RoleAdmin}")]
     public async Task<IActionResult> Receive(int? productId, CancellationToken ct)
     {
         var vm = new ReceiveStockVm
@@ -39,6 +40,7 @@ public sealed class InventoryController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = "CanIncreaseStock")]
     public async Task<IActionResult> Receive(ReceiveStockVm model, CancellationToken ct)
     {
         model.ProductOptions = await LoadProductOptionsAsync(ct);
@@ -56,6 +58,36 @@ public sealed class InventoryController : Controller
 
         TempData["InventorySuccess"] = $"Stok guncellendi. Yeni stok: {result.CurrentQuantity}";
         return RedirectToAction(nameof(Receive), new { productId = model.ProductId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = "CanDeleteStock")]
+    public async Task<IActionResult> DeleteProduct(int productId, CancellationToken ct)
+    {
+        if (productId <= 0)
+            return BadRequest();
+
+        var product = await _db.Products.FirstOrDefaultAsync(p => p.Id == productId, ct);
+        if (product is null)
+        {
+            TempData["InventoryError"] = "Urun bulunamadi.";
+            return RedirectToAction(nameof(Receive));
+        }
+
+        _db.Products.Remove(product);
+
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+            TempData["InventorySuccess"] = "Urun silindi.";
+        }
+        catch (DbUpdateException)
+        {
+            TempData["InventoryError"] = "Urun silinemedi. Iliskili kayitlar (siparis vb.) oldugu icin engellendi.";
+        }
+
+        return RedirectToAction(nameof(Receive));
     }
 
     private async Task<IReadOnlyList<SelectListItem>> LoadProductOptionsAsync(CancellationToken ct)

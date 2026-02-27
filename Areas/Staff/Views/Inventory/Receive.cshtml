@@ -10,6 +10,10 @@
     {
         <div class="alert alert-success">@ok</div>
     }
+    @if (TempData["InventoryError"] is string err && !string.IsNullOrWhiteSpace(err))
+    {
+        <div class="alert alert-warning">@err</div>
+    }
 
     <form asp-area="Staff" asp-controller="Inventory" asp-action="Receive" method="post" class="card card-body shadow-sm border-0">
         @Html.AntiForgeryToken()
@@ -37,6 +41,21 @@
             <button type="submit" class="btn btn-primary">Stok Girisi Yap</button>
         </div>
     </form>
+
+    @if (User.IsInRole("IT") || User.IsInRole("Admin"))
+    {
+        <form asp-area="Staff" asp-controller="Inventory" asp-action="DeleteProduct" method="post" class="card card-body shadow-sm border-0 mt-3">
+            @Html.AntiForgeryToken()
+            <h2 class="h6 mb-3">Urun Sil (IT)</h2>
+            <div class="mb-3">
+                <label class="form-label" for="productIdDelete">Urun</label>
+                <select id="productIdDelete" name="productId" asp-items="Model.ProductOptions" class="form-select"></select>
+            </div>
+            <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-outline-danger">Urunu Sil</button>
+            </div>
+        </form>
+    }
 </div>
 
 @section Scripts {

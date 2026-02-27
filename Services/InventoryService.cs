@@ -7,11 +7,16 @@ namespace Pehlione.Services;
 public sealed class InventoryService : IInventoryService
 {
     private readonly PehlioneDbContext _db;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<InventoryService> _logger;
 
-    public InventoryService(PehlioneDbContext db, ILogger<InventoryService> logger)
+    public InventoryService(
+        PehlioneDbContext db,
+        INotificationService notificationService,
+        ILogger<InventoryService> logger)
     {
         _db = db;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -75,6 +80,14 @@ public sealed class InventoryService : IInventoryService
             .FirstAsync(ct);
 
         await tx.CommitAsync(ct);
+
+        await _notificationService.CreateAsync(
+            department: "Sales",
+            title: "Stok girisi tamamlandi",
+            message: $"Urun #{productId} icin {qty} adet stok girisi yapildi. Guncel stok: {currentQty}",
+            relatedEntityType: "Product",
+            relatedEntityId: productId.ToString(),
+            ct: ct);
 
         _logger.LogInformation("Stock received. ProductId={ProductId}, Qty={Qty}, CurrentQty={CurrentQty}", productId, qty, currentQty);
 

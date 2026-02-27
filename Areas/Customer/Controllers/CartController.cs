@@ -27,17 +27,20 @@ public sealed class CartController : Controller
     private readonly PehlioneDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IAppEmailSender _emailSender;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<CartController> _logger;
 
     public CartController(
         PehlioneDbContext db,
         UserManager<ApplicationUser> userManager,
         IAppEmailSender emailSender,
+        INotificationService notificationService,
         ILogger<CartController> logger)
     {
         _db = db;
         _userManager = userManager;
         _emailSender = emailSender;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -576,6 +579,13 @@ public sealed class CartController : Controller
         }
 
         await TrySendOrderEmailAsync(userId, order, draft, ct);
+        await _notificationService.CreateAsync(
+            department: "Purchasing",
+            title: "Stok dusumu gerceklesti",
+            message: $"Siparis #{order.Id} ile {requiredStocks.Count} urun kaleminde stok dusumu yapildi.",
+            relatedEntityType: "Order",
+            relatedEntityId: order.Id.ToString(),
+            ct: ct);
 
         ClearCart();
         ClearCheckoutDraft();

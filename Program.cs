@@ -77,10 +77,18 @@ builder.Services.AddAuthentication()
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("CanIncreaseStock", policy =>
+        policy.RequireRole(IdentitySeed.RolePurchasing, IdentitySeed.RoleAdmin));
+
+    options.AddPolicy("CanDeleteStock", policy =>
+        policy.RequireRole(IdentitySeed.RoleIt, IdentitySeed.RoleAdmin));
+});
 
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 if (builder.Environment.IsDevelopment())
 {

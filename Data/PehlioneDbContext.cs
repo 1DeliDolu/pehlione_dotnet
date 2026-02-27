@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Pehlione.Models;
 using Pehlione.Models.Catalog;
+using Pehlione.Models.Communication;
 using Pehlione.Models.Commerce;
 using Pehlione.Models.Identity;
 using Pehlione.Models.Inventory;
@@ -29,6 +30,7 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<Stock> Stocks => Set<Stock>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+    public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<UserAddress> UserAddresses => Set<UserAddress>();
     public DbSet<UserPaymentMethod> UserPaymentMethods => Set<UserPaymentMethod>();
     public DbSet<Pehlione.Models.TodoItem> TodoItems => Set<Pehlione.Models.TodoItem>();
@@ -322,6 +324,21 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
                 .WithMany()
                 .HasForeignKey(x => x.ProductId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Notification>(b =>
+        {
+            b.ToTable("notifications");
+            b.Property(x => x.Id).HasColumnName("id");
+            b.Property(x => x.Department).HasColumnName("department").HasMaxLength(64).IsRequired();
+            b.Property(x => x.Title).HasColumnName("title").HasMaxLength(180).IsRequired();
+            b.Property(x => x.Message).HasColumnName("message").HasMaxLength(1000).IsRequired();
+            b.Property(x => x.RelatedEntityType).HasColumnName("related_entity_type").HasMaxLength(64);
+            b.Property(x => x.RelatedEntityId).HasColumnName("related_entity_id").HasMaxLength(64);
+            b.Property(x => x.IsRead).HasColumnName("is_read").HasDefaultValue(false);
+            b.Property(x => x.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+            b.HasIndex(x => new { x.Department, x.IsRead, x.CreatedAt });
         });
 
         builder.Entity<UserAddress>(b =>
