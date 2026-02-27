@@ -209,5 +209,10 @@
 /home/project/Pehlione/bin/Debug/net10.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
 /home/project/Pehlione/bin/Debug/net10.0/Microsoft.IdentityModel.Tokens.dll
 /home/project/Pehlione/bin/Debug/net10.0/System.IdentityModel.Tokens.Jwt.dll
-/home/project/Pehlione/obj/Debug/net10.0/compressed/71drsy9b8p-{0}-uanm8c8cus-uanm8c8cus.gz
-/home/project/Pehlione/obj/Debug/net10.0/compressed/bxwivw0opt-{0}-uanm8c8cus-uanm8c8cus.gz
+/home/project/Pehlione/bin/Debug/net10.0/package-lock.json
+/home/project/Pehlione/bin/Debug/net10.0/package.json
+/home/project/Pehlione/obj/Debug/net10.0/compressed/5wvei00sqi-{0}-0c1d32ph4u-0c1d32ph4u.gz
+/home/project/Pehlione/obj/Debug/net10.0/compressed/kxiszj0ta1-{0}-gnxria04pl-gnxria04pl.gz
+/home/project/Pehlione/obj/Debug/net10.0/compressed/mebgin95b0-{0}-zqltuijmmh-zqltuijmmh.gz
+/home/project/Pehlione/obj/Debug/net10.0/compressed/71drsy9b8p-{0}-uhr3678sov-uhr3678sov.gz
+/home/project/Pehlione/obj/Debug/net10.0/compressed/bxwivw0opt-{0}-uhr3678sov-uhr3678sov.gz

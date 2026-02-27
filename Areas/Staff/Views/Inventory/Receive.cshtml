@@ -1,0 +1,44 @@
+@model Pehlione.Models.ViewModels.Staff.ReceiveStockVm
+@{
+    ViewData["Title"] = "Stok Girisi";
+}
+
+<div class="container" style="max-width: 760px;">
+    <h1 class="h3 mb-3">Stok Girisi (IN)</h1>
+
+    @if (TempData["InventorySuccess"] is string ok && !string.IsNullOrWhiteSpace(ok))
+    {
+        <div class="alert alert-success">@ok</div>
+    }
+
+    <form asp-area="Staff" asp-controller="Inventory" asp-action="Receive" method="post" class="card card-body shadow-sm border-0">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+        <div class="mb-3">
+            <label asp-for="ProductId" class="form-label"></label>
+            <select asp-for="ProductId" asp-items="Model.ProductOptions" class="form-select"></select>
+            <span asp-validation-for="ProductId" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Quantity" class="form-label"></label>
+            <input asp-for="Quantity" class="form-control" min="1" />
+            <span asp-validation-for="Quantity" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Note" class="form-label"></label>
+            <textarea asp-for="Note" rows="3" class="form-control"></textarea>
+            <span asp-validation-for="Note" class="text-danger"></span>
+        </div>
+
+        <div class="d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary">Stok Girisi Yap</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

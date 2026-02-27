@@ -5,6 +5,7 @@ using Pehlione.Models;
 using Pehlione.Models.Catalog;
 using Pehlione.Models.Commerce;
 using Pehlione.Models.Identity;
+using Pehlione.Models.Inventory;
 
 namespace Pehlione.Data;
 
@@ -26,6 +27,8 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
     public DbSet<MenuNodeTranslation> MenuNodeTranslations => Set<MenuNodeTranslation>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<Stock> Stocks => Set<Stock>();
+    public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<UserAddress> UserAddresses => Set<UserAddress>();
     public DbSet<UserPaymentMethod> UserPaymentMethods => Set<UserPaymentMethod>();
     public DbSet<Pehlione.Models.TodoItem> TodoItems => Set<Pehlione.Models.TodoItem>();
@@ -279,6 +282,41 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
                 .WithMany(x => x.Items)
                 .HasForeignKey(x => x.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne(x => x.Product)
+                .WithMany()
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Stock>(b =>
+        {
+            b.ToTable("stocks");
+            b.Property(x => x.Id).HasColumnName("id");
+            b.Property(x => x.ProductId).HasColumnName("product_id");
+            b.Property(x => x.Quantity).HasColumnName("quantity").HasDefaultValue(0);
+
+            b.HasIndex(x => x.ProductId).IsUnique();
+
+            b.HasOne(x => x.Product)
+                .WithMany()
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<StockMovement>(b =>
+        {
+            b.ToTable("stock_movements");
+            b.Property(x => x.Id).HasColumnName("id");
+            b.Property(x => x.ProductId).HasColumnName("product_id");
+            b.Property(x => x.Type).HasColumnName("type").HasConversion<string>().HasMaxLength(8).IsRequired();
+            b.Property(x => x.Quantity).HasColumnName("quantity");
+            b.Property(x => x.Reason).HasColumnName("reason").HasMaxLength(500);
+            b.Property(x => x.CreatedByUserId).HasColumnName("created_by_user_id").HasMaxLength(255);
+            b.Property(x => x.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+            b.HasIndex(x => x.ProductId);
+            b.HasIndex(x => x.CreatedAt);
 
             b.HasOne(x => x.Product)
                 .WithMany()

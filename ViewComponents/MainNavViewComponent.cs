@@ -2,11 +2,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
 using Pehlione.ViewModels.Navigation;
+using System.Text.Json;
 
 namespace Pehlione.ViewComponents;
 
 public sealed class MainNavViewComponent : ViewComponent
 {
+    private const string CartCookieKey = "pehlione.cart";
     private readonly PehlioneDbContext _db;
 
     public MainNavViewComponent(PehlioneDbContext db)
@@ -33,8 +35,10 @@ public sealed class MainNavViewComponent : ViewComponent
         var vm = new MainNavVm
         {
             ActiveSlug = activeSlug,
-            Categories = categories
+            Categories = categories,
+            CartItemCount = GetCartItemCount()
         };
+        ViewData["MainNavCartItemCount"] = vm.CartItemCount;
 
         return View(vm);
     }
@@ -65,5 +69,32 @@ public sealed class MainNavViewComponent : ViewComponent
         }
 
         return null;
+    }
+
+    private int GetCartItemCount()
+    {
+        if (HttpContext?.Request?.Cookies is null)
+            return 0;
+
+        if (!HttpContext.Request.Cookies.TryGetValue(CartCookieKey, out var json) || string.IsNullOrWhiteSpace(json))
+            return 0;
+
+        try
+        {
+            var items = JsonSerializer.Deserialize<List<CartCookieItem>>(json);
+            if (items is null || items.Count == 0)
+                return 0;
+
+            return items.Sum(x => Math.Clamp(x.Qty, 1, 99));
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    private sealed class CartCookieItem
+    {
+        public int Qty { get; init; }
     }
 }

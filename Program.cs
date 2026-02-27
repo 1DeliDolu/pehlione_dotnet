@@ -74,6 +74,7 @@ builder.Services.AddAuthentication()
 builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<IInventoryService, InventoryService>();
 
 if (builder.Environment.IsDevelopment())
 {
