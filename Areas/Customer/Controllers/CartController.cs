@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
 using Pehlione.Models;
 using Pehlione.Models.Catalog;
+using Pehlione.Models.Communication;
 using Pehlione.Models.Commerce;
 using Pehlione.Models.Identity;
 using Pehlione.Models.Inventory;
@@ -545,6 +546,7 @@ public sealed class CartController : Controller
                 Quantity = g.Sum(x => x.Quantity)
             })
             .ToList();
+        var lowStockAlerts = new List<(int productId, int currentQty)>();
 
         await using (var tx = await _db.Database.BeginTransactionAsync(ct))
         {
@@ -572,6 +574,15 @@ public sealed class CartController : Controller
                     Reason = $"Order #{order.Id}",
                     CreatedByUserId = userId
                 });
+
+                var currentQty = await _db.Stocks
+                    .AsNoTracking()
+                    .Where(x => x.ProductId == required.ProductId)
+                    .Select(x => x.Quantity)
+                    .FirstAsync(ct);
+
+                if (currentQty <= 5)
+                    lowStockAlerts.Add((required.ProductId, currentQty));
             }
 
             await _db.SaveChangesAsync(ct);
@@ -580,12 +591,22 @@ public sealed class CartController : Controller
 
         await TrySendOrderEmailAsync(userId, order, draft, ct);
         await _notificationService.CreateAsync(
-            department: "Purchasing",
+            department: NotificationDepartments.Purchasing,
             title: "Stok dusumu gerceklesti",
             message: $"Siparis #{order.Id} ile {requiredStocks.Count} urun kaleminde stok dusumu yapildi.",
             relatedEntityType: "Order",
             relatedEntityId: order.Id.ToString(),
             ct: ct);
+        foreach (var alert in lowStockAlerts.DistinctBy(x => x.productId))
+        {
+            await _notificationService.CreateAsync(
+                department: NotificationDepartments.Purchasing,
+                title: "Dusuk stok uyarisi",
+                message: $"Urun #{alert.productId} kritik seviyeye dustu. Mevcut stok: {alert.currentQty}",
+                relatedEntityType: "Product",
+                relatedEntityId: alert.productId.ToString(),
+                ct: ct);
+        }
 
         ClearCart();
         ClearCheckoutDraft();

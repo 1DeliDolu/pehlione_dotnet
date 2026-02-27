@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
+using Pehlione.Models.Communication;
 using Pehlione.Models.ViewModels.Staff;
 
 namespace Pehlione.Areas.Staff.Controllers;
@@ -110,11 +111,11 @@ public sealed class NotificationsController : Controller
     {
         var departments = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (User.IsInRole(IdentitySeed.RoleStaff))
-            departments.Add("Sales");
+            departments.Add(NotificationDepartments.Sales);
         if (User.IsInRole(IdentitySeed.RolePurchasing))
-            departments.Add("Purchasing");
+            departments.Add(NotificationDepartments.Purchasing);
         if (User.IsInRole(IdentitySeed.RoleIt))
-            departments.Add("IT");
+            departments.Add(NotificationDepartments.It);
 
         return departments;
     }

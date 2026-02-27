@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
+using Pehlione.Models.Communication;
 using Pehlione.Models.Inventory;
 
 namespace Pehlione.Services;
@@ -82,7 +83,7 @@ public sealed class InventoryService : IInventoryService
         await tx.CommitAsync(ct);
 
         await _notificationService.CreateAsync(
-            department: "Sales",
+            department: NotificationDepartments.Sales,
             title: "Stok girisi tamamlandi",
             message: $"Urun #{productId} icin {qty} adet stok girisi yapildi. Guncel stok: {currentQty}",
             relatedEntityType: "Product",

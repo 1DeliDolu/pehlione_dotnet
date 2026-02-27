@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Pehlione.Data;
 using Pehlione.Models.Identity;
 using Pehlione.Models.ViewModels;
 using Pehlione.Security;
@@ -68,6 +69,12 @@ public sealed class AccountController : Controller
             if (!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
             {
                 return Redirect(model.ReturnUrl);
+            }
+
+            var isPurchasing = await _userManager.IsInRoleAsync(user, IdentitySeed.RolePurchasing);
+            if (isPurchasing)
+            {
+                return RedirectToAction("Receive", "Inventory", new { area = "Staff" });
             }
 
             return RedirectToAction("Index", "Home");

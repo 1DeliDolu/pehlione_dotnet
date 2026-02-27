@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
+using Pehlione.Models.Communication;
 using Pehlione.Models.ViewModels.Staff;
 using Pehlione.Services;
 
@@ -15,11 +16,16 @@ public sealed class InventoryController : Controller
 {
     private readonly PehlioneDbContext _db;
     private readonly IInventoryService _inventoryService;
+    private readonly INotificationService _notificationService;
 
-    public InventoryController(PehlioneDbContext db, IInventoryService inventoryService)
+    public InventoryController(
+        PehlioneDbContext db,
+        IInventoryService inventoryService,
+        INotificationService notificationService)
     {
         _db = db;
         _inventoryService = inventoryService;
+        _notificationService = notificationService;
     }
 
     [HttpGet]
@@ -81,6 +87,20 @@ public sealed class InventoryController : Controller
         {
             await _db.SaveChangesAsync(ct);
             TempData["InventorySuccess"] = "Urun silindi.";
+            await _notificationService.CreateAsync(
+                department: NotificationDepartments.Sales,
+                title: "Urun silindi",
+                message: $"{product.Name} ({product.Sku}) urunu IT tarafindan silindi.",
+                relatedEntityType: "Product",
+                relatedEntityId: productId.ToString(),
+                ct: ct);
+            await _notificationService.CreateAsync(
+                department: NotificationDepartments.Purchasing,
+                title: "Urun silindi",
+                message: $"{product.Name} ({product.Sku}) urunu IT tarafindan silindi.",
+                relatedEntityType: "Product",
+                relatedEntityId: productId.ToString(),
+                ct: ct);
         }
         catch (DbUpdateException)
         {
