@@ -9,6 +9,7 @@ using Pehlione.Models;
 using Pehlione.Models.Catalog;
 using Pehlione.Models.Commerce;
 using Pehlione.Models.Identity;
+using Pehlione.Models.Inventory;
 using Pehlione.Models.ViewModels.Customer;
 using Pehlione.Services;
 
@@ -533,8 +534,46 @@ public sealed class CartController : Controller
         }
 
         order.TotalAmount = total;
-        _db.Orders.Add(order);
-        await _db.SaveChangesAsync(ct);
+        var requiredStocks = order.Items
+            .GroupBy(x => x.ProductId)
+            .Select(g => new
+            {
+                ProductId = g.Key,
+                Quantity = g.Sum(x => x.Quantity)
+            })
+            .ToList();
+
+        await using (var tx = await _db.Database.BeginTransactionAsync(ct))
+        {
+            _db.Orders.Add(order);
+            await _db.SaveChangesAsync(ct);
+
+            foreach (var required in requiredStocks)
+            {
+                var updatedRows = await _db.Database.ExecuteSqlInterpolatedAsync(
+                    $"UPDATE stocks SET quantity = quantity - {required.Quantity} WHERE product_id = {required.ProductId} AND quantity >= {required.Quantity}",
+                    ct);
+
+                if (updatedRows == 0)
+                {
+                    await tx.RollbackAsync(ct);
+                    TempData["CartError"] = "Stok yetersiz. Lutfen sepetinizi guncelleyip tekrar deneyin.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                _db.StockMovements.Add(new StockMovement
+                {
+                    ProductId = required.ProductId,
+                    Type = StockMovementType.Out,
+                    Quantity = required.Quantity,
+                    Reason = $"Order #{order.Id}",
+                    CreatedByUserId = userId
+                });
+            }
+
+            await _db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        }
 
         await TrySendOrderEmailAsync(userId, order, draft, ct);
 

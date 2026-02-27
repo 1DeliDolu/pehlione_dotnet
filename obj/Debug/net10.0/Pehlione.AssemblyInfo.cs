@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Pehlione")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c8e198cbf3df85e752504cfffe92b1120847b8bc")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+be4718a52afba4bd937e43c23854ce61c30c30b9")]
 [assembly: System.Reflection.AssemblyProductAttribute("Pehlione")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Pehlione")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
