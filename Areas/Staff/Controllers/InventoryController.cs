@@ -10,7 +10,7 @@ using Pehlione.Services;
 namespace Pehlione.Areas.Staff.Controllers;
 
 [Area("Staff")]
-[Authorize(Roles = $"{IdentitySeed.RoleStaff},{IdentitySeed.RoleAdmin}")]
+[Authorize(Roles = $"{IdentitySeed.RolePurchasing},{IdentitySeed.RoleAdmin}")]
 public sealed class InventoryController : Controller
 {
     private readonly PehlioneDbContext _db;

@@ -19,6 +19,7 @@ public sealed class UsersController : Controller
     [
         IdentitySeed.RoleCustomer,
         IdentitySeed.RoleStaff,
+        IdentitySeed.RolePurchasing,
         IdentitySeed.RoleAdmin
     ];
 
