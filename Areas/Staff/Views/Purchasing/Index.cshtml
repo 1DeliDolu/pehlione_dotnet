@@ -1,0 +1,13 @@
+@{
+    ViewData["Title"] = "Purchasing Dashboard";
+}
+
+<div class="container" style="max-width: 900px;">
+    <h1 class="h3 mb-3">Satin Alma Dashboard</h1>
+    <p class="text-muted">Satın almacı girişinden sonra bu panel açılır.</p>
+
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-primary" asp-area="Staff" asp-controller="Inventory" asp-action="Receive">Stok Girisi</a>
+        <a class="btn btn-outline-secondary" asp-area="Staff" asp-controller="Notifications" asp-action="Index">Bildirimler</a>
+    </div>
+</div>

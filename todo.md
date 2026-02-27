@@ -1,371 +1,383 @@
-### A) Hedef
-
-UI tarafında **Login/Logout** akışını ekleyip, `purchasing@local` ve `it@local` ile giriş yaparak **Purchasing yalnızca artırır**, **IT yalnızca siler** kuralını ekranda doğrulayacağız.
-
-### B) CLI Komutu (maks. 1 komut)
-
-```bash
-dotnet run
-```
-
-### C) Dosya Değişiklikleri (tam içerik)
-
-#### ./Controllers/AccountController.cs
-
-```csharp
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Pehlione.Models;
-using Pehlione.ViewModels.Account;
-
-namespace Pehlione.Controllers;
-
-[AllowAnonymous]
-public sealed class AccountController : Controller
-{
-    private readonly SignInManager<ApplicationUser> _signInManager;
-
-    public AccountController(SignInManager<ApplicationUser> signInManager)
-    {
-        _signInManager = signInManager;
-    }
-
-    [HttpGet]
-    public IActionResult Login(string? returnUrl = null)
-    {
-        var vm = new LoginVm { ReturnUrl = returnUrl };
-        return View(vm);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Login(LoginVm vm)
-    {
-        if (!ModelState.IsValid)
-            return View(vm);
-
-        var result = await _signInManager.PasswordSignInAsync(
-            userName: vm.Email,
-            password: vm.Password,
-            isPersistent: vm.RememberMe,
-            lockoutOnFailure: false);
-
-        if (!result.Succeeded)
-        {
-            ModelState.AddModelError(string.Empty, "Giriş başarısız. E-posta veya şifre hatalı.");
-            return View(vm);
-        }
-
-        if (!string.IsNullOrWhiteSpace(vm.ReturnUrl) && Url.IsLocalUrl(vm.ReturnUrl))
-            return Redirect(vm.ReturnUrl);
-
-        return RedirectToAction("Index", "Home");
-    }
-
-    [Authorize]
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Logout()
-    {
-        await _signInManager.SignOutAsync();
-        return RedirectToAction(nameof(Login));
-    }
-
-    [HttpGet]
-    public IActionResult AccessDenied()
-    {
-        return View();
-    }
-}
-```
-
-#### ./ViewModels/Account/LoginVm.cs
-
-```csharp
-using System.ComponentModel.DataAnnotations;
-
-namespace Pehlione.ViewModels.Account;
-
-public sealed class LoginVm
-{
-    [Required]
-    [EmailAddress]
-    public string Email { get; set; } = string.Empty;
-
-    [Required]
-    [DataType(DataType.Password)]
-    public string Password { get; set; } = string.Empty;
-
-    public bool RememberMe { get; set; }
-
-    public string? ReturnUrl { get; set; }
-}
-```
-
-#### ./Views/Account/Login.cshtml
+Aşağıda daha temiz, daha premium görünen ama **yalnızca Bootstrap class’ları** kullanan sadeleştirilmiş sürüm var.
+Özel CSS yok. `form-select`, `form-select-lg`, `form-control-lg`, `card`, `shadow-sm`, `rounded-4`, `table`, `badge` gibi Bootstrap sınıflarıyla ilerliyor.
 
 ```cshtml
-@model Pehlione.ViewModels.Account.LoginVm
-
+@model Pehlione.Models.ViewModels.Staff.ReceiveStockVm
 @{
-    ViewData["Title"] = "Login";
+    ViewData["Title"] = "Stok Girişi";
+    var subCategoriesUrl = Url.Action("SubCategories", "Inventory", new { area = "Staff" }) ?? "/Staff/Inventory/SubCategories";
+    var productsByCategoryUrl = Url.Action("ProductsByCategory", "Inventory", new { area = "Staff" }) ?? "/Staff/Inventory/ProductsByCategory";
 }
 
-<h1>Login</h1>
-
-<form asp-action="Login" method="post" class="mt-3" style="max-width:420px;">
-    @Html.AntiForgeryToken()
-
-    <input type="hidden" asp-for="ReturnUrl" />
-
-    <div class="mb-3">
-        <label asp-for="Email" class="form-label"></label>
-        <input asp-for="Email" class="form-control" />
-        <span asp-validation-for="Email" class="text-danger"></span>
+<div class="container py-4">
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+                <div>
+                    <span class="badge text-bg-primary mb-2">Inventory</span>
+                    <h1 class="h3 mb-1">Stok Girişi</h1>
+                    <p class="text-muted mb-0">
+                        Kategori ve ürün seçerek stok ekleyin. Girilen miktar mevcut stok üzerine ilave edilir.
+                    </p>
+                </div>
+                <div class="text-muted small">
+                    Personel paneli / Stok yönetimi
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="mb-3">
-        <label asp-for="Password" class="form-label"></label>
-        <input asp-for="Password" class="form-control" />
-        <span asp-validation-for="Password" class="text-danger"></span>
+    @if (TempData["InventorySuccess"] is string ok && !string.IsNullOrWhiteSpace(ok))
+    {
+        <div class="alert alert-success shadow-sm">@ok</div>
+    }
+
+    @if (TempData["InventoryError"] is string err && !string.IsNullOrWhiteSpace(err))
+    {
+        <div class="alert alert-warning shadow-sm">@err</div>
+    }
+
+    <div class="row g-4">
+        <div class="col-12 col-lg-7">
+            <form asp-area="Staff" asp-controller="Inventory" asp-action="Receive" method="post" class="card border-0 shadow-sm rounded-4 h-100">
+                @Html.AntiForgeryToken()
+
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h2 class="h5 mb-1">Satın Alma Girişi</h2>
+                    <p class="text-muted small mb-0">Ürün seçip miktar belirleyerek stok giriş işlemi yapın.</p>
+                </div>
+
+                <div class="card-body px-4 pb-4">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label asp-for="TopCategoryId" class="form-label fw-semibold"></label>
+                            <select asp-for="TopCategoryId"
+                                    asp-items="Model.TopCategoryOptions"
+                                    class="form-select form-select-lg"
+                                    id="topCategorySelect"></select>
+                            <span asp-validation-for="TopCategoryId" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="SubCategoryId" class="form-label fw-semibold"></label>
+                            <select asp-for="SubCategoryId"
+                                    class="form-select form-select-lg"
+                                    id="subCategorySelect">
+                                <option value="">Seçiniz</option>
+                                @foreach (var c in Model.SubCategoryOptions)
+                                {
+                                    if (Model.SubCategoryId.HasValue && c.Value == Model.SubCategoryId.Value.ToString())
+                                    {
+                                        <option value="@c.Value" selected>@c.Text</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@c.Value">@c.Text</option>
+                                    }
+                                }
+                            </select>
+                            <span asp-validation-for="SubCategoryId" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="SubSubCategoryId" class="form-label fw-semibold"></label>
+                            <select asp-for="SubSubCategoryId"
+                                    class="form-select form-select-lg"
+                                    id="subSubCategorySelect">
+                                <option value="">Seçiniz</option>
+                                @foreach (var c in Model.SubSubCategoryOptions)
+                                {
+                                    if (Model.SubSubCategoryId.HasValue && c.Value == Model.SubSubCategoryId.Value.ToString())
+                                    {
+                                        <option value="@c.Value" selected>@c.Text</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@c.Value">@c.Text</option>
+                                    }
+                                }
+                            </select>
+                            <span asp-validation-for="SubSubCategoryId" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label asp-for="ProductId" class="form-label fw-semibold"></label>
+                            <select asp-for="ProductId"
+                                    class="form-select form-select-lg"
+                                    id="productSelect">
+                                @foreach (var p in Model.ProductOptions)
+                                {
+                                    if (p.Value == Model.ProductId.ToString())
+                                    {
+                                        <option value="@p.Value" selected>@p.Text</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@p.Value">@p.Text</option>
+                                    }
+                                }
+                            </select>
+                            <span asp-validation-for="ProductId" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label asp-for="Quantity" class="form-label fw-semibold"></label>
+                            <input asp-for="Quantity" class="form-control form-control-lg" min="1" placeholder="Miktar giriniz" />
+                            <span asp-validation-for="Quantity" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg px-4">
+                            Stok Girişi Yap
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-12 col-lg-5">
+            @if (User.IsInRole("IT") || User.IsInRole("Admin"))
+            {
+                <form asp-area="Staff" asp-controller="Inventory" asp-action="DeleteProduct" method="post" class="card border-0 shadow-sm rounded-4">
+                    @Html.AntiForgeryToken()
+
+                    <div class="card-header bg-white border-0 pt-4 px-4">
+                        <h2 class="h5 mb-1">IT İşlem: Ürün Sil</h2>
+                        <p class="text-muted small mb-0">Yalnızca yetkili kullanıcılar bu işlemi yapabilir.</p>
+                    </div>
+
+                    <div class="card-body px-4 pb-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="productIdDelete">Ürün</label>
+                            <select id="productIdDelete" name="productId" class="form-select form-select-lg">
+                                @foreach (var p in Model.AllProducts)
+                                {
+                                    <option value="@p.ProductId">@p.Name (@p.Sku)</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-outline-danger btn-lg px-4">
+                                Ürünü Sil
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            }
+        </div>
     </div>
 
-    <div class="form-check mb-3">
-        <input asp-for="RememberMe" class="form-check-input" />
-        <label asp-for="RememberMe" class="form-check-label"></label>
+    <div class="card border-0 shadow-sm rounded-4 mt-4">
+        <div class="card-header bg-white border-0 pt-4 px-4">
+            <h2 class="h5 mb-1">Güncel Stok Durumu</h2>
+            <p class="text-muted small mb-0">Ürünlerin mevcut stok miktarları</p>
+        </div>
+        <div class="card-body px-4 pb-4">
+            @if (Model.StockSnapshots.Count == 0)
+            {
+                <div class="alert alert-info mb-0">Stok verisi yok.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Ürün</th>
+                                <th>SKU</th>
+                                <th class="text-end">Stok</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var s in Model.StockSnapshots)
+                            {
+                                <tr>
+                                    <td>@s.ProductName</td>
+                                    <td><code>@s.Sku</code></td>
+                                    <td class="text-end fw-semibold">@s.Quantity</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
     </div>
 
-    <button type="submit" class="btn btn-primary">Giriş</button>
-
-    <div class="mt-3 text-muted" style="font-size:0.9rem;">
-        <div><strong>Dev kullanıcıları:</strong></div>
-        <div>purchasing@local / DevPass!12345</div>
-        <div>it@local / DevPass!12345</div>
+    <div class="card border-0 shadow-sm rounded-4 mt-4">
+        <div class="card-header bg-white border-0 pt-4 px-4">
+            <h2 class="h5 mb-1">Son Stok Hareketleri</h2>
+            <p class="text-muted small mb-0">En son stok giriş ve çıkış kayıtları</p>
+        </div>
+        <div class="card-body px-4 pb-4">
+            @if (Model.RecentMovements.Count == 0)
+            {
+                <div class="alert alert-info mb-0">Hareket kaydı yok.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tarih</th>
+                                <th>Ürün</th>
+                                <th>Tip</th>
+                                <th class="text-end">Adet</th>
+                                <th>Açıklama</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var m in Model.RecentMovements)
+                            {
+                                <tr>
+                                    <td>@m.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                    <td>@m.ProductName <code>@m.Sku</code></td>
+                                    <td>
+                                        @if (m.Type == "In")
+                                        {
+                                            <span class="badge text-bg-success">In</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge text-bg-danger">Out</span>
+                                        }
+                                    </td>
+                                    <td class="text-end fw-semibold">@m.Quantity</td>
+                                    <td>@(string.IsNullOrWhiteSpace(m.Reason) ? "-" : m.Reason)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
     </div>
-</form>
+</div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-}
-```
+    <script>
+        (function () {
+            const topCategorySelect = document.getElementById('topCategorySelect');
+            const subCategorySelect = document.getElementById('subCategorySelect');
+            const subSubCategorySelect = document.getElementById('subSubCategorySelect');
+            const productSelect = document.getElementById('productSelect');
+            if (!topCategorySelect || !subCategorySelect || !subSubCategorySelect || !productSelect) return;
 
-#### ./Views/Account/AccessDenied.cshtml
+            const subCategoriesUrl = '@subCategoriesUrl';
+            const productsByCategoryUrl = '@productsByCategoryUrl';
 
-```cshtml
-@{
-    ViewData["Title"] = "Access Denied";
-}
-
-<h1>Erişim Engellendi</h1>
-<p>Bu işlem için yetkin yok.</p>
-<p>
-    <a asp-controller="Home" asp-action="Index">Ana sayfa</a>
-</p>
-```
-
-#### ./Program.cs
-
-```csharp
-using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using Pehlione.Data;
-using Pehlione.Models;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// MVC
-builder.Services.AddControllersWithViews();
-
-// EF Core (MySQL)
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-{
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
-});
-
-// Identity (Roles dahil)
-builder.Services
-    .AddIdentity<ApplicationUser, IdentityRole>(options =>
-    {
-        options.User.RequireUniqueEmail = true;
-
-        options.Password.RequireDigit = true;
-        options.Password.RequireUppercase = true;
-        options.Password.RequireLowercase = true;
-        options.Password.RequireNonAlphanumeric = true;
-        options.Password.RequiredLength = 10;
-    })
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
-
-// Cookie redirect paths (AccessDenied/Login)
-builder.Services.ConfigureApplicationCookie(options =>
-{
-    options.LoginPath = "/Account/Login";
-    options.AccessDeniedPath = "/Account/AccessDenied";
-});
-
-// AuthN: Cookie (UI) + JWT (API/endpoint)
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultScheme = IdentityConstants.ApplicationScheme;
-})
-.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
-{
-    var jwt = builder.Configuration.GetSection("Jwt");
-    var key = jwt["Key"] ?? throw new InvalidOperationException("Jwt:Key missing");
-
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateIssuerSigningKey = true,
-        ValidateLifetime = true,
-        ValidIssuer = jwt["Issuer"],
-        ValidAudience = jwt["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
-        ClockSkew = TimeSpan.FromSeconds(30)
-    };
-});
-
-// AuthZ: Policy bazlı net yetki ayrımı
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("CanIncreaseStock", policy =>
-        policy.RequireRole("Purchasing", "Admin"));
-
-    options.AddPolicy("CanDeleteStock", policy =>
-        policy.RequireRole("IT", "Admin"));
-});
-
-var app = builder.Build();
-
-// Seed roles + dev users (only in Development)
-if (app.Environment.IsDevelopment())
-{
-    await SeedData.EnsureSeededAsync(app.Services);
-}
-
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Home/Error");
-    app.UseHsts();
-}
-
-app.UseHttpsRedirection();
-app.UseStaticFiles();
-
-app.UseRouting();
-
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
-
-app.Run();
-```
-
-#### ./Views/Shared/_Layout.cshtml
-
-> Not: Bu dosyanın içeriği template’e göre değişebilir. Aşağıdaki içerik **tam dosya** olarak veriliyor; mevcut layout’unu bununla değiştir.
-
-```cshtml
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Pehlione</title>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-</head>
-<body>
-<header>
-    <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-        <div class="container-fluid">
-            <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">Pehlione</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
-            <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                <ul class="navbar-nav flex-grow-1">
-                    <li class="nav-item">
-                        <a class="nav-link text-dark" asp-controller="Home" asp-action="Index">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-dark" asp-controller="Inventory" asp-action="Index">Inventory</a>
-                    </li>
-                </ul>
-
-                <ul class="navbar-nav">
-                    @if (User?.Identity?.IsAuthenticated ?? false)
-                    {
-                        <li class="nav-item">
-                            <span class="nav-link text-muted">
-                                @User.Identity!.Name
-                            </span>
-                        </li>
-                        <li class="nav-item">
-                            <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-sm btn-outline-secondary">Logout</button>
-                            </form>
-                        </li>
+            function fillOptions(select, items, valueField, textField, selectedValue, includeEmpty) {
+                select.innerHTML = '';
+                if (includeEmpty) {
+                    const emptyOption = document.createElement('option');
+                    emptyOption.value = '';
+                    emptyOption.textContent = 'Seçiniz';
+                    select.appendChild(emptyOption);
+                }
+                for (const item of items) {
+                    const option = document.createElement('option');
+                    option.value = String(item[valueField]);
+                    option.textContent = item[textField];
+                    if (String(item[valueField]) === String(selectedValue || '')) {
+                        option.selected = true;
                     }
-                    else
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Account" asp-action="Login">Login</a>
-                        </li>
-                    }
-                </ul>
-            </div>
-        </div>
-    </nav>
-</header>
+                    select.appendChild(option);
+                }
+                if (select.options.length > 0 && select.selectedIndex < 0) {
+                    select.selectedIndex = 0;
+                }
+            }
 
-<div class="container">
-    <main role="main" class="pb-3">
-        @RenderBody()
-    </main>
-</div>
+            async function loadSubCategories(parentId, targetSelect, selectedValue) {
+                if (!parentId) {
+                    fillOptions(targetSelect, [], 'value', 'text', '', true);
+                    return;
+                }
 
-<footer class="border-top footer text-muted">
-    <div class="container">
-        &copy; @DateTime.Now.Year - Pehlione
-    </div>
-</footer>
+                const response = await fetch(`${subCategoriesUrl}?parentId=${encodeURIComponent(parentId)}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
 
-<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-@await RenderSectionAsync("Scripts", required: false)
-</body>
-</html>
+                if (!response.ok) {
+                    fillOptions(targetSelect, [], 'value', 'text', '', true);
+                    return;
+                }
+
+                const items = await response.json();
+                fillOptions(targetSelect, items, 'value', 'text', selectedValue, true);
+            }
+
+            async function loadProducts(categoryId, selectedValue) {
+                if (!categoryId) {
+                    fillOptions(productSelect, [], 'value', 'text', '', false);
+                    return;
+                }
+
+                const response = await fetch(`${productsByCategoryUrl}?categoryId=${encodeURIComponent(categoryId)}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                if (!response.ok) {
+                    fillOptions(productSelect, [], 'value', 'text', '', false);
+                    return;
+                }
+
+                const items = await response.json();
+                fillOptions(productSelect, items, 'value', 'text', selectedValue, false);
+            }
+
+            async function syncProducts() {
+                const topId = parseInt(topCategorySelect.value || '0', 10);
+                const subId = parseInt(subCategorySelect.value || '0', 10);
+                const subSubId = parseInt(subSubCategorySelect.value || '0', 10);
+                const selectedNode = subSubId || subId || topId;
+                const currentProduct = productSelect.value || '';
+                await loadProducts(selectedNode, currentProduct);
+            }
+
+            topCategorySelect.addEventListener('change', async function () {
+                await loadSubCategories(parseInt(topCategorySelect.value || '0', 10), subCategorySelect, '');
+                await loadSubCategories(parseInt(subCategorySelect.value || '0', 10), subSubCategorySelect, '');
+                await syncProducts();
+            });
+
+            subCategorySelect.addEventListener('change', async function () {
+                await loadSubCategories(parseInt(subCategorySelect.value || '0', 10), subSubCategorySelect, '');
+                await syncProducts();
+            });
+
+            subSubCategorySelect.addEventListener('change', async function () {
+                await syncProducts();
+            });
+
+            (async function initialize() {
+                await loadSubCategories(parseInt(topCategorySelect.value || '0', 10), subCategorySelect, '@(Model.SubCategoryId?.ToString() ?? "")');
+                await loadSubCategories(parseInt(subCategorySelect.value || '0', 10), subSubCategorySelect, '@(Model.SubSubCategoryId?.ToString() ?? "")');
+                await loadProducts(parseInt(subSubCategorySelect.value || subCategorySelect.value || topCategorySelect.value || '0', 10), '@Model.ProductId');
+            })();
+        })();
+    </script>
+}
 ```
 
-### D) Kısa Açıklama (en fazla 5 madde)
+Bir de daha iyi görünmesi için şu Bootstrap tercihlerini kullandım:
 
-* Cookie auth ile UI login çalışır; policy’ler endpoint’leri **403/AccessDenied** ile korur.
-* `Inventory/Increase` sadece Purchasing/Admin; `Inventory/DeleteProduct` sadece IT/Admin.
-* UI’da butonlar role göre görünür ama asıl güvenlik **policy**’dedir.
-* `dotnet run` ile açıp `/Account/Login` üzerinden giriş yapabilirsin.
-* Test: Purchasing ile “Sil” butonu görünmez; URL ile POST denersen de AccessDenied alırsın.
+* form alanları: `form-select form-select-lg`, `form-control form-control-lg`
+* kartlar: `card border-0 shadow-sm rounded-4`
+* tablo: `table table-hover align-middle`
+* başlık alanı: `badge + h3 + text-muted`
+* butonlar: `btn btn-primary btn-lg`, `btn btn-outline-danger btn-lg`
 
-### E) Git Commit
+İstersen bir sonraki mesajda bunu bir tık daha düzenleyip:
 
-**Commit mesajı:** `Add UI login/logout and access denied page`
+* **2 select yan yana**
+* **ürün ve miktar aynı satırda**
+* **daha kompakt ama modern Bootstrap layout**
 
-```bash
-git add -A && git commit -m "Add UI login/logout and access denied page"
-```
-
-“**bitti**” yazınca bir sonraki adımda: stok artırmayı **atomik** hale getireceğiz (yarış durumlarına dayanıklı) ve ayrıca **Purchasing’in silmeye kesinlikle erişemediğini** endpoint test senaryosuyla netleştireceğiz.
-
-
-“**bitti**” yazınca sıradaki adım: **UI Login/Logout** (AccountController + Views) ekleyip `purchasing@local` ve `it@local` ile giriş yaparak Inventory ekranında butonların doğru kısıtlandığını canlı test edeceğiz.
+olarak da verebilirim.

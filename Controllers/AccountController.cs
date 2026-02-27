@@ -70,14 +70,7 @@ public sealed class AccountController : Controller
             {
                 return Redirect(model.ReturnUrl);
             }
-
-            var isPurchasing = await _userManager.IsInRoleAsync(user, IdentitySeed.RolePurchasing);
-            if (isPurchasing)
-            {
-                return RedirectToAction("Receive", "Inventory", new { area = "Staff" });
-            }
-
-            return RedirectToAction("Index", "Home");
+            return await RedirectToRoleDashboardAsync(user);
         }
 
         ModelState.AddModelError(string.Empty, "Kullanici adi/e-posta veya parola hatali.");
@@ -149,6 +142,25 @@ public sealed class AccountController : Controller
         {
             return Redirect(model.ReturnUrl);
         }
+        return await RedirectToRoleDashboardAsync(user);
+    }
+
+    private async Task<IActionResult> RedirectToRoleDashboardAsync(ApplicationUser user)
+    {
+        if (await _userManager.IsInRoleAsync(user, IdentitySeed.RoleAdmin))
+            return RedirectToAction("Index", "Home", new { area = "Admin" });
+
+        if (await _userManager.IsInRoleAsync(user, IdentitySeed.RolePurchasing))
+            return RedirectToAction("Index", "Purchasing", new { area = "Staff" });
+
+        if (await _userManager.IsInRoleAsync(user, IdentitySeed.RoleIt))
+            return RedirectToAction("Index", "It", new { area = "Staff" });
+
+        if (await _userManager.IsInRoleAsync(user, IdentitySeed.RoleStaff))
+            return RedirectToAction("Index", "Home", new { area = "Staff" });
+
+        if (await _userManager.IsInRoleAsync(user, IdentitySeed.RoleCustomer))
+            return RedirectToAction("Index", "Home", new { area = "Customer" });
 
         return RedirectToAction("Index", "Home");
     }
