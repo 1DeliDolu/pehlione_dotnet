@@ -10,7 +10,7 @@
     <div class="card-body p-4">
     <h1 class="h3 mb-3">Urun duzenle</h1>
 
-    <form asp-area="Admin" asp-controller="Products" asp-action="Edit" method="post" class="js-form-search-target">
+    <form asp-area="Admin" asp-controller="Products" asp-action="Edit" method="post" enctype="multipart/form-data" class="js-form-search-target">
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="Id" />
 
@@ -47,6 +47,19 @@
             <label asp-for="Price" class="form-label"></label>
             <input asp-for="Price" class="form-control" />
             <span asp-validation-for="Price" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="ImageUrlsText" class="form-label"></label>
+            <textarea asp-for="ImageUrlsText" class="form-control" rows="4" placeholder="https://..."></textarea>
+            <span asp-validation-for="ImageUrlsText" class="text-danger"></span>
+            <div class="form-text">Mevcut resimleri duzenlemek icin satirlari guncelleyebilirsin. Her satira bir link. Bos birakirsan mevcut resimler korunur.</div>
+        </div>
+
+        <div class="mb-3">
+            <label for="uploadedImages" class="form-label">Yeni resim dosyalari</label>
+            <input id="uploadedImages" name="uploadedImages" type="file" class="form-control" accept="image/*" multiple />
+            <div class="form-text">Birden fazla resmi ayni anda ekleyebilirsin.</div>
         </div>
 
         <div class="form-check mb-3">

@@ -69,7 +69,8 @@ public sealed class CartController : Controller
                 p.Id,
                 p.Name,
                 p.Sku,
-                p.Price
+                p.Price,
+                p.ImageUrls
             })
             .ToListAsync(ct);
 
@@ -91,6 +92,7 @@ public sealed class CartController : Controller
                 ProductId = p.Id,
                 Name = p.Name,
                 Sku = p.Sku,
+                ImageUrl = p.ImageUrls.FirstOrDefault(),
                 Color = ci.Color,
                 Size = ci.Size,
                 UnitPrice = p.Price,
@@ -502,7 +504,8 @@ public sealed class CartController : Controller
                 p.Id,
                 p.Name,
                 p.Sku,
-                p.Price
+                p.Price,
+                p.ImageUrls
             })
             .ToListAsync(ct);
 
@@ -664,7 +667,8 @@ public sealed class CartController : Controller
                 p.Id,
                 p.Name,
                 p.Sku,
-                p.Price
+                p.Price,
+                p.ImageUrls
             })
             .ToListAsync(ct);
 
@@ -684,6 +688,7 @@ public sealed class CartController : Controller
                 ProductId = p.Id,
                 Name = p.Name,
                 Sku = p.Sku,
+                ImageUrl = p.ImageUrls.FirstOrDefault(),
                 Color = ci.Color,
                 Size = ci.Size,
                 UnitPrice = p.Price,

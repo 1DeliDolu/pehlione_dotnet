@@ -6,6 +6,7 @@ public sealed class CatalogProductDetailsVm
     public string Name { get; set; } = "";
     public string Sku { get; set; } = "";
     public decimal Price { get; set; }
+    public IReadOnlyList<string> ImageUrls { get; set; } = Array.Empty<string>();
 
     public string CategoryName { get; set; } = "";
     public string CategorySlug { get; set; } = "";

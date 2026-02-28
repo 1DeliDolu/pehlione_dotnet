@@ -28,6 +28,7 @@
         <table class="table table-striped align-middle">
             <thead>
             <tr>
+                <th>Resim</th>
                 <th>Urun</th>
                 <th>SKU</th>
                 <th>Secenek</th>
@@ -41,6 +42,16 @@
             @foreach (var l in Model.Lines)
             {
                 <tr>
+                    <td style="width: 84px;">
+                        @if (!string.IsNullOrWhiteSpace(l.ImageUrl))
+                        {
+                            <img src="@l.ImageUrl" alt="@l.Name" style="width:64px;height:64px;object-fit:cover;border-radius:10px;" />
+                        }
+                        else
+                        {
+                            <div class="text-muted small">Resim yok</div>
+                        }
+                    </td>
                     <td>
                         <a asp-area="Customer"
                            asp-controller="Catalog"
@@ -99,7 +110,7 @@
             </tbody>
             <tfoot>
             <tr>
-                <th colspan="5" class="text-end">Toplam</th>
+                <th colspan="6" class="text-end">Toplam</th>
                 <th class="text-end">@Model.Total.ToString("0.00")</th>
                 <th></th>
             </tr>

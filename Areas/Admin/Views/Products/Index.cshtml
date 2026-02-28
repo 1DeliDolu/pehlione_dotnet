@@ -52,6 +52,7 @@
         <table class="table table-striped align-middle">
             <thead>
             <tr>
+                <th>Resim</th>
                 <th>Ad</th>
                 <th>SKU</th>
                 <th>Kategori</th>
@@ -63,7 +64,22 @@
             <tbody>
             @foreach (var p in Model)
             {
+                var firstImage = p.ImageUrls.FirstOrDefault();
                 <tr>
+                    <td style="width: 92px;">
+                        @if (!string.IsNullOrWhiteSpace(firstImage))
+                        {
+                            <img src="@firstImage" alt="@p.Name" style="width:64px;height:64px;object-fit:cover;border-radius:8px;" />
+                            @if (p.ImageUrls.Count > 1)
+                            {
+                                <div class="small text-muted mt-1">+@(p.ImageUrls.Count - 1)</div>
+                            }
+                        }
+                        else
+                        {
+                            <span class="text-muted small">Resim yok</span>
+                        }
+                    </td>
                     <td>@p.Name</td>
                     <td><code>@p.Sku</code></td>
                     <td>@p.CategoryName</td>
@@ -80,6 +96,12 @@
                     </td>
                     <td class="text-end">
                         <div class="d-inline-flex gap-2">
+                            <a class="btn btn-sm btn-dark"
+                               asp-area="Admin"
+                               asp-controller="Products"
+                               asp-action="Product"
+                               asp-route-id="@p.Id">Goruntule</a>
+
                             <a class="btn btn-sm btn-outline-primary"
                                asp-area="Admin"
                                asp-controller="Products"

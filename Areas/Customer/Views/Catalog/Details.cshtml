@@ -1,6 +1,7 @@
 @model Pehlione.Models.ViewModels.Customer.CatalogProductDetailsVm
 @{
     ViewData["Title"] = Model.Name;
+    var firstImage = Model.ImageUrls.FirstOrDefault();
 }
 
 <div class="container py-3 py-md-4" style="max-width: 1100px;">
@@ -31,6 +32,38 @@
     </div>
 
     <div class="row g-3">
+        <div class="col-12 col-lg-5">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-3 p-md-4">
+                    @if (!string.IsNullOrWhiteSpace(firstImage))
+                    {
+                        <img id="catalogMainImage" src="@firstImage" alt="@Model.Name" style="width:100%;height:420px;object-fit:cover;border-radius:12px;" />
+
+                        @if (Model.ImageUrls.Count > 1)
+                        {
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                @foreach (var img in Model.ImageUrls)
+                                {
+                                    <button type="button"
+                                            class="btn p-0 border-0 js-gallery-thumb"
+                                            data-image="@img"
+                                            aria-label="Resmi sec">
+                                        <img src="@img" alt="@Model.Name" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:2px solid transparent;" />
+                                    </button>
+                                }
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-center justify-content-center text-muted" style="height:420px;background:#f8f9fa;border-radius:12px;">
+                            Resim yok
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
         <div class="col-12 col-lg-7">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-3 p-md-4">
@@ -103,3 +136,32 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const mainImage = document.getElementById('catalogMainImage');
+            const thumbs = Array.from(document.querySelectorAll('.js-gallery-thumb'));
+            if (!mainImage || thumbs.length === 0) return;
+
+            const setActive = (selected) => {
+                thumbs.forEach((btn) => {
+                    const img = btn.querySelector('img');
+                    if (!img) return;
+                    img.style.borderColor = btn === selected ? '#212529' : 'transparent';
+                });
+            };
+
+            thumbs.forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const next = btn.getAttribute('data-image');
+                    if (!next) return;
+                    mainImage.src = next;
+                    setActive(btn);
+                });
+            });
+
+            setActive(thumbs[0]);
+        })();
+    </script>
+}

@@ -7,5 +7,6 @@ public sealed class ProductListItemVm
     public string Sku { get; set; } = "";
     public string CategoryName { get; set; } = "";
     public decimal Price { get; set; }
+    public IReadOnlyList<string> ImageUrls { get; set; } = Array.Empty<string>();
     public bool IsActive { get; set; }
 }

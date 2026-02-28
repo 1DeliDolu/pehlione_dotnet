@@ -94,15 +94,27 @@ public sealed class CatalogController : Controller
             _ => productQuery.OrderBy(p => p.Name)
         };
 
-        var products = await productQuery
+        var productRows = await productQuery
+            .Select(p => new
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Sku = p.Sku,
+                Price = p.Price,
+                ImageUrls = p.ImageUrls
+            })
+            .ToListAsync(ct);
+
+        var products = productRows
             .Select(p => new CatalogProductListItemVm
             {
                 Id = p.Id,
                 Name = p.Name,
                 Sku = p.Sku,
-                Price = p.Price
+                Price = p.Price,
+                ImageUrl = NormalizeImageUrl(p.ImageUrls.FirstOrDefault())
             })
-            .ToListAsync(ct);
+            .ToList();
 
         var vm = new CatalogCategoryDetailsVm
         {
@@ -125,26 +137,65 @@ public sealed class CatalogController : Controller
     [HttpGet]
     public async Task<IActionResult> Details(int id, CancellationToken ct)
     {
-        var vm = await _db.Products
+        var row = await _db.Products
             .AsNoTracking()
             .Where(p => p.Id == id && p.IsActive && p.Category != null && p.Category.IsActive)
-            .Select(p => new CatalogProductDetailsVm
+            .Select(p => new
             {
                 Id = p.Id,
                 Name = p.Name,
                 Sku = p.Sku,
                 Price = p.Price,
                 CategoryName = p.Category!.Name,
-                CategorySlug = p.Category!.Slug
+                CategorySlug = p.Category!.Slug,
+                ImageUrls = p.ImageUrls
             })
             .FirstOrDefaultAsync(ct);
 
-        if (vm is null)
+        if (row is null)
         {
             return NotFound();
         }
 
+        var vm = new CatalogProductDetailsVm
+        {
+            Id = row.Id,
+            Name = row.Name,
+            Sku = row.Sku,
+            Price = row.Price,
+            CategoryName = row.CategoryName,
+            CategorySlug = row.CategorySlug,
+            ImageUrls = row.ImageUrls
+                .Select(NormalizeImageUrl)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Cast<string>()
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList()
+        };
+
         return View(vm);
+    }
+
+    private static string? NormalizeImageUrl(string? imageUrl)
+    {
+        if (string.IsNullOrWhiteSpace(imageUrl))
+        {
+            return null;
+        }
+
+        var normalized = imageUrl.Trim().Replace('\\', '/');
+        if (Uri.TryCreate(normalized, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+        {
+            return normalized;
+        }
+
+        if (normalized.StartsWith('/'))
+        {
+            return normalized;
+        }
+
+        return "/" + normalized.TrimStart('/');
     }
 
     private static HashSet<int> GetDescendantCategoryIds(

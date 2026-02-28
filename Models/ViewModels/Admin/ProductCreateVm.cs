@@ -27,6 +27,9 @@ public sealed class ProductCreateVm
     [Display(Name = "Aktif mi?")]
     public bool IsActive { get; set; } = true;
 
+    [Display(Name = "Resim linkleri")]
+    public string? ImageUrlsText { get; set; }
+
     public IReadOnlyList<ProductCategoryOptionVm> CategoryOptions { get; set; } = Array.Empty<ProductCategoryOptionVm>();
 }
 
