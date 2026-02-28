@@ -94,4 +94,63 @@ public sealed class InventoryService : IInventoryService
 
         return ReceiveStockResult.Ok(currentQty);
     }
+
+    public async Task<ReceiveStockResult> ReduceStockAsync(int productId, int qty, string? note, string? userId, CancellationToken ct = default)
+    {
+        if (productId <= 0)
+            return ReceiveStockResult.Fail("Gecersiz urun.");
+
+        if (qty <= 0)
+            return ReceiveStockResult.Fail("Adet pozitif olmalidir.");
+
+        var productExists = await _db.Products
+            .AsNoTracking()
+            .AnyAsync(p => p.Id == productId, ct);
+
+        if (!productExists)
+            return ReceiveStockResult.Fail("Urun bulunamadi.");
+
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+
+        var rows = await _db.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE stocks SET quantity = quantity - {qty} WHERE product_id = {productId} AND quantity >= {qty}",
+            ct);
+
+        if (rows == 0)
+        {
+            await tx.RollbackAsync(ct);
+            return ReceiveStockResult.Fail("Yetersiz stok. Girilen adet mevcut stoktan buyuk.");
+        }
+
+        _db.StockMovements.Add(new StockMovement
+        {
+            ProductId = productId,
+            Type = StockMovementType.Out,
+            Quantity = qty,
+            Reason = string.IsNullOrWhiteSpace(note) ? "Warehouse stok azaltma" : note.Trim(),
+            CreatedByUserId = string.IsNullOrWhiteSpace(userId) ? null : userId
+        });
+
+        await _db.SaveChangesAsync(ct);
+
+        var currentQty = await _db.Stocks
+            .AsNoTracking()
+            .Where(x => x.ProductId == productId)
+            .Select(x => x.Quantity)
+            .FirstAsync(ct);
+
+        await tx.CommitAsync(ct);
+
+        await _notificationService.CreateAsync(
+            department: NotificationDepartments.Sales,
+            title: "Stok azaltma tamamlandi",
+            message: $"Urun #{productId} icin {qty} adet stok dusuldu. Guncel stok: {currentQty}",
+            relatedEntityType: "Product",
+            relatedEntityId: productId.ToString(),
+            ct: ct);
+
+        _logger.LogInformation("Stock reduced. ProductId={ProductId}, Qty={Qty}, CurrentQty={CurrentQty}", productId, qty, currentQty);
+
+        return ReceiveStockResult.Ok(currentQty);
+    }
 }

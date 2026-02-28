@@ -111,10 +111,40 @@
                     </div>
 
                     <div class="d-flex justify-content-end mt-4">
-                        <button type="submit" class="btn btn-primary btn-lg px-4">Stok Girisi Yap</button>
+                        @if (User.IsInRole("Purchasing") || User.IsInRole("Warehouse") || User.IsInRole("Admin"))
+                        {
+                            <button type="submit" class="btn btn-primary btn-lg px-4">Stok Artir</button>
+                        }
                     </div>
                 </div>
             </form>
+
+            @if (User.IsInRole("Warehouse") || User.IsInRole("Admin"))
+            {
+                <form id="decreaseForm" asp-area="Staff" asp-controller="Inventory" asp-action="Decrease" method="post" class="card border-0 shadow-sm rounded-4 mt-3">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="TopCategoryId" id="decreaseTopCategoryId" value="@Model.TopCategoryId" />
+                    <input type="hidden" name="SubCategoryId" id="decreaseSubCategoryId" value="@Model.SubCategoryId" />
+                    <input type="hidden" name="SubSubCategoryId" id="decreaseSubSubCategoryId" value="@Model.SubSubCategoryId" />
+                    <input type="hidden" name="ProductId" id="decreaseProductId" value="@Model.ProductId" />
+
+                    <div class="card-header bg-white border-0 pt-4 px-4">
+                        <h2 class="h5 mb-1">Warehouse Cikis Formu</h2>
+                        <p class="text-muted small mb-0">Secili urun stok miktarini dusurun. Stok sifirin altina inmez.</p>
+                    </div>
+                    <div class="card-body px-4 pb-4">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label for="decreaseQuantity" class="form-label fw-semibold">Azaltilacak Adet</label>
+                                <input id="decreaseQuantity" name="Quantity" type="number" min="1" value="1" class="form-control form-control-lg" />
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="submit" class="btn btn-outline-danger btn-lg px-4">Stok Azalt</button>
+                        </div>
+                    </div>
+                </form>
+            }
         </div>
         <div class="col-12">
             @if (User.IsInRole("IT") || User.IsInRole("Admin"))
@@ -258,6 +288,11 @@
             const subSubCategorySelect = document.getElementById('subSubCategorySelect');
             const productSelect = document.getElementById('productSelect');
             const quantityInput = document.getElementById('Quantity');
+            const decreaseQuantityInput = document.getElementById('decreaseQuantity');
+            const decreaseTopCategoryInput = document.getElementById('decreaseTopCategoryId');
+            const decreaseSubCategoryInput = document.getElementById('decreaseSubCategoryId');
+            const decreaseSubSubCategoryInput = document.getElementById('decreaseSubSubCategoryId');
+            const decreaseProductInput = document.getElementById('decreaseProductId');
             const receiveForm = document.getElementById('receiveForm');
             const stockSearchInput = document.getElementById('stockSearchInput');
             const stockSnapshotTable = document.getElementById('stockSnapshotTable');
@@ -359,8 +394,21 @@
                 loadProducts(selectedNode, String(productId));
 
                 quantityInput.value = String(qty);
+                if (decreaseQuantityInput) {
+                    decreaseQuantityInput.value = String(qty > 0 ? qty : 1);
+                }
+                syncDecreaseFormContext();
                 receiveForm?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 quantityInput.focus();
+            }
+
+            function syncDecreaseFormContext() {
+                if (!decreaseProductInput || !decreaseTopCategoryInput || !decreaseSubCategoryInput || !decreaseSubSubCategoryInput) return;
+
+                decreaseTopCategoryInput.value = topCategorySelect.value || '';
+                decreaseSubCategoryInput.value = subCategorySelect.value || '';
+                decreaseSubSubCategoryInput.value = subSubCategorySelect.value || '';
+                decreaseProductInput.value = productSelect.value || '';
             }
 
             function syncProducts() {
@@ -376,21 +424,29 @@
                 loadSubCategories(parseInt(topCategorySelect.value || '0', 10), subCategorySelect, '');
                 loadSubCategories(parseInt(subCategorySelect.value || '0', 10), subSubCategorySelect, '');
                 syncProducts();
+                syncDecreaseFormContext();
             });
 
             subCategorySelect.addEventListener('change', function () {
                 loadSubCategories(parseInt(subCategorySelect.value || '0', 10), subSubCategorySelect, '');
                 syncProducts();
+                syncDecreaseFormContext();
             });
 
             subSubCategorySelect.addEventListener('change', function () {
                 syncProducts();
+                syncDecreaseFormContext();
+            });
+
+            productSelect.addEventListener('change', function () {
+                syncDecreaseFormContext();
             });
 
             (function initialize() {
                 loadSubCategories(parseInt(topCategorySelect.value || '0', 10), subCategorySelect, '@(Model.SubCategoryId?.ToString() ?? "")');
                 loadSubCategories(parseInt(subCategorySelect.value || '0', 10), subSubCategorySelect, '@(Model.SubSubCategoryId?.ToString() ?? "")');
                 loadProducts(parseInt(subSubCategorySelect.value || subCategorySelect.value || topCategorySelect.value || '0', 10), '@Model.ProductId');
+                syncDecreaseFormContext();
             })();
 
             document.querySelectorAll('.js-stock-edit').forEach(btn => {

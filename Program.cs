@@ -84,6 +84,9 @@ builder.Services.AddAuthorization(options =>
 
     options.AddPolicy("CanDeleteStock", policy =>
         policy.RequireRole(IdentitySeed.RoleIt, IdentitySeed.RoleAdmin));
+
+    options.AddPolicy("CanDecreaseStock", policy =>
+        policy.RequireRole(IdentitySeed.RoleWarehouse, IdentitySeed.RoleAdmin));
 });
 
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();

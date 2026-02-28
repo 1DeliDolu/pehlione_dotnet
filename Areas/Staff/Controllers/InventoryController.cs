@@ -162,6 +162,70 @@ public sealed class InventoryController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = "CanDecreaseStock")]
+    public async Task<IActionResult> Decrease(ReceiveStockVm model, CancellationToken ct)
+    {
+        model.AllCategories = await LoadAllCategoriesAsync(ct);
+        model.AllProducts = await LoadProductOptionsAsync(ct);
+        model.TopCategoryOptions = BuildTopCategorySelectItems(model.AllCategories);
+        model.SubCategoryOptions = BuildChildCategorySelectItems(model.AllCategories, model.TopCategoryId);
+        model.SubSubCategoryOptions = BuildChildCategorySelectItems(model.AllCategories, model.SubCategoryId);
+        var selectedCategoryForProducts = model.SubSubCategoryId ?? model.SubCategoryId ?? model.TopCategoryId;
+        model.ProductOptions = BuildProductSelectItems(model.AllProducts, model.AllCategories, selectedCategoryForProducts);
+        await PopulateDashboardAsync(model, ct);
+
+        if (!ModelState.IsValid)
+            return View("Receive", model);
+
+        var topCategory = model.AllCategories.FirstOrDefault(x => x.CategoryId == model.TopCategoryId && x.ParentCategoryId is null);
+        if (topCategory is null)
+        {
+            ModelState.AddModelError(nameof(model.TopCategoryId), "Gecerli bir ana kategori secin.");
+            return View("Receive", model);
+        }
+
+        if (model.SubCategoryId.HasValue)
+        {
+            var subCategory = model.AllCategories.FirstOrDefault(x => x.CategoryId == model.SubCategoryId.Value);
+            if (subCategory is null || subCategory.ParentCategoryId != model.TopCategoryId)
+            {
+                ModelState.AddModelError(nameof(model.SubCategoryId), "Alt grup secimi gecersiz.");
+                return View("Receive", model);
+            }
+        }
+
+        if (model.SubSubCategoryId.HasValue)
+        {
+            var subSubCategory = model.AllCategories.FirstOrDefault(x => x.CategoryId == model.SubSubCategoryId.Value);
+            if (subSubCategory is null || subSubCategory.ParentCategoryId != model.SubCategoryId)
+            {
+                ModelState.AddModelError(nameof(model.SubSubCategoryId), "Alt grup 2 secimi gecersiz.");
+                return View("Receive", model);
+            }
+        }
+
+        var product = model.AllProducts.FirstOrDefault(x => x.ProductId == model.ProductId);
+        var allowedCategoryIds = GetDescendantCategoryIds(model.AllCategories, selectedCategoryForProducts);
+        if (product is null || !allowedCategoryIds.Contains(product.CategoryId))
+        {
+            ModelState.AddModelError(nameof(model.ProductId), "Secilen urun kategori/agac secimi ile uyusmuyor.");
+            return View("Receive", model);
+        }
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var result = await _inventoryService.ReduceStockAsync(model.ProductId, model.Quantity, null, userId, ct);
+        if (!result.Success)
+        {
+            ModelState.AddModelError(string.Empty, result.Error ?? "Stok dusme islemi basarisiz.");
+            return View("Receive", model);
+        }
+
+        TempData["InventorySuccess"] = $"Stok dusuruldu. Yeni stok: {result.CurrentQuantity}";
+        return RedirectToAction(nameof(Receive), new { topCategoryId = model.TopCategoryId, subCategoryId = model.SubCategoryId, subSubCategoryId = model.SubSubCategoryId, productId = model.ProductId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     [Authorize(Policy = "CanDeleteStock")]
     public async Task<IActionResult> DeleteProduct(int productId, CancellationToken ct)
     {
