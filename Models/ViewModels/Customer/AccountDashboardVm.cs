@@ -130,6 +130,7 @@ public sealed class CustomerOrderHistoryItemVm
     public int Id { get; set; }
     public DateTime CreatedAt { get; set; }
     public string Status { get; set; } = "";
+    public bool CanCancel { get; set; }
     public decimal TotalAmount { get; set; }
     public string Currency { get; set; } = "";
     public int ItemCount { get; set; }

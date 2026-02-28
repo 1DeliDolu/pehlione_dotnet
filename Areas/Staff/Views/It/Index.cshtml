@@ -19,6 +19,8 @@
         </div>
     </div>
 
+    @await Component.InvokeAsync("DashboardNotifications")
+
     @if (TempData["ItConstraintSaved"] is string ok && !string.IsNullOrWhiteSpace(ok))
     {
         <div class="alert alert-success shadow-sm">@ok</div>
@@ -29,7 +31,7 @@
 
         <div class="card-header bg-white border-0 pt-4 px-4">
             <h2 class="h5 mb-1">Departman Ayarlari</h2>
-            <p class="text-muted small mb-0">Degisiklikler kaydedildiginde aninda aktif olur.</p>
+            <p class="text-muted small mb-0">Okuma / Yazma / Silme yetkileri kaydedildiginde aninda aktif olur.</p>
         </div>
 
         <div class="card-body px-4 pb-4">
@@ -45,6 +47,11 @@
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Departman</label>
                                 <input class="form-control" value="@Model.Items[i].Department" disabled />
+                            </div>
+
+                            <div class="form-check form-switch mb-2">
+                                <input asp-for="Items[i].CanReadStock" class="form-check-input" />
+                                <label asp-for="Items[i].CanReadStock" class="form-check-label"></label>
                             </div>
 
                             <div class="form-check form-switch mb-2">
@@ -98,6 +105,7 @@
                         <option value="IT" selected="@(createPersonnel.Role == "IT")">IT</option>
                         <option value="HR" selected="@(createPersonnel.Role == "HR")">HR</option>
                         <option value="Accounting" selected="@(createPersonnel.Role == "Accounting")">Accounting</option>
+                        <option value="Courier" selected="@(createPersonnel.Role == "Courier")">Courier</option>
                     </select>
                 </div>
             </div>

@@ -5,6 +5,9 @@
 <div class="text-center">
     <h1 class="display-4">Calisanlar (Staff) Bolumu</h1>
     <p>Bu alan ileride <strong>Staff</strong> rolu ile korunacak (JWT + RBAC).</p>
+    <div class="container mt-3 text-start">
+        @await Component.InvokeAsync("DashboardNotifications")
+    </div>
     <div class="d-flex justify-content-center gap-2 mt-2">
         <a class="btn btn-primary" asp-area="Staff" asp-controller="Inventory" asp-action="Receive">Stok Girisi</a>
         <a class="btn btn-outline-secondary" asp-area="Staff" asp-controller="Notifications" asp-action="Index">Bildirimler</a>

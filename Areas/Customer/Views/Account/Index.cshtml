@@ -103,6 +103,7 @@
                                         <th>Durum</th>
                                         <th>Kalem</th>
                                         <th class="text-end">Tutar</th>
+                                        <th class="text-end">Islem</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -114,6 +115,20 @@
                                         <td>@o.Status</td>
                                         <td>@o.ItemCount</td>
                                         <td class="text-end">@o.TotalAmount.ToString("0.00") @o.Currency</td>
+                                        <td class="text-end">
+                                            @if (o.CanCancel)
+                                            {
+                                                <form asp-area="Customer" asp-controller="Account" asp-action="CancelOrder" method="post" class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="id" value="@o.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Siparisi iptal etmek istiyor musunuz?');">Iptal Et</button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted small">-</span>
+                                            }
+                                        </td>
                                     </tr>
                                 }
                                 </tbody>

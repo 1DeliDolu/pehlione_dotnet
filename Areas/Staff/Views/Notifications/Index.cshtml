@@ -9,14 +9,32 @@
         <form asp-area="Staff" asp-controller="Notifications" asp-action="MarkAllRead" method="post" class="d-inline">
             @Html.AntiForgeryToken()
             <input type="hidden" name="includeRead" value="@Model.IncludeRead" />
+            <input type="hidden" name="q" value="@Model.Query" />
+            <input type="hidden" name="department" value="@Model.Department" />
             <button type="submit" class="btn btn-outline-secondary">Tumunu okundu yap</button>
         </form>
     </div>
 
     <form method="get" asp-area="Staff" asp-controller="Notifications" asp-action="Index" class="mb-3">
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="includeRead" name="includeRead" value="true" @(Model.IncludeRead ? "checked" : "") />
-            <label class="form-check-label" for="includeRead">Okunmus olanlari da goster</label>
+        <div class="row g-2">
+            <div class="col-12 col-md-5">
+                <input type="text" name="q" value="@Model.Query" class="form-control" placeholder="Baslik/mesaj/ilgili kayit ara..." />
+            </div>
+            <div class="col-12 col-md-4">
+                <select name="department" class="form-select">
+                    <option value="">Tum departmanlar</option>
+                    @foreach (var d in Model.DepartmentOptions)
+                    {
+                        <option value="@d" selected="@(string.Equals(Model.Department, d, StringComparison.OrdinalIgnoreCase))">@d</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-3">
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" id="includeRead" name="includeRead" value="true" @(Model.IncludeRead ? "checked" : "") />
+                    <label class="form-check-label" for="includeRead">Okunmuslari goster</label>
+                </div>
+            </div>
         </div>
         <button class="btn btn-sm btn-primary mt-2" type="submit">Filtreyi uygula</button>
     </form>
@@ -55,6 +73,8 @@
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@n.Id" />
                                     <input type="hidden" name="includeRead" value="@Model.IncludeRead" />
+                                    <input type="hidden" name="q" value="@Model.Query" />
+                                    <input type="hidden" name="department" value="@Model.Department" />
                                     <button type="submit" class="btn btn-sm btn-outline-primary">Okundu</button>
                                 </form>
                             }

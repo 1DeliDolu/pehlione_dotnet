@@ -22,7 +22,7 @@ public sealed class DepartmentConstraintService : IDepartmentConstraintService
 
         var departments = GetDepartmentsForUser(user);
         if (departments.Count == 0)
-            return new DepartmentAccessResult(false, false, 0);
+            return new DepartmentAccessResult(false, false, false, 0);
 
         var persisted = await _db.Set<DepartmentConstraint>()
             .AsNoTracking()
@@ -33,6 +33,7 @@ public sealed class DepartmentConstraintService : IDepartmentConstraintService
             .Select(dept => persisted.FirstOrDefault(x => x.Department == dept) ?? GetDefaultConstraint(dept))
             .ToList();
 
+        var canRead = merged.Any(x => x.CanReadStock);
         var canIncrease = merged.Any(x => x.CanIncreaseStock);
         var canDelete = merged.Any(x => x.CanDeleteStock);
 
@@ -45,7 +46,7 @@ public sealed class DepartmentConstraintService : IDepartmentConstraintService
         if (maxValues.Count > 0)
             maxReceiveQty = maxValues.Max();
 
-        return new DepartmentAccessResult(canIncrease, canDelete, maxReceiveQty);
+        return new DepartmentAccessResult(canRead, canIncrease, canDelete, maxReceiveQty);
     }
 
     public static IReadOnlyList<string> GetSupportedDepartments()
@@ -55,7 +56,9 @@ public sealed class DepartmentConstraintService : IDepartmentConstraintService
             NotificationDepartments.Sales,
             NotificationDepartments.Purchasing,
             NotificationDepartments.It,
-            NotificationDepartments.Warehouse
+            NotificationDepartments.Warehouse,
+            NotificationDepartments.Accounting,
+            NotificationDepartments.Courier
         };
     }
 
@@ -66,6 +69,7 @@ public sealed class DepartmentConstraintService : IDepartmentConstraintService
             return new DepartmentConstraint
             {
                 Department = NotificationDepartments.Purchasing,
+                CanReadStock = true,
                 CanIncreaseStock = true,
                 CanDeleteStock = false,
                 MaxReceiveQuantity = null
@@ -77,6 +81,7 @@ public sealed class DepartmentConstraintService : IDepartmentConstraintService
             return new DepartmentConstraint
             {
                 Department = NotificationDepartments.It,
+                CanReadStock = true,
                 CanIncreaseStock = false,
                 CanDeleteStock = true,
                 MaxReceiveQuantity = null
@@ -88,7 +93,32 @@ public sealed class DepartmentConstraintService : IDepartmentConstraintService
             return new DepartmentConstraint
             {
                 Department = NotificationDepartments.Warehouse,
+                CanReadStock = true,
                 CanIncreaseStock = true,
+                CanDeleteStock = false,
+                MaxReceiveQuantity = null
+            };
+        }
+
+        if (department.Equals(NotificationDepartments.Accounting, StringComparison.OrdinalIgnoreCase))
+        {
+            return new DepartmentConstraint
+            {
+                Department = NotificationDepartments.Accounting,
+                CanReadStock = true,
+                CanIncreaseStock = false,
+                CanDeleteStock = false,
+                MaxReceiveQuantity = null
+            };
+        }
+
+        if (department.Equals(NotificationDepartments.Courier, StringComparison.OrdinalIgnoreCase))
+        {
+            return new DepartmentConstraint
+            {
+                Department = NotificationDepartments.Courier,
+                CanReadStock = true,
+                CanIncreaseStock = false,
                 CanDeleteStock = false,
                 MaxReceiveQuantity = null
             };
@@ -97,6 +127,7 @@ public sealed class DepartmentConstraintService : IDepartmentConstraintService
         return new DepartmentConstraint
         {
             Department = NotificationDepartments.Sales,
+            CanReadStock = true,
             CanIncreaseStock = false,
             CanDeleteStock = false,
             MaxReceiveQuantity = null
@@ -118,6 +149,12 @@ public sealed class DepartmentConstraintService : IDepartmentConstraintService
 
         if (user.IsInRole(IdentitySeed.RoleWarehouse))
             set.Add(NotificationDepartments.Warehouse);
+
+        if (user.IsInRole(IdentitySeed.RoleAccounting))
+            set.Add(NotificationDepartments.Accounting);
+
+        if (user.IsInRole(IdentitySeed.RoleCourier))
+            set.Add(NotificationDepartments.Courier);
 
         return set;
     }

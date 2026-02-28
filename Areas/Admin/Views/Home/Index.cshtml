@@ -16,6 +16,8 @@
         <div class="alert alert-warning shadow-sm">@err</div>
     }
 
+    @await Component.InvokeAsync("DashboardNotifications")
+
     <div class="row g-3 mb-3">
         <div class="col-12 col-md-6 col-xl-3">
             <a class="card border-0 shadow-sm rounded-4 h-100 text-decoration-none" asp-area="Admin" asp-controller="Home" asp-action="UserForm">

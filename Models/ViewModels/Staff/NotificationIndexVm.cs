@@ -3,6 +3,9 @@ namespace Pehlione.Models.ViewModels.Staff;
 public sealed class NotificationIndexVm
 {
     public bool IncludeRead { get; set; }
+    public string Query { get; set; } = "";
+    public string Department { get; set; } = "";
+    public IReadOnlyList<string> DepartmentOptions { get; set; } = Array.Empty<string>();
     public IReadOnlyList<NotificationListItemVm> Items { get; set; } = Array.Empty<NotificationListItemVm>();
 }
 

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
 using Pehlione.Models.Commerce;
 using Pehlione.Models.ViewModels.Admin;
+using Pehlione.Services;
 
 namespace Pehlione.Areas.Staff.Controllers;
 
@@ -15,6 +16,7 @@ public sealed class WarehouseController : Controller
     [
         OrderStatusWorkflow.Paid,
         OrderStatusWorkflow.Processing,
+        OrderStatusWorkflow.Packed,
         OrderStatusWorkflow.Shipped,
         "Odendi",
         "Hazirlaniyor",
@@ -35,10 +37,17 @@ public sealed class WarehouseController : Controller
     ];
 
     private readonly PehlioneDbContext _db;
+    private readonly IOrderStatusEmailService _orderStatusEmailService;
+    private readonly IOrderWorkflowNotificationService _orderWorkflowNotificationService;
 
-    public WarehouseController(PehlioneDbContext db)
+    public WarehouseController(
+        PehlioneDbContext db,
+        IOrderStatusEmailService orderStatusEmailService,
+        IOrderWorkflowNotificationService orderWorkflowNotificationService)
     {
         _db = db;
+        _orderStatusEmailService = orderStatusEmailService;
+        _orderWorkflowNotificationService = orderWorkflowNotificationService;
     }
 
     public IActionResult Index()
@@ -49,10 +58,16 @@ public sealed class WarehouseController : Controller
     [HttpGet]
     public async Task<IActionResult> Orders(string? q, string? status, CancellationToken ct)
     {
+        var isAdmin = User.IsInRole(IdentitySeed.RoleAdmin);
         var query = _db.Orders
             .AsNoTracking()
-            .Where(o => WarehouseVisibleStatuses.Contains(o.Status))
             .AsQueryable();
+
+        if (!isAdmin)
+        {
+            var visibleStatuses = WarehouseVisibleStatuses.ToList();
+            query = query.Where(o => visibleStatuses.Contains(o.Status));
+        }
 
         var normalizedQ = (q ?? "").Trim();
         if (!string.IsNullOrWhiteSpace(normalizedQ))
@@ -87,11 +102,7 @@ public sealed class WarehouseController : Controller
             .ToListAsync(ct);
 
         foreach (var item in items)
-            item.NextStatusOptions = OrderStatusWorkflow.GetNextStatuses(item.Status)
-                .Where(x => x.Equals(OrderStatusWorkflow.Processing, StringComparison.OrdinalIgnoreCase)
-                            || x.Equals(OrderStatusWorkflow.Shipped, StringComparison.OrdinalIgnoreCase)
-                            || x.Equals(OrderStatusWorkflow.Delivered, StringComparison.OrdinalIgnoreCase))
-                .ToArray();
+            item.NextStatusOptions = GetWarehouseAllowedStatuses(item.Status, isAdmin);
 
         var existingStatuses = items
             .Select(x => x.Status)
@@ -104,7 +115,7 @@ public sealed class WarehouseController : Controller
         ViewBag.Status = OrderStatusWorkflow.Normalize(normalizedStatus);
         ViewBag.Statuses = existingStatuses;
         ViewBag.ShippingCarriers = ShippingCarriers;
-        ViewBag.IsAdmin = User.IsInRole(IdentitySeed.RoleAdmin);
+        ViewBag.IsAdmin = isAdmin;
 
         return View(items);
     }
@@ -138,17 +149,14 @@ public sealed class WarehouseController : Controller
         }
 
         var current = OrderStatusWorkflow.Normalize(order.Status);
-        if (!OrderStatusWorkflow.IsWarehouseActionable(current))
+        var isAdmin = User.IsInRole(IdentitySeed.RoleAdmin);
+        if (!isAdmin && !OrderStatusWorkflow.IsWarehouseActionable(current))
         {
             TempData["WarehouseError"] = "Bu siparis depo islem kuyrugunda degil.";
             return RedirectToAction(nameof(Orders), new { q, status = currentStatus });
         }
 
-        var allowed = OrderStatusWorkflow.GetNextStatuses(current)
-            .Where(x => x.Equals(OrderStatusWorkflow.Processing, StringComparison.OrdinalIgnoreCase)
-                        || x.Equals(OrderStatusWorkflow.Shipped, StringComparison.OrdinalIgnoreCase)
-                        || x.Equals(OrderStatusWorkflow.Delivered, StringComparison.OrdinalIgnoreCase))
-            .ToArray();
+        var allowed = GetWarehouseAllowedStatuses(current, isAdmin);
         if (!allowed.Contains(normalized, StringComparer.OrdinalIgnoreCase))
         {
             TempData["WarehouseError"] = $"Gecersiz gecis: {current} -> {normalized}";
@@ -168,10 +176,33 @@ public sealed class WarehouseController : Controller
             order.TrackingCode = (trackingCode ?? string.Empty).Trim();
         }
 
+        var oldStatus = order.Status;
         order.Status = normalized;
         await _db.SaveChangesAsync(ct);
+        await _orderStatusEmailService.NotifyStatusChangedAsync(order, oldStatus, normalized, ct);
+        await _orderWorkflowNotificationService.OnStatusChangedAsync(order, oldStatus, normalized, ct);
 
         TempData["WarehouseSuccess"] = $"Siparis #{id} durumu guncellendi: {normalized}";
         return RedirectToAction(nameof(Orders), new { q, status = currentStatus });
+    }
+
+    private static string[] GetWarehouseAllowedStatuses(string? currentStatus, bool isAdmin)
+    {
+        var current = OrderStatusWorkflow.Normalize(currentStatus);
+        if (isAdmin)
+            return OrderStatusWorkflow.GetNextStatuses(current).ToArray();
+
+        // Warehouse operasyonunda hızlı akış:
+        // Paid -> Processing veya Shipped
+        // Processing -> Shipped
+        // Packed -> Shipped (eski veriler için)
+        if (current.Equals(OrderStatusWorkflow.Paid, StringComparison.OrdinalIgnoreCase))
+            return [OrderStatusWorkflow.Processing, OrderStatusWorkflow.Shipped];
+        if (current.Equals(OrderStatusWorkflow.Processing, StringComparison.OrdinalIgnoreCase))
+            return [OrderStatusWorkflow.Shipped];
+        if (current.Equals(OrderStatusWorkflow.Packed, StringComparison.OrdinalIgnoreCase))
+            return [OrderStatusWorkflow.Shipped];
+
+        return Array.Empty<string>();
     }
 }

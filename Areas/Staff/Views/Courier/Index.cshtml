@@ -1,0 +1,36 @@
+@{
+    ViewData["Title"] = "Courier Dashboard";
+}
+
+<div class="container-fluid py-4">
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <span class="badge text-bg-secondary mb-2">Courier Dashboard</span>
+            <h1 class="h3 mb-1">Kargo Operasyonlari</h1>
+            <p class="text-muted mb-0">Musteriye teslim ve saticiya iade teslim surecini bu panelden yonetin.</p>
+        </div>
+    </div>
+
+    @await Component.InvokeAsync("DashboardNotifications")
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h2 class="h5">Musteriye Teslim Akisi</h2>
+                    <p class="text-muted small">Shipped -> Courier Picked Up -> Delivered.</p>
+                    <a class="btn btn-primary" asp-area="Staff" asp-controller="Courier" asp-action="Orders">Kargo Islem Listesi</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h2 class="h5">Saticiya Iade Teslim Akisi</h2>
+                    <p class="text-muted small">Return Picked Up -> Return Delivered to Seller.</p>
+                    <a class="btn btn-outline-secondary" asp-area="Staff" asp-controller="Courier" asp-action="Orders">Iade Teslim Islemleri</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,7 +1,7 @@
 @model Pehlione.Models.ViewModels.Staff.HrDashboardVm
 @{
     ViewData["Title"] = "Insan Kaynaklari Dashboard";
-    var departments = new[] { "Sales", "Purchasing", "Warehouse", "IT", "HR", "Accounting" };
+    var departments = new[] { "Sales", "Purchasing", "Warehouse", "IT", "HR", "Accounting", "Courier" };
     var positions = new[] { "Staff", "Teamleiter", "Mudur" };
 }
 
@@ -13,6 +13,8 @@
             <p class="text-muted mb-0">Personelin birimini, rolunu ve gorev seviyesini bu panelden guncelleyebilirsiniz.</p>
         </div>
     </div>
+
+    @await Component.InvokeAsync("DashboardNotifications")
 
     @if (TempData["HrSuccess"] is string ok && !string.IsNullOrWhiteSpace(ok))
     {
@@ -61,6 +63,7 @@
                                             <option value="IT" selected="@(p.Role == "IT")">IT</option>
                                             <option value="HR" selected="@(p.Role == "HR")">HR</option>
                                             <option value="Accounting" selected="@(p.Role == "Accounting")">Accounting</option>
+                                            <option value="Courier" selected="@(p.Role == "Courier")">Courier</option>
                                         </select>
                                     </div>
                                     <div class="col-12 col-md-4 col-lg-2">

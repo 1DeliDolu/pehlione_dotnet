@@ -85,6 +85,7 @@ public sealed class ItController : Controller
             }
 
             entity.CanIncreaseStock = item.CanIncreaseStock;
+            entity.CanReadStock = item.CanReadStock;
             entity.CanDeleteStock = item.CanDeleteStock;
             entity.MaxReceiveQuantity = item.MaxReceiveQuantity;
             entity.UpdatedByUserId = userId;
@@ -101,7 +102,7 @@ public sealed class ItController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreatePersonnel(ItCreatePersonnelVm model, CancellationToken ct)
     {
-        var allowedRoles = new[] { IdentitySeed.RoleStaff, IdentitySeed.RolePurchasing, IdentitySeed.RoleWarehouse, IdentitySeed.RoleIt, IdentitySeed.RoleHr, IdentitySeed.RoleAccounting };
+        var allowedRoles = new[] { IdentitySeed.RoleStaff, IdentitySeed.RolePurchasing, IdentitySeed.RoleWarehouse, IdentitySeed.RoleIt, IdentitySeed.RoleHr, IdentitySeed.RoleAccounting, IdentitySeed.RoleCourier };
         if (!allowedRoles.Contains(model.Role))
             ModelState.AddModelError(nameof(model.Role), "Gecersiz rol secimi.");
 
@@ -169,6 +170,7 @@ public sealed class ItController : Controller
             items.Add(new DepartmentConstraintEditItemVm
             {
                 Department = department,
+                CanReadStock = item.CanReadStock,
                 CanIncreaseStock = item.CanIncreaseStock,
                 CanDeleteStock = item.CanDeleteStock,
                 MaxReceiveQuantity = item.MaxReceiveQuantity

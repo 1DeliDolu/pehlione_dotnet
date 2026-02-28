@@ -158,6 +158,14 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvQWNjb3VudGluZy9PcmRlcnMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
+[/home/project/Pehlione/Areas/Staff/Views/Courier/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvQ291cmllci9JbmRleC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/project/Pehlione/Areas/Staff/Views/Courier/Orders.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvQ291cmllci9PcmRlcnMuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
 [/home/project/Pehlione/Areas/Staff/Views/Home/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvSG9tZS9JbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
@@ -220,6 +228,10 @@ build_metadata.AdditionalFiles.CssScope =
 
 [/home/project/Pehlione/Views/Home/Privacy.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3MvSG9tZS9Qcml2YWN5LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/project/Pehlione/Views/Shared/Components/DashboardNotifications/Default.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvU2hhcmVkL0NvbXBvbmVudHMvRGFzaGJvYXJkTm90aWZpY2F0aW9ucy9EZWZhdWx0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
 [/home/project/Pehlione/Views/Shared/Components/MainNav/Default.cshtml]

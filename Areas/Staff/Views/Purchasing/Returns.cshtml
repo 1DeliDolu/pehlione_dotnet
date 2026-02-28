@@ -16,7 +16,16 @@
     <div class="card border-0 shadow-sm rounded-4">
         <div class="card-body p-4">
             <h1 class="h3 mb-3">Iade ve Iptal Kuyrugu</h1>
-            <p class="text-muted">Musteri iptal veya iade ettiginde siparis buraya duser. Satin alma bu kayitlara gore yeniden giris/donus operasyonunu planlar.</p>
+            <p class="text-muted">Cancelled, Return Delivered to Seller ve Refunded siparisler buraya duser. Satin alma bu kayitlara gore yeniden giris/donus operasyonunu planlar.</p>
+
+            @if (TempData["PurchasingSuccess"] is string ok && !string.IsNullOrWhiteSpace(ok))
+            {
+                <div class="alert alert-success py-2">@ok</div>
+            }
+            @if (TempData["PurchasingError"] is string err && !string.IsNullOrWhiteSpace(err))
+            {
+                <div class="alert alert-danger py-2">@err</div>
+            }
 
             <form method="get" asp-area="Staff" asp-controller="Purchasing" asp-action="Returns" class="row g-2 mb-3">
                 <div class="col-12 col-md-5">
@@ -44,6 +53,7 @@
                             <th>Kargo</th>
                             <th>Kalem</th>
                             <th class="text-end">Tutar</th>
+                            <th class="text-end">Islem</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -63,6 +73,25 @@
                                 </td>
                                 <td>@o.ItemCount</td>
                                 <td class="text-end fw-semibold">@o.TotalAmount.ToString("0.00") @o.Currency</td>
+                                <td class="text-end">
+                                    @if (o.CanRestock)
+                                    {
+                                        <form method="post" asp-area="Staff" asp-controller="Purchasing" asp-action="RestockReturnedOrder" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@o.Id" />
+                                            <input type="hidden" name="q" value="@query" />
+                                            <button type="submit" class="btn btn-sm btn-outline-success">Stoga Al</button>
+                                        </form>
+                                    }
+                                    else if (o.IsRestocked)
+                                    {
+                                        <span class="badge text-bg-success">Stoga Alindi</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">-</span>
+                                    }
+                                </td>
                             </tr>
                         }
                         </tbody>

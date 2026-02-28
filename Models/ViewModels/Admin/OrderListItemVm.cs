@@ -9,6 +9,8 @@ public sealed class OrderListItemVm
     public string? ShippingCarrier { get; set; }
     public string? TrackingCode { get; set; }
     public IReadOnlyList<string> NextStatusOptions { get; set; } = Array.Empty<string>();
+    public bool CanRestock { get; set; }
+    public bool IsRestocked { get; set; }
     public int ItemCount { get; set; }
     public decimal TotalAmount { get; set; }
     public string Currency { get; set; } = "";

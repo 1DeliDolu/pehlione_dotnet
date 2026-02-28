@@ -12,10 +12,13 @@ public sealed class DepartmentConstraintEditItemVm
     [Required]
     public string Department { get; set; } = "";
 
-    [Display(Name = "Stok Girisi")]
+    [Display(Name = "Okuma")]
+    public bool CanReadStock { get; set; }
+
+    [Display(Name = "Yazma")]
     public bool CanIncreaseStock { get; set; }
 
-    [Display(Name = "Urun Silme")]
+    [Display(Name = "Silme")]
     public bool CanDeleteStock { get; set; }
 
     [Display(Name = "Maks. Tek Islem Adedi")]

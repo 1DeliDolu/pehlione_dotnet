@@ -9,24 +9,24 @@ using Pehlione.Services;
 namespace Pehlione.Areas.Staff.Controllers;
 
 [Area("Staff")]
-[Authorize(Roles = $"{IdentitySeed.RoleAccounting},{IdentitySeed.RoleAdmin}")]
-public sealed class AccountingController : Controller
+[Authorize(Roles = $"{IdentitySeed.RoleCourier},{IdentitySeed.RoleAdmin}")]
+public sealed class CourierController : Controller
 {
-    private static readonly string[] AccountingVisibleStatuses =
+    private static readonly string[] CourierVisibleStatuses =
     [
-        OrderStatusWorkflow.Pending,
-        OrderStatusWorkflow.Paid,
         OrderStatusWorkflow.Cancelled,
-        OrderStatusWorkflow.ReturnDeliveredToSeller,
-        OrderStatusWorkflow.Refunded,
-        "Odendi"
+        OrderStatusWorkflow.Shipped,
+        OrderStatusWorkflow.CourierPickedUp,
+        OrderStatusWorkflow.OutForDelivery,
+        OrderStatusWorkflow.ReturnPickedUp,
+        "Returned"
     ];
 
     private readonly PehlioneDbContext _db;
     private readonly IOrderStatusEmailService _orderStatusEmailService;
     private readonly IOrderWorkflowNotificationService _orderWorkflowNotificationService;
 
-    public AccountingController(
+    public CourierController(
         PehlioneDbContext db,
         IOrderStatusEmailService orderStatusEmailService,
         IOrderWorkflowNotificationService orderWorkflowNotificationService)
@@ -52,8 +52,8 @@ public sealed class AccountingController : Controller
 
         if (!isAdmin)
         {
-            var visibleStatuses = AccountingVisibleStatuses.ToList();
-            query = query.Where(o => visibleStatuses.Contains(o.Status));
+            var visible = CourierVisibleStatuses.ToList();
+            query = query.Where(o => visible.Contains(o.Status));
         }
 
         var normalizedQ = (q ?? "").Trim();
@@ -90,24 +90,16 @@ public sealed class AccountingController : Controller
 
         foreach (var item in items)
         {
-            item.NextStatusOptions = isAdmin
-                ? OrderStatusWorkflow.GetNextStatuses(item.Status).ToArray()
-                : OrderStatusWorkflow.GetNextStatuses(item.Status)
-                    .Where(x => x.Equals(OrderStatusWorkflow.Paid, StringComparison.OrdinalIgnoreCase)
-                                || x.Equals(OrderStatusWorkflow.Refunded, StringComparison.OrdinalIgnoreCase))
-                    .ToArray();
+            item.NextStatusOptions = GetCourierAllowedStatuses(item.Status, isAdmin);
         }
 
-        var statuses = items
-            .Select(x => x.Status)
+        ViewBag.Query = normalizedQ;
+        ViewBag.Status = OrderStatusWorkflow.Normalize(normalizedStatus);
+        ViewBag.Statuses = items.Select(x => x.Status)
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(x => Array.IndexOf(OrderStatusWorkflow.AllStatuses.ToArray(), x))
             .ToArray();
-
-        ViewBag.Query = normalizedQ;
-        ViewBag.Status = OrderStatusWorkflow.Normalize(normalizedStatus);
-        ViewBag.Statuses = statuses;
 
         return View(items);
     }
@@ -122,7 +114,7 @@ public sealed class AccountingController : Controller
         var order = await _db.Orders.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (order is null)
         {
-            TempData["AccountingError"] = "Siparis bulunamadi.";
+            TempData["CourierError"] = "Siparis bulunamadi.";
             return RedirectToAction(nameof(Orders), new { q, status = currentStatus });
         }
 
@@ -130,17 +122,11 @@ public sealed class AccountingController : Controller
         var target = OrderStatusWorkflow.Normalize(status);
         var isAdmin = User.IsInRole(IdentitySeed.RoleAdmin);
 
-        if (!isAdmin &&
-            !target.Equals(OrderStatusWorkflow.Paid, StringComparison.OrdinalIgnoreCase)
-            && !target.Equals(OrderStatusWorkflow.Refunded, StringComparison.OrdinalIgnoreCase))
-        {
-            TempData["AccountingError"] = "Muhasebe sadece Paid veya Refunded adimlarini gunceller.";
-            return RedirectToAction(nameof(Orders), new { q, status = currentStatus });
-        }
+        var allowed = GetCourierAllowedStatuses(current, isAdmin);
 
-        if (!OrderStatusWorkflow.CanTransition(current, target))
+        if (!allowed.Contains(target, StringComparer.OrdinalIgnoreCase))
         {
-            TempData["AccountingError"] = $"Gecersiz gecis: {current} -> {target}";
+            TempData["CourierError"] = $"Gecersiz gecis: {current} -> {target}";
             return RedirectToAction(nameof(Orders), new { q, status = currentStatus });
         }
 
@@ -150,7 +136,30 @@ public sealed class AccountingController : Controller
         await _orderStatusEmailService.NotifyStatusChangedAsync(order, oldStatus, target, ct);
         await _orderWorkflowNotificationService.OnStatusChangedAsync(order, oldStatus, target, ct);
 
-        TempData["AccountingSuccess"] = $"Siparis #{id} durumu guncellendi: {target}";
+        TempData["CourierSuccess"] = $"Siparis #{id} durumu guncellendi: {target}";
         return RedirectToAction(nameof(Orders), new { q, status = currentStatus });
+    }
+
+    private static string[] GetCourierAllowedStatuses(string? currentStatus, bool isAdmin)
+    {
+        var current = OrderStatusWorkflow.Normalize(currentStatus);
+        if (isAdmin)
+            return OrderStatusWorkflow.GetNextStatuses(current).ToArray();
+
+        // Kurye akisinda sade operasyon:
+        // Shipped -> Courier Picked Up -> Delivered
+        // Iade tarafi: Return Picked Up -> Return Delivered to Seller
+        if (current.Equals(OrderStatusWorkflow.Shipped, StringComparison.OrdinalIgnoreCase))
+            return [OrderStatusWorkflow.CourierPickedUp];
+        if (current.Equals(OrderStatusWorkflow.Cancelled, StringComparison.OrdinalIgnoreCase))
+            return [OrderStatusWorkflow.ReturnPickedUp];
+        if (current.Equals(OrderStatusWorkflow.CourierPickedUp, StringComparison.OrdinalIgnoreCase))
+            return [OrderStatusWorkflow.Delivered];
+        if (current.Equals(OrderStatusWorkflow.OutForDelivery, StringComparison.OrdinalIgnoreCase))
+            return [OrderStatusWorkflow.Delivered];
+        if (current.Equals(OrderStatusWorkflow.ReturnPickedUp, StringComparison.OrdinalIgnoreCase))
+            return [OrderStatusWorkflow.ReturnDeliveredToSeller];
+
+        return Array.Empty<string>();
     }
 }

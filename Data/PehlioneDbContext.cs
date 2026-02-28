@@ -350,6 +350,7 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
             b.ToTable("department_constraints");
             b.Property(x => x.Id).HasColumnName("id");
             b.Property(x => x.Department).HasColumnName("department").HasMaxLength(64).IsRequired();
+            b.Property(x => x.CanReadStock).HasColumnName("can_read_stock").HasDefaultValue(true);
             b.Property(x => x.CanIncreaseStock).HasColumnName("can_increase_stock").HasDefaultValue(false);
             b.Property(x => x.CanDeleteStock).HasColumnName("can_delete_stock").HasDefaultValue(false);
             b.Property(x => x.MaxReceiveQuantity).HasColumnName("max_receive_quantity");

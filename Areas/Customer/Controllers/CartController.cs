@@ -29,6 +29,7 @@ public sealed class CartController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IAppEmailSender _emailSender;
     private readonly INotificationService _notificationService;
+    private readonly IOrderWorkflowNotificationService _orderWorkflowNotificationService;
     private readonly ILogger<CartController> _logger;
 
     public CartController(
@@ -36,12 +37,14 @@ public sealed class CartController : Controller
         UserManager<ApplicationUser> userManager,
         IAppEmailSender emailSender,
         INotificationService notificationService,
+        IOrderWorkflowNotificationService orderWorkflowNotificationService,
         ILogger<CartController> logger)
     {
         _db = db;
         _userManager = userManager;
         _emailSender = emailSender;
         _notificationService = notificationService;
+        _orderWorkflowNotificationService = orderWorkflowNotificationService;
         _logger = logger;
     }
 
@@ -597,6 +600,7 @@ public sealed class CartController : Controller
             relatedEntityType: "Order",
             relatedEntityId: order.Id.ToString(),
             ct: ct);
+        await _orderWorkflowNotificationService.OnOrderPlacedAsync(order, ct);
         foreach (var alert in lowStockAlerts.DistinctBy(x => x.productId))
         {
             await _notificationService.CreateAsync(

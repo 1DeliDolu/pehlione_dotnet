@@ -8,7 +8,7 @@ using Pehlione.Models.ViewModels.Staff;
 namespace Pehlione.Areas.Staff.Controllers;
 
 [Area("Staff")]
-[Authorize(Roles = $"{IdentitySeed.RoleStaff},{IdentitySeed.RolePurchasing},{IdentitySeed.RoleWarehouse},{IdentitySeed.RoleIt},{IdentitySeed.RoleAccounting},{IdentitySeed.RoleAdmin}")]
+[Authorize(Roles = $"{IdentitySeed.RoleStaff},{IdentitySeed.RolePurchasing},{IdentitySeed.RoleWarehouse},{IdentitySeed.RoleIt},{IdentitySeed.RoleAccounting},{IdentitySeed.RoleCourier},{IdentitySeed.RoleAdmin}")]
 public sealed class NotificationsController : Controller
 {
     private readonly PehlioneDbContext _db;
@@ -19,16 +19,37 @@ public sealed class NotificationsController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(bool includeRead = false, CancellationToken ct = default)
+    public async Task<IActionResult> Index(bool includeRead = false, string? q = null, string? department = null, CancellationToken ct = default)
     {
+        var isAdmin = User.IsInRole(IdentitySeed.RoleAdmin);
+        var allowedDepartments = isAdmin ? GetAllDepartments() : GetAllowedDepartments();
+
         var query = _db.Notifications.AsNoTracking();
-        if (!User.IsInRole(IdentitySeed.RoleAdmin))
+        if (!isAdmin)
         {
-            var allowedDepartments = GetAllowedDepartments();
             if (allowedDepartments.Count == 0)
                 return View(new NotificationIndexVm());
 
             query = query.Where(x => allowedDepartments.Contains(x.Department));
+        }
+
+        var normalizedDepartment = (department ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedDepartment))
+        {
+            if (allowedDepartments.Contains(normalizedDepartment))
+                query = query.Where(x => x.Department == normalizedDepartment);
+            else
+                normalizedDepartment = "";
+        }
+
+        var normalizedQuery = (q ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedQuery))
+        {
+            query = query.Where(x =>
+                x.Title.Contains(normalizedQuery) ||
+                x.Message.Contains(normalizedQuery) ||
+                (x.RelatedEntityType != null && x.RelatedEntityType.Contains(normalizedQuery)) ||
+                (x.RelatedEntityId != null && x.RelatedEntityId.Contains(normalizedQuery)));
         }
 
         if (!includeRead)
@@ -53,20 +74,23 @@ public sealed class NotificationsController : Controller
         return View(new NotificationIndexVm
         {
             IncludeRead = includeRead,
+            Query = normalizedQuery,
+            Department = normalizedDepartment,
+            DepartmentOptions = allowedDepartments.OrderBy(x => x).ToArray(),
             Items = items
         });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> MarkRead(long id, bool includeRead = false, CancellationToken ct = default)
+    public async Task<IActionResult> MarkRead(long id, bool includeRead = false, string? q = null, string? department = null, CancellationToken ct = default)
     {
         if (id <= 0)
-            return RedirectToAction(nameof(Index), new { includeRead });
+            return RedirectToAction(nameof(Index), new { includeRead, q, department });
 
         var item = await _db.Notifications.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (item is null)
-            return RedirectToAction(nameof(Index), new { includeRead });
+            return RedirectToAction(nameof(Index), new { includeRead, q, department });
 
         if (!CanAccessDepartment(item.Department))
             return Forbid();
@@ -77,12 +101,12 @@ public sealed class NotificationsController : Controller
             await _db.SaveChangesAsync(ct);
         }
 
-        return RedirectToAction(nameof(Index), new { includeRead });
+        return RedirectToAction(nameof(Index), new { includeRead, q, department });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> MarkAllRead(bool includeRead = false, CancellationToken ct = default)
+    public async Task<IActionResult> MarkAllRead(bool includeRead = false, string? q = null, string? department = null, CancellationToken ct = default)
     {
         var query = _db.Notifications.Where(x => !x.IsRead);
 
@@ -90,13 +114,17 @@ public sealed class NotificationsController : Controller
         {
             var allowedDepartments = GetAllowedDepartments();
             if (allowedDepartments.Count == 0)
-                return RedirectToAction(nameof(Index), new { includeRead });
+                return RedirectToAction(nameof(Index), new { includeRead, q, department });
 
             query = query.Where(x => allowedDepartments.Contains(x.Department));
         }
 
+        var normalizedDepartment = (department ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedDepartment))
+            query = query.Where(x => x.Department == normalizedDepartment);
+
         await query.ExecuteUpdateAsync(x => x.SetProperty(y => y.IsRead, true), ct);
-        return RedirectToAction(nameof(Index), new { includeRead });
+        return RedirectToAction(nameof(Index), new { includeRead, q, department });
     }
 
     private bool CanAccessDepartment(string department)
@@ -120,7 +148,23 @@ public sealed class NotificationsController : Controller
             departments.Add(NotificationDepartments.Warehouse);
         if (User.IsInRole(IdentitySeed.RoleAccounting))
             departments.Add(NotificationDepartments.Accounting);
+        if (User.IsInRole(IdentitySeed.RoleCourier))
+            departments.Add(NotificationDepartments.Courier);
 
         return departments;
+    }
+
+    private static HashSet<string> GetAllDepartments()
+    {
+        return new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            NotificationDepartments.Sales,
+            NotificationDepartments.Purchasing,
+            NotificationDepartments.Warehouse,
+            NotificationDepartments.It,
+            NotificationDepartments.Accounting,
+            NotificationDepartments.Courier,
+            "HR"
+        };
     }
 }

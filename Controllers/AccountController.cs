@@ -72,7 +72,8 @@ public sealed class AccountController : Controller
                 || await _userManager.IsInRoleAsync(user, IdentitySeed.RoleIt)
                 || await _userManager.IsInRoleAsync(user, IdentitySeed.RoleHr)
                 || await _userManager.IsInRoleAsync(user, IdentitySeed.RoleWarehouse)
-                || await _userManager.IsInRoleAsync(user, IdentitySeed.RoleAccounting);
+                || await _userManager.IsInRoleAsync(user, IdentitySeed.RoleAccounting)
+                || await _userManager.IsInRoleAsync(user, IdentitySeed.RoleCourier);
 
             if (!forceRoleDashboard && !string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
             {
@@ -172,6 +173,9 @@ public sealed class AccountController : Controller
 
         if (await _userManager.IsInRoleAsync(user, IdentitySeed.RoleAccounting))
             return RedirectToAction("Index", "Accounting", new { area = "Staff" });
+
+        if (await _userManager.IsInRoleAsync(user, IdentitySeed.RoleCourier))
+            return RedirectToAction("Index", "Courier", new { area = "Staff" });
 
         if (await _userManager.IsInRoleAsync(user, IdentitySeed.RoleStaff))
             return RedirectToAction("Index", "Home", new { area = "Staff" });

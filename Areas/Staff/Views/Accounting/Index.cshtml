@@ -7,16 +7,18 @@
         <div class="card-body p-4">
             <span class="badge text-bg-info mb-2">Accounting Dashboard</span>
             <h1 class="h3 mb-1">Odeme ve Iade Yonetimi</h1>
-            <p class="text-muted mb-0">Muhasebe birimi Pending siparisleri Paid yapar, iade taleplerini Refunded olarak kapatir.</p>
+            <p class="text-muted mb-0">Muhasebe birimi Pending siparisleri Paid yapar; Cancelled veya Return Delivered to Seller siparisleri Refunded olarak kapatir.</p>
         </div>
     </div>
+
+    @await Component.InvokeAsync("DashboardNotifications")
 
     <div class="row g-3">
         <div class="col-12 col-lg-6">
             <div class="card border-0 shadow-sm rounded-4 h-100">
                 <div class="card-body">
                     <h2 class="h5">Siparis Odeme Durumlari</h2>
-                    <p class="text-muted small">Paid ve Refunded adimlarini akis kurallarina gore yonetin.</p>
+                    <p class="text-muted small">Sadece finans adimlari: Pending -> Paid ve Cancelled/Return Delivered to Seller -> Refunded.</p>
                     <a class="btn btn-primary" asp-area="Staff" asp-controller="Accounting" asp-action="Orders">Muhasebe Siparislerine Git</a>
                 </div>
             </div>

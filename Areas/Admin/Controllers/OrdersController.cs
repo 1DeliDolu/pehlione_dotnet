@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
 using Pehlione.Models.Commerce;
 using Pehlione.Models.ViewModels.Admin;
+using Pehlione.Services;
 
 namespace Pehlione.Areas.Admin.Controllers;
 
@@ -24,10 +25,17 @@ public sealed class OrdersController : Controller
     ];
 
     private readonly PehlioneDbContext _db;
+    private readonly IOrderStatusEmailService _orderStatusEmailService;
+    private readonly IOrderWorkflowNotificationService _orderWorkflowNotificationService;
 
-    public OrdersController(PehlioneDbContext db)
+    public OrdersController(
+        PehlioneDbContext db,
+        IOrderStatusEmailService orderStatusEmailService,
+        IOrderWorkflowNotificationService orderWorkflowNotificationService)
     {
         _db = db;
+        _orderStatusEmailService = orderStatusEmailService;
+        _orderWorkflowNotificationService = orderWorkflowNotificationService;
     }
 
     [HttpGet]
@@ -138,8 +146,11 @@ public sealed class OrdersController : Controller
             order.TrackingCode = (trackingCode ?? string.Empty).Trim();
         }
 
+        var oldStatus = order.Status;
         order.Status = normalized;
         await _db.SaveChangesAsync(ct);
+        await _orderStatusEmailService.NotifyStatusChangedAsync(order, oldStatus, normalized, ct);
+        await _orderWorkflowNotificationService.OnStatusChangedAsync(order, oldStatus, normalized, ct);
 
         TempData["AdminSuccess"] = $"Siparis #{id} durumu guncellendi: {normalized}";
         return RedirectToAction(nameof(Index), new { q, status = currentStatus });

@@ -5,8 +5,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
 using Pehlione.Models;
+using Pehlione.Models.Commerce;
 using Pehlione.Models.Identity;
 using Pehlione.Models.ViewModels.Customer;
+using Pehlione.Services;
 
 namespace Pehlione.Areas.Customer.Controllers;
 
@@ -16,11 +18,19 @@ public sealed class AccountController : Controller
 {
     private readonly PehlioneDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IOrderStatusEmailService _orderStatusEmailService;
+    private readonly IOrderWorkflowNotificationService _orderWorkflowNotificationService;
 
-    public AccountController(PehlioneDbContext db, UserManager<ApplicationUser> userManager)
+    public AccountController(
+        PehlioneDbContext db,
+        UserManager<ApplicationUser> userManager,
+        IOrderStatusEmailService orderStatusEmailService,
+        IOrderWorkflowNotificationService orderWorkflowNotificationService)
     {
         _db = db;
         _userManager = userManager;
+        _orderStatusEmailService = orderStatusEmailService;
+        _orderWorkflowNotificationService = orderWorkflowNotificationService;
     }
 
     [HttpGet]
@@ -178,6 +188,44 @@ public sealed class AccountController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelOrder(int id, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+            return Challenge();
+
+        if (id <= 0)
+        {
+            TempData["AccountError"] = "Gecersiz siparis.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var order = await _db.Orders.FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId, ct);
+        if (order is null)
+        {
+            TempData["AccountError"] = "Siparis bulunamadi.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var current = OrderStatusWorkflow.Normalize(order.Status);
+        if (!OrderStatusWorkflow.CanTransition(current, OrderStatusWorkflow.Cancelled))
+        {
+            TempData["AccountError"] = $"Bu siparis bu asamada iptal edilemez ({current}).";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var oldStatus = order.Status;
+        order.Status = OrderStatusWorkflow.Cancelled;
+        await _db.SaveChangesAsync(ct);
+        await _orderStatusEmailService.NotifyStatusChangedAsync(order, oldStatus, OrderStatusWorkflow.Cancelled, ct);
+        await _orderWorkflowNotificationService.OnStatusChangedAsync(order, oldStatus, OrderStatusWorkflow.Cancelled, ct);
+
+        TempData["AccountSuccess"] = $"Siparis #{id} iptal edildi.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> SavePayment(PaymentEditVm model, CancellationToken ct)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -274,7 +322,8 @@ public sealed class AccountController : Controller
             {
                 Id = x.Id,
                 CreatedAt = x.CreatedAt,
-                Status = x.Status,
+                Status = OrderStatusWorkflow.Normalize(x.Status),
+                CanCancel = OrderStatusWorkflow.CanTransition(x.Status, OrderStatusWorkflow.Cancelled),
                 TotalAmount = x.TotalAmount,
                 Currency = x.Currency,
                 ItemCount = x.Items.Count

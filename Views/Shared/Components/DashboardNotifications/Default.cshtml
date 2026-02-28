@@ -1,0 +1,42 @@
+@model Pehlione.Models.ViewModels.Shared.DashboardNotificationsVm
+
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="h5 mb-1">Is Akisi Bildirimleri</h2>
+            <p class="text-muted small mb-0">Dashboard'a dusen son operasyon bildirimleri.</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge text-bg-primary">@Model.UnreadCount okunmamis</span>
+            <a class="btn btn-sm btn-outline-secondary" asp-area="Staff" asp-controller="Notifications" asp-action="Index">Tumunu Gor</a>
+        </div>
+    </div>
+    <div class="card-body px-4 pb-4">
+        @if (Model.Items.Count == 0)
+        {
+            <div class="text-muted small">Bildirim bulunmuyor.</div>
+        }
+        else
+        {
+            @foreach (var item in Model.Items)
+            {
+                <div class="border rounded-3 p-2 mb-2">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                            <div class="fw-semibold">@item.Title</div>
+                            <div class="small text-muted">@item.Message</div>
+                            <div class="small text-muted mt-1">@item.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                        </div>
+                        <div class="d-flex flex-column align-items-end gap-1">
+                            <span class="badge text-bg-light">@item.Department</span>
+                            @if (!item.IsRead)
+                            {
+                                <span class="badge text-bg-warning">Yeni</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
