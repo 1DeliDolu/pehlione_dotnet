@@ -75,6 +75,14 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
             b.Property(x => x.Name).HasColumnName("name");
             b.Property(x => x.Sku).HasColumnName("sku");
             b.Property(x => x.Price).HasColumnName("price");
+            b.Property(x => x.ImageUrls)
+                .HasColumnName("image_urls")
+                .HasColumnType("json")
+                .HasConversion(
+                    x => System.Text.Json.JsonSerializer.Serialize(x, (System.Text.Json.JsonSerializerOptions?)null),
+                    x => string.IsNullOrWhiteSpace(x)
+                        ? new List<string>()
+                        : System.Text.Json.JsonSerializer.Deserialize<List<string>>(x, (System.Text.Json.JsonSerializerOptions?)null) ?? new List<string>());
             b.Property(x => x.IsActive).HasColumnName("is_active");
 
             b.Property(x => x.Name).HasMaxLength(160).IsRequired();
@@ -82,6 +90,11 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
             b.HasIndex(x => x.Sku).IsUnique();
 
             b.Property(x => x.Price).HasPrecision(18, 2);
+            b.Property(x => x.ImageUrls).Metadata.SetValueComparer(
+                new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<List<string>>(
+                    (a, b) => a!.SequenceEqual(b!),
+                    v => v.Aggregate(0, (hash, value) => HashCode.Combine(hash, value.GetHashCode())),
+                    v => v.ToList()));
 
             b.HasOne(x => x.Category)
                 .WithMany(x => x.Products)

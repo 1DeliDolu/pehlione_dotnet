@@ -12,5 +12,7 @@ public sealed class Product
 
     public decimal Price { get; set; }
 
+    public List<string> ImageUrls { get; set; } = new();
+
     public bool IsActive { get; set; } = true;
 }
