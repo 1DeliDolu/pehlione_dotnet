@@ -144,3 +144,18 @@ Pehlione is an ASP.NET Core MVC e-commerce project with MySQL + EF Core.
 - Expand audit trail usage to all non-order critical entities (products, categories, user role changes).
 - Add pagination/filtering for customer order history and admin data grids.
 - Improve localization consistency (TR/DE labels and validation messages).
+
+## Temel Kod Yapisi
+
+- `Areas/Admin`: Admin paneli (urun, kategori, siparis, kullanici ve dashboard yonetimi)
+- `Areas/Customer`: Musteri tarafi (katalog, sepet, checkout, hesap)
+- `Areas/Staff`: Operasyon ekipleri (warehouse, accounting, courier, purchasing, HR, IT)
+- `Controllers`: Ortak/public controller katmani
+- `Models`: Domain modelleri (`Catalog`, `Commerce`, `Inventory`, `Communication`, `Identity`)
+- `Models/ViewModels`: UI/View katmani icin tasinan ekran modelleri
+- `Data`: `PehlioneDbContext`, migration ve seed entegrasyonu
+- `Services`: Is kurali ve uygulama servisleri (stok, bildirim, timeline, mail)
+- `Views`: Area disi Razor ekranlari
+- `wwwroot`: Statik dosyalar (`css`, `js`, upload/public assetler)
+
+Bu proje temel olarak MVP prensibiyle gelistirildi. Mevcut yapi bilerek sade tutuldu ve yeni moduller/alanlar eklenerek gelistirilmeye aciktir.
