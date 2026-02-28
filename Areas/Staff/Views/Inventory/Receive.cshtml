@@ -1,8 +1,6 @@
 @model Pehlione.Models.ViewModels.Staff.ReceiveStockVm
 @{
     ViewData["Title"] = "Stok Girisi";
-    var subCategoriesUrl = Url.Action("SubCategories", "Inventory", new { area = "Staff" }) ?? "/Staff/Inventory/SubCategories";
-    var productsByCategoryUrl = Url.Action("ProductsByCategory", "Inventory", new { area = "Staff" }) ?? "/Staff/Inventory/ProductsByCategory";
 }
 
 <div class="container py-4">
@@ -30,8 +28,8 @@
     }
 
     <div class="row g-4">
-        <div class="col-12 col-lg-7">
-            <form asp-area="Staff" asp-controller="Inventory" asp-action="Receive" method="post" class="card border-0 shadow-sm rounded-4 h-100">
+        <div class="col-12">
+            <form id="receiveForm" asp-area="Staff" asp-controller="Inventory" asp-action="Receive" method="post" class="card border-0 shadow-sm rounded-4">
                 @Html.AntiForgeryToken()
 
                 <div class="card-header bg-white border-0 pt-4 px-4">
@@ -49,7 +47,7 @@
                             <span asp-validation-for="TopCategoryId" class="text-danger small"></span>
                         </div>
 
-                        <div class="col-12 col-md-6">
+                        <div class="col-12">
                             <label asp-for="SubCategoryId" class="form-label fw-semibold"></label>
                             <select asp-for="SubCategoryId" class="form-select form-select-lg" id="subCategorySelect">
                                 <option value="">Seciniz</option>
@@ -68,7 +66,7 @@
                             <span asp-validation-for="SubCategoryId" class="text-danger small"></span>
                         </div>
 
-                        <div class="col-12 col-md-6">
+                        <div class="col-12">
                             <label asp-for="SubSubCategoryId" class="form-label fw-semibold"></label>
                             <select asp-for="SubSubCategoryId" class="form-select form-select-lg" id="subSubCategorySelect">
                                 <option value="">Seciniz</option>
@@ -118,8 +116,7 @@
                 </div>
             </form>
         </div>
-
-        <div class="col-12 col-lg-5">
+        <div class="col-12">
             @if (User.IsInRole("IT") || User.IsInRole("Admin"))
             {
                 <form asp-area="Staff" asp-controller="Inventory" asp-action="DeleteProduct" method="post" class="card border-0 shadow-sm rounded-4">
@@ -156,6 +153,11 @@
             <p class="text-muted small mb-0">Urunlerin mevcut stok miktarlari</p>
         </div>
         <div class="card-body px-4 pb-4">
+            <div class="row g-2 mb-3">
+                <div class="col-12 col-md-6">
+                    <input id="stockSearchInput" type="search" class="form-control" placeholder="Urun veya SKU ara..." />
+                </div>
+            </div>
             @if (Model.StockSnapshots.Count == 0)
             {
                 <div class="alert alert-info mb-0">Stok verisi yok.</div>
@@ -163,12 +165,13 @@
             else
             {
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
+                    <table class="table table-hover align-middle mb-0" id="stockSnapshotTable">
                         <thead class="table-light">
                             <tr>
                                 <th>Urun</th>
                                 <th>SKU</th>
                                 <th class="text-end">Stok</th>
+                                <th class="text-end">Islem</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -178,6 +181,14 @@
                                     <td>@s.ProductName</td>
                                     <td><code>@s.Sku</code></td>
                                     <td class="text-end fw-semibold">@s.Quantity</td>
+                                    <td class="text-end">
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-primary js-stock-edit"
+                                                data-product-id="@s.ProductId"
+                                                data-qty="@s.Quantity">
+                                            Edit
+                                        </button>
+                                    </td>
                                 </tr>
                             }
                         </tbody>
@@ -246,10 +257,14 @@
             const subCategorySelect = document.getElementById('subCategorySelect');
             const subSubCategorySelect = document.getElementById('subSubCategorySelect');
             const productSelect = document.getElementById('productSelect');
-            if (!topCategorySelect || !subCategorySelect || !subSubCategorySelect || !productSelect) return;
+            const quantityInput = document.getElementById('Quantity');
+            const receiveForm = document.getElementById('receiveForm');
+            const stockSearchInput = document.getElementById('stockSearchInput');
+            const stockSnapshotTable = document.getElementById('stockSnapshotTable');
+            if (!topCategorySelect || !subCategorySelect || !subSubCategorySelect || !productSelect || !quantityInput) return;
 
-            const subCategoriesUrl = '@subCategoriesUrl';
-            const productsByCategoryUrl = '@productsByCategoryUrl';
+            const allCategories = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AllCategories));
+            const allProducts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AllProducts));
 
             function fillOptions(select, items, valueField, textField, selectedValue, includeEmpty) {
                 select.innerHTML = '';
@@ -273,71 +288,131 @@
                 }
             }
 
-            async function loadSubCategories(parentId, targetSelect, selectedValue) {
+            function loadSubCategories(parentId, targetSelect, selectedValue) {
                 if (!parentId) {
                     fillOptions(targetSelect, [], 'value', 'text', '', true);
                     return;
                 }
-
-                const response = await fetch(`${subCategoriesUrl}?parentId=${encodeURIComponent(parentId)}`, {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                });
-                if (!response.ok) {
-                    fillOptions(targetSelect, [], 'value', 'text', '', true);
-                    return;
-                }
-
-                const items = await response.json();
+                const items = allCategories
+                    .filter(c => c.ParentCategoryId === parentId)
+                    .sort((a, b) => (a.SortOrder - b.SortOrder) || (a.Name || '').localeCompare(b.Name || ''))
+                    .map(c => ({ value: c.CategoryId, text: c.Name }));
                 fillOptions(targetSelect, items, 'value', 'text', selectedValue, true);
             }
 
-            async function loadProducts(categoryId, selectedValue) {
+            function getDescendantCategoryIds(rootId) {
+                const result = new Set();
+                if (!rootId) return result;
+                const queue = [rootId];
+                result.add(rootId);
+                while (queue.length > 0) {
+                    const current = queue.shift();
+                    for (const c of allCategories) {
+                        if (c.ParentCategoryId === current && !result.has(c.CategoryId)) {
+                            result.add(c.CategoryId);
+                            queue.push(c.CategoryId);
+                        }
+                    }
+                }
+                return result;
+            }
+
+            function loadProducts(categoryId, selectedValue) {
                 if (!categoryId) {
                     fillOptions(productSelect, [], 'value', 'text', '', false);
                     return;
                 }
-
-                const response = await fetch(`${productsByCategoryUrl}?categoryId=${encodeURIComponent(categoryId)}`, {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                });
-                if (!response.ok) {
-                    fillOptions(productSelect, [], 'value', 'text', '', false);
-                    return;
-                }
-
-                const items = await response.json();
+                const allowed = getDescendantCategoryIds(categoryId);
+                const items = allProducts
+                    .filter(p => allowed.has(p.CategoryId))
+                    .sort((a, b) => (a.Name || '').localeCompare(b.Name || ''))
+                    .map(p => ({ value: p.ProductId, text: `${p.Name} (${p.Sku})` }));
                 fillOptions(productSelect, items, 'value', 'text', selectedValue, false);
             }
 
-            async function syncProducts() {
+            function getCategoryChain(categoryId) {
+                const byId = new Map(allCategories.map(x => [x.CategoryId, x]));
+                const chain = [];
+                let current = byId.get(categoryId);
+                while (current) {
+                    chain.push(current.CategoryId);
+                    if (!current.ParentCategoryId) break;
+                    current = byId.get(current.ParentCategoryId);
+                }
+                return chain.reverse();
+            }
+
+            function fillFormFromProduct(productId, qty) {
+                const product = allProducts.find(p => p.ProductId === productId);
+                if (!product) return;
+
+                const chain = getCategoryChain(product.CategoryId);
+                const topId = chain[0] || 0;
+                const subId = chain[1] || '';
+                const subSubId = chain[2] || '';
+
+                topCategorySelect.value = String(topId);
+                loadSubCategories(topId, subCategorySelect, String(subId || ''));
+                loadSubCategories(parseInt(subCategorySelect.value || '0', 10), subSubCategorySelect, String(subSubId || ''));
+
+                const selectedNode = parseInt(subSubCategorySelect.value || subCategorySelect.value || topCategorySelect.value || '0', 10);
+                loadProducts(selectedNode, String(productId));
+
+                quantityInput.value = String(qty);
+                receiveForm?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                quantityInput.focus();
+            }
+
+            function syncProducts() {
                 const topId = parseInt(topCategorySelect.value || '0', 10);
                 const subId = parseInt(subCategorySelect.value || '0', 10);
                 const subSubId = parseInt(subSubCategorySelect.value || '0', 10);
                 const selectedNode = subSubId || subId || topId;
                 const currentProduct = productSelect.value || '';
-                await loadProducts(selectedNode, currentProduct);
+                loadProducts(selectedNode, currentProduct);
             }
 
-            topCategorySelect.addEventListener('change', async function () {
-                await loadSubCategories(parseInt(topCategorySelect.value || '0', 10), subCategorySelect, '');
-                await loadSubCategories(parseInt(subCategorySelect.value || '0', 10), subSubCategorySelect, '');
-                await syncProducts();
+            topCategorySelect.addEventListener('change', function () {
+                loadSubCategories(parseInt(topCategorySelect.value || '0', 10), subCategorySelect, '');
+                loadSubCategories(parseInt(subCategorySelect.value || '0', 10), subSubCategorySelect, '');
+                syncProducts();
             });
 
-            subCategorySelect.addEventListener('change', async function () {
-                await loadSubCategories(parseInt(subCategorySelect.value || '0', 10), subSubCategorySelect, '');
-                await syncProducts();
+            subCategorySelect.addEventListener('change', function () {
+                loadSubCategories(parseInt(subCategorySelect.value || '0', 10), subSubCategorySelect, '');
+                syncProducts();
             });
 
-            subSubCategorySelect.addEventListener('change', async function () {
-                await syncProducts();
+            subSubCategorySelect.addEventListener('change', function () {
+                syncProducts();
             });
 
-            (async function initialize() {
-                await loadSubCategories(parseInt(topCategorySelect.value || '0', 10), subCategorySelect, '@(Model.SubCategoryId?.ToString() ?? "")');
-                await loadSubCategories(parseInt(subCategorySelect.value || '0', 10), subSubCategorySelect, '@(Model.SubSubCategoryId?.ToString() ?? "")');
-                await loadProducts(parseInt(subSubCategorySelect.value || subCategorySelect.value || topCategorySelect.value || '0', 10), '@Model.ProductId');
+            (function initialize() {
+                loadSubCategories(parseInt(topCategorySelect.value || '0', 10), subCategorySelect, '@(Model.SubCategoryId?.ToString() ?? "")');
+                loadSubCategories(parseInt(subCategorySelect.value || '0', 10), subSubCategorySelect, '@(Model.SubSubCategoryId?.ToString() ?? "")');
+                loadProducts(parseInt(subSubCategorySelect.value || subCategorySelect.value || topCategorySelect.value || '0', 10), '@Model.ProductId');
             })();
+
+            document.querySelectorAll('.js-stock-edit').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const productId = parseInt(btn.getAttribute('data-product-id') || '0', 10);
+                    const qty = parseInt(btn.getAttribute('data-qty') || '1', 10);
+                    if (productId > 0) {
+                        fillFormFromProduct(productId, qty > 0 ? qty : 1);
+                    }
+                });
+            });
+
+            if (stockSearchInput && stockSnapshotTable) {
+                const rows = Array.from(stockSnapshotTable.querySelectorAll('tbody tr'));
+                stockSearchInput.addEventListener('input', function () {
+                    const q = (stockSearchInput.value || '').toLowerCase().trim();
+                    rows.forEach(row => {
+                        const text = (row.textContent || '').toLowerCase();
+                        row.style.display = !q || text.includes(q) ? '' : 'none';
+                    });
+                });
+            }
         })();
     </script>
 }

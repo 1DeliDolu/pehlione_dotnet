@@ -37,6 +37,7 @@ public sealed class ReceiveCategoryOptionVm
 {
     public int CategoryId { get; set; }
     public int? ParentCategoryId { get; set; }
+    public int SortOrder { get; set; }
     public string Name { get; set; } = "";
 }
 

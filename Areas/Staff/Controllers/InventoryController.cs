@@ -224,6 +224,7 @@ public sealed class InventoryController : Controller
             {
                 CategoryId = c.Id,
                 ParentCategoryId = c.ParentId,
+                SortOrder = c.SortOrder,
                 Name = c.Name
             })
             .ToListAsync(ct);
@@ -270,6 +271,7 @@ public sealed class InventoryController : Controller
             {
                 CategoryId = c.Id,
                 ParentCategoryId = c.ParentId,
+                SortOrder = c.SortOrder,
                 Name = c.Name
             })
             .ToListAsync(ct);
@@ -279,7 +281,8 @@ public sealed class InventoryController : Controller
     {
         return categories
             .Where(c => c.ParentCategoryId is null)
-            .OrderBy(c => c.Name)
+            .OrderBy(c => c.SortOrder)
+            .ThenBy(c => c.Name)
             .Select(c => new SelectListItem
             {
                 Value = c.CategoryId.ToString(),
@@ -295,7 +298,8 @@ public sealed class InventoryController : Controller
 
         return categories
             .Where(c => c.ParentCategoryId == parentCategoryId.Value)
-            .OrderBy(c => c.Name)
+            .OrderBy(c => c.SortOrder)
+            .ThenBy(c => c.Name)
             .Select(c => new SelectListItem
             {
                 Value = c.CategoryId.ToString(),
