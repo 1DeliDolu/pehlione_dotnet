@@ -66,7 +66,13 @@ public sealed class AccountController : Controller
                 return RedirectToAction(nameof(ChangePassword), new { returnUrl = ru });
             }
 
-            if (!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+            var forceRoleDashboard = await _userManager.IsInRoleAsync(user, IdentitySeed.RoleAdmin)
+                || await _userManager.IsInRoleAsync(user, IdentitySeed.RoleStaff)
+                || await _userManager.IsInRoleAsync(user, IdentitySeed.RolePurchasing)
+                || await _userManager.IsInRoleAsync(user, IdentitySeed.RoleIt)
+                || await _userManager.IsInRoleAsync(user, IdentitySeed.RoleHr);
+
+            if (!forceRoleDashboard && !string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
             {
                 return Redirect(model.ReturnUrl);
             }
@@ -155,6 +161,9 @@ public sealed class AccountController : Controller
 
         if (await _userManager.IsInRoleAsync(user, IdentitySeed.RoleIt))
             return RedirectToAction("Index", "It", new { area = "Staff" });
+
+        if (await _userManager.IsInRoleAsync(user, IdentitySeed.RoleHr))
+            return RedirectToAction("Index", "Hr", new { area = "Staff" });
 
         if (await _userManager.IsInRoleAsync(user, IdentitySeed.RoleStaff))
             return RedirectToAction("Index", "Home", new { area = "Staff" });

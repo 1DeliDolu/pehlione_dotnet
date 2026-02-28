@@ -89,6 +89,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IDepartmentConstraintService, DepartmentConstraintService>();
 
 if (builder.Environment.IsDevelopment())
 {

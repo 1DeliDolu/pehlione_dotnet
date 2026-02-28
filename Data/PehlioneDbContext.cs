@@ -7,6 +7,7 @@ using Pehlione.Models.Communication;
 using Pehlione.Models.Commerce;
 using Pehlione.Models.Identity;
 using Pehlione.Models.Inventory;
+using Pehlione.Models.Security;
 
 namespace Pehlione.Data;
 
@@ -31,6 +32,7 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
     public DbSet<Stock> Stocks => Set<Stock>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<DepartmentConstraint> DepartmentConstraints => Set<DepartmentConstraint>();
     public DbSet<UserAddress> UserAddresses => Set<UserAddress>();
     public DbSet<UserPaymentMethod> UserPaymentMethods => Set<UserPaymentMethod>();
     public DbSet<Pehlione.Models.TodoItem> TodoItems => Set<Pehlione.Models.TodoItem>();
@@ -339,6 +341,20 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
             b.Property(x => x.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
             b.HasIndex(x => new { x.Department, x.IsRead, x.CreatedAt });
+        });
+
+        builder.Entity<DepartmentConstraint>(b =>
+        {
+            b.ToTable("department_constraints");
+            b.Property(x => x.Id).HasColumnName("id");
+            b.Property(x => x.Department).HasColumnName("department").HasMaxLength(64).IsRequired();
+            b.Property(x => x.CanIncreaseStock).HasColumnName("can_increase_stock").HasDefaultValue(false);
+            b.Property(x => x.CanDeleteStock).HasColumnName("can_delete_stock").HasDefaultValue(false);
+            b.Property(x => x.MaxReceiveQuantity).HasColumnName("max_receive_quantity");
+            b.Property(x => x.UpdatedByUserId).HasColumnName("updated_by_user_id").HasMaxLength(255);
+            b.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc").HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+            b.HasIndex(x => x.Department).IsUnique();
         });
 
         builder.Entity<UserAddress>(b =>

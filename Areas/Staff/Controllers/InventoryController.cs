@@ -17,15 +17,18 @@ public sealed class InventoryController : Controller
     private readonly PehlioneDbContext _db;
     private readonly IInventoryService _inventoryService;
     private readonly INotificationService _notificationService;
+    private readonly IDepartmentConstraintService _departmentConstraintService;
 
     public InventoryController(
         PehlioneDbContext db,
         IInventoryService inventoryService,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        IDepartmentConstraintService departmentConstraintService)
     {
         _db = db;
         _inventoryService = inventoryService;
         _notificationService = notificationService;
+        _departmentConstraintService = departmentConstraintService;
     }
 
     [HttpGet]
@@ -132,6 +135,19 @@ public sealed class InventoryController : Controller
             return View(model);
         }
 
+        var access = await _departmentConstraintService.GetAccessAsync(User, ct);
+        if (!access.CanIncreaseStock)
+        {
+            ModelState.AddModelError(string.Empty, "Departmaniniz stok girisi islemi icin kisitlidir.");
+            return View(model);
+        }
+
+        if (access.MaxReceiveQuantity.HasValue && model.Quantity > access.MaxReceiveQuantity.Value)
+        {
+            ModelState.AddModelError(nameof(model.Quantity), $"Bu departman icin tek seferde en fazla {access.MaxReceiveQuantity.Value} adet girilebilir.");
+            return View(model);
+        }
+
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var result = await _inventoryService.ReceiveStockAsync(model.ProductId, model.Quantity, null, userId, ct);
         if (!result.Success)
@@ -149,6 +165,13 @@ public sealed class InventoryController : Controller
     [Authorize(Policy = "CanDeleteStock")]
     public async Task<IActionResult> DeleteProduct(int productId, CancellationToken ct)
     {
+        var access = await _departmentConstraintService.GetAccessAsync(User, ct);
+        if (!access.CanDeleteStock)
+        {
+            TempData["InventoryError"] = "Departmaniniz urun silme islemi icin kisitlidir.";
+            return RedirectToAction(nameof(Receive));
+        }
+
         if (productId <= 0)
             return BadRequest();
 

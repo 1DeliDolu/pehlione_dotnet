@@ -1,0 +1,77 @@
+@model Pehlione.Models.ViewModels.Staff.DepartmentConstraintsVm
+@{
+    ViewData["Title"] = "IT Kisit Yonetimi";
+}
+
+<div class="container-fluid py-4">
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <span class="badge text-bg-dark mb-2">IT Dashboard</span>
+                    <h1 class="h3 mb-1">Departman Kisit Yonetimi</h1>
+                    <p class="text-muted mb-0">Departman bazli stok girisi ve urun silme yetkilerini veritabanindan yonetin.</p>
+                </div>
+                <div class="text-muted small">Staff / IT</div>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["ItConstraintSaved"] is string ok && !string.IsNullOrWhiteSpace(ok))
+    {
+        <div class="alert alert-success shadow-sm">@ok</div>
+    }
+
+    <form asp-area="Staff" asp-controller="It" asp-action="Index" method="post" class="card border-0 shadow-sm rounded-4">
+        @Html.AntiForgeryToken()
+
+        <div class="card-header bg-white border-0 pt-4 px-4">
+            <h2 class="h5 mb-1">Departman Ayarlari</h2>
+            <p class="text-muted small mb-0">Degisiklikler kaydedildiginde aninda aktif olur.</p>
+        </div>
+
+        <div class="card-body px-4 pb-4">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="row g-3">
+                @for (var i = 0; i < Model.Items.Count; i++)
+                {
+                    <div class="col-12 col-xl-4">
+                        <div class="border rounded-4 p-3 h-100 bg-light-subtle">
+                            <input asp-for="Items[i].Department" type="hidden" />
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Departman</label>
+                                <input class="form-control" value="@Model.Items[i].Department" disabled />
+                            </div>
+
+                            <div class="form-check form-switch mb-2">
+                                <input asp-for="Items[i].CanIncreaseStock" class="form-check-input" />
+                                <label asp-for="Items[i].CanIncreaseStock" class="form-check-label"></label>
+                            </div>
+
+                            <div class="form-check form-switch mb-3">
+                                <input asp-for="Items[i].CanDeleteStock" class="form-check-input" />
+                                <label asp-for="Items[i].CanDeleteStock" class="form-check-label"></label>
+                            </div>
+
+                            <div>
+                                <label asp-for="Items[i].MaxReceiveQuantity" class="form-label fw-semibold"></label>
+                                <input asp-for="Items[i].MaxReceiveQuantity" type="number" min="1" class="form-control" placeholder="Sinirsiz icin bos birakin" />
+                                <span asp-validation-for="Items[i].MaxReceiveQuantity" class="text-danger small"></span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="d-flex justify-content-end mt-4">
+                <button type="submit" class="btn btn-primary btn-lg px-4">Kaydet</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
