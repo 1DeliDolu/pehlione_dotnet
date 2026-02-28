@@ -20,7 +20,8 @@ public sealed class HrController : Controller
         IdentitySeed.RolePurchasing,
         IdentitySeed.RoleWarehouse,
         IdentitySeed.RoleIt,
-        IdentitySeed.RoleHr
+        IdentitySeed.RoleHr,
+        IdentitySeed.RoleAccounting
     ];
 
     private readonly UserManager<ApplicationUser> _userManager;

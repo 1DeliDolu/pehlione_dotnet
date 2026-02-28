@@ -256,6 +256,8 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
             b.Property(x => x.TotalAmount).HasColumnName("total_amount").HasPrecision(18, 2);
             b.Property(x => x.Currency).HasColumnName("currency").HasMaxLength(8).IsRequired();
             b.Property(x => x.Status).HasColumnName("status").HasMaxLength(32).IsRequired();
+            b.Property(x => x.ShippingCarrier).HasColumnName("shipping_carrier").HasMaxLength(120);
+            b.Property(x => x.TrackingCode).HasColumnName("tracking_code").HasMaxLength(120);
             b.Property(x => x.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
             b.HasIndex(x => x.UserId);

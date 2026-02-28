@@ -5,11 +5,12 @@
 
 <div class="container-fluid py-4">
     <partial name="_AdminNav" />
+    <partial name="_AdminFormSearch" />
     <div class="card border-0 shadow-sm rounded-4" style="max-width: 780px;">
     <div class="card-body p-4">
     <h1 class="h3 mb-3">Yeni kullanici</h1>
 
-    <form asp-area="Admin" asp-controller="Users" asp-action="Create" method="post">
+    <form asp-area="Admin" asp-controller="Users" asp-action="Create" method="post" class="js-form-search-target">
         @Html.AntiForgeryToken()
 
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
@@ -36,6 +37,7 @@
                 <option value="Warehouse">Warehouse</option>
                 <option value="IT">IT</option>
                 <option value="HR">HR</option>
+                <option value="Accounting">Accounting</option>
                 <option value="Admin">Admin</option>
             </select>
             <span asp-validation-for="Role" class="text-danger"></span>

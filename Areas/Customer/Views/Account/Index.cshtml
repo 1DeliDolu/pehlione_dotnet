@@ -1,0 +1,270 @@
+@model Pehlione.Models.ViewModels.Customer.AccountDashboardVm
+@{
+    ViewData["Title"] = "Hesabim";
+}
+
+<div class="container-fluid py-4">
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <span class="badge text-bg-primary mb-2">Customer Account</span>
+                    <h1 class="h3 mb-1">Hesabim</h1>
+                    <p class="text-muted mb-0">Bilgilerinizi guncelleyin, siparis gecmisinizi goruntuleyin.</p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a class="btn btn-outline-secondary" asp-area="Customer" asp-controller="Catalog" asp-action="Index">Katalog</a>
+                    <a class="btn btn-outline-secondary" asp-area="Customer" asp-controller="Cart" asp-action="Index">Sepet</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["AccountSuccess"] is string ok && !string.IsNullOrWhiteSpace(ok))
+    {
+        <div class="alert alert-success shadow-sm">@ok</div>
+    }
+    @if (TempData["AccountError"] is string err && !string.IsNullOrWhiteSpace(err))
+    {
+        <div class="alert alert-warning shadow-sm">@err</div>
+    }
+
+    <div class="row g-3">
+        <div class="col-12 col-xl-6">
+            <form asp-area="Customer" asp-controller="Account" asp-action="UpdateProfile" method="post" class="card border-0 shadow-sm rounded-4 h-100">
+                @Html.AntiForgeryToken()
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h2 class="h5 mb-1">Profil Bilgileri</h2>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">E-posta</label>
+                            <input name="Email" type="email" value="@Model.Profile.Email" class="form-control" required />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Kullanici Adi</label>
+                            <input name="UserName" type="text" value="@Model.Profile.UserName" class="form-control" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Telefon</label>
+                            <input name="PhoneNumber" type="text" value="@Model.Profile.PhoneNumber" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end mt-4"><button type="submit" class="btn btn-primary">Guncelle</button></div>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <form asp-area="Customer" asp-controller="Account" asp-action="ChangePassword" method="post" class="card border-0 shadow-sm rounded-4 h-100">
+                @Html.AntiForgeryToken()
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h2 class="h5 mb-1">Sifre Degistir</h2>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Mevcut Sifre</label>
+                            <input name="CurrentPassword" type="password" class="form-control" required />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Yeni Sifre</label>
+                            <input name="NewPassword" type="password" class="form-control" required />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Yeni Sifre Tekrar</label>
+                            <input name="ConfirmPassword" type="password" class="form-control" required />
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end mt-4"><button type="submit" class="btn btn-primary">Sifreyi Degistir</button></div>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h2 class="h5 mb-1">Siparis Gecmisi</h2>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    @if (Model.Orders.Count == 0)
+                    {
+                        <div class="alert alert-info mb-0">Henuz siparisiniz bulunmuyor.</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Siparis No</th>
+                                        <th>Tarih</th>
+                                        <th>Durum</th>
+                                        <th>Kalem</th>
+                                        <th class="text-end">Tutar</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var o in Model.Orders)
+                                {
+                                    <tr>
+                                        <td>#@o.Id</td>
+                                        <td>@o.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td>@o.Status</td>
+                                        <td>@o.ItemCount</td>
+                                        <td class="text-end">@o.TotalAmount.ToString("0.00") @o.Currency</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <form asp-area="Customer" asp-controller="Account" asp-action="SaveAddress" method="post" class="card border-0 shadow-sm rounded-4 h-100">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" value="@Model.AddressForm.Id" />
+                <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-1">Adres Bilgileri</h2>
+                    @if (Model.AddressForm.Id.HasValue)
+                    {
+                        <a class="btn btn-sm btn-outline-secondary" asp-area="Customer" asp-controller="Account" asp-action="Index">Yeni Kayit</a>
+                    }
+                </div>
+                <div class="card-body px-4 pb-4">
+                    <div class="row g-2">
+                        <div class="col-6"><input name="FirstName" value="@Model.AddressForm.FirstName" class="form-control" placeholder="Ad" required /></div>
+                        <div class="col-6"><input name="LastName" value="@Model.AddressForm.LastName" class="form-control" placeholder="Soyad" required /></div>
+                        <div class="col-12"><input name="Company" value="@Model.AddressForm.Company" class="form-control" placeholder="Sirket" /></div>
+                        <div class="col-8"><input name="Street" value="@Model.AddressForm.Street" class="form-control" placeholder="Sokak" required /></div>
+                        <div class="col-4"><input name="HouseNumber" value="@Model.AddressForm.HouseNumber" class="form-control" placeholder="No" required /></div>
+                        <div class="col-12"><input name="AddressLine2" value="@Model.AddressForm.AddressLine2" class="form-control" placeholder="Adres satiri 2" /></div>
+                        <div class="col-4"><input name="PostalCode" value="@Model.AddressForm.PostalCode" class="form-control" placeholder="Posta Kodu" required /></div>
+                        <div class="col-5"><input name="City" value="@Model.AddressForm.City" class="form-control" placeholder="Sehir" required /></div>
+                        <div class="col-3"><input name="CountryCode" value="@(string.IsNullOrWhiteSpace(Model.AddressForm.CountryCode) ? "DE" : Model.AddressForm.CountryCode)" class="form-control" placeholder="DE" required /></div>
+                        <div class="col-12"><input name="State" value="@Model.AddressForm.State" class="form-control" placeholder="Eyalet" /></div>
+                        <div class="col-12"><input name="PhoneNumber" value="@Model.AddressForm.PhoneNumber" class="form-control" placeholder="Telefon" /></div>
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="AddressIsDefault" name="IsDefault" checked="@Model.AddressForm.IsDefault" />
+                                <label class="form-check-label" for="AddressIsDefault">Varsayilan adres</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end mt-4"><button type="submit" class="btn btn-primary">Adresi Kaydet</button></div>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <div class="card border-0 shadow-sm rounded-4 mb-3">
+                <div class="card-header bg-white border-0 pt-4 px-4"><h3 class="h6 mb-1">Kayitli Adresler</h3></div>
+                <div class="card-body px-4 pb-4">
+                    @if (Model.Addresses.Count == 0)
+                    {
+                        <div class="text-muted small">Kayitli adres yok.</div>
+                    }
+                    else
+                    {
+                        @foreach (var a in Model.Addresses)
+                        {
+                            <div class="border rounded-3 p-2 mb-2">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <div class="fw-semibold">@a.FullName @if(a.IsDefault){<span class="badge text-bg-success">Varsayilan</span>}</div>
+                                        <div class="small text-muted">@a.AddressLine - @a.CityLine</div>
+                                        <div class="small text-muted">@a.PhoneNumber</div>
+                                    </div>
+                                    <div class="d-flex gap-1 align-items-start">
+                                        <a class="btn btn-sm btn-outline-primary" asp-area="Customer" asp-controller="Account" asp-action="Index" asp-route-editAddressId="@a.Id">Duzenle</a>
+                                        <form asp-area="Customer" asp-controller="Account" asp-action="DeleteAddress" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@a.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Sil</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+
+            <form asp-area="Customer" asp-controller="Account" asp-action="SavePayment" method="post" class="card border-0 shadow-sm rounded-4">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" value="@Model.PaymentForm.Id" />
+                <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-1">Banka / Odeme Bilgileri</h2>
+                    @if (Model.PaymentForm.Id.HasValue)
+                    {
+                        <a class="btn btn-sm btn-outline-secondary" asp-area="Customer" asp-controller="Account" asp-action="Index">Yeni Kayit</a>
+                    }
+                </div>
+                <div class="card-body px-4 pb-4">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Tip</label>
+                            <select name="Type" class="form-select">
+                                <option value="1" selected="@(Model.PaymentForm.Type == 1)">Klarna</option>
+                                <option value="2" selected="@(Model.PaymentForm.Type == 2)">PayPal</option>
+                                <option value="3" selected="@(Model.PaymentForm.Type == 3)">Visa</option>
+                                <option value="4" selected="@(Model.PaymentForm.Type == 4)">Mastercard</option>
+                            </select>
+                        </div>
+                        <div class="col-6"><label class="form-label fw-semibold">Banka/Kart Adi</label><input name="DisplayName" value="@Model.PaymentForm.DisplayName" class="form-control" required /></div>
+                        <div class="col-12"><label class="form-label fw-semibold">IBAN / Referans</label><input name="ProviderReference" value="@Model.PaymentForm.ProviderReference" class="form-control" /></div>
+                        <div class="col-4"><label class="form-label fw-semibold">Son 4</label><input name="CardLast4" value="@Model.PaymentForm.CardLast4" class="form-control" /></div>
+                        <div class="col-4"><label class="form-label fw-semibold">Ay</label><input name="ExpMonth" value="@Model.PaymentForm.ExpMonth" type="number" min="1" max="12" class="form-control" /></div>
+                        <div class="col-4"><label class="form-label fw-semibold">Yil</label><input name="ExpYear" value="@Model.PaymentForm.ExpYear" type="number" min="2020" max="2100" class="form-control" /></div>
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="PaymentIsDefault" name="IsDefault" checked="@Model.PaymentForm.IsDefault" />
+                                <label class="form-check-label" for="PaymentIsDefault">Varsayilan odeme yontemi</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end mt-4"><button type="submit" class="btn btn-primary">Odeme Bilgisini Kaydet</button></div>
+                </div>
+            </form>
+
+            <div class="card border-0 shadow-sm rounded-4 mt-3">
+                <div class="card-header bg-white border-0 pt-4 px-4"><h3 class="h6 mb-1">Kayitli Odeme Yontemleri</h3></div>
+                <div class="card-body px-4 pb-4">
+                    @if (Model.Payments.Count == 0)
+                    {
+                        <div class="text-muted small">Kayitli odeme bilgisi yok.</div>
+                    }
+                    else
+                    {
+                        @foreach (var p in Model.Payments)
+                        {
+                            <div class="border rounded-3 p-2 mb-2 d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="fw-semibold">@p.Type - @p.DisplayName @if(p.IsDefault){<span class="badge text-bg-success">Varsayilan</span>}</div>
+                                    <div class="small text-muted">Ref: @p.ProviderReference</div>
+                                    <div class="small text-muted">**** @p.CardLast4 / @p.ExpMonth-@p.ExpYear</div>
+                                </div>
+                                <div class="d-flex gap-1">
+                                    <a class="btn btn-sm btn-outline-primary" asp-area="Customer" asp-controller="Account" asp-action="Index" asp-route-editPaymentId="@p.Id">Duzenle</a>
+                                    <form asp-area="Customer" asp-controller="Account" asp-action="DeletePayment" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@p.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Sil</button>
+                                    </form>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

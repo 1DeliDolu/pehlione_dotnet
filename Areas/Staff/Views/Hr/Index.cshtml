@@ -1,7 +1,7 @@
 @model Pehlione.Models.ViewModels.Staff.HrDashboardVm
 @{
     ViewData["Title"] = "Insan Kaynaklari Dashboard";
-    var departments = new[] { "Sales", "Purchasing", "Warehouse", "IT", "HR" };
+    var departments = new[] { "Sales", "Purchasing", "Warehouse", "IT", "HR", "Accounting" };
     var positions = new[] { "Staff", "Teamleiter", "Mudur" };
 }
 
@@ -60,6 +60,7 @@
                                             <option value="Warehouse" selected="@(p.Role == "Warehouse")">Warehouse</option>
                                             <option value="IT" selected="@(p.Role == "IT")">IT</option>
                                             <option value="HR" selected="@(p.Role == "HR")">HR</option>
+                                            <option value="Accounting" selected="@(p.Role == "Accounting")">Accounting</option>
                                         </select>
                                     </div>
                                     <div class="col-12 col-md-4 col-lg-2">

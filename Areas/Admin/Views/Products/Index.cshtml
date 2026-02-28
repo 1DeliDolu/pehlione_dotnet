@@ -10,6 +10,7 @@
 
 <div class="container-fluid py-4">
     <partial name="_AdminNav" />
+    <partial name="_AdminFormSearch" />
     <div class="card border-0 shadow-sm rounded-4">
     <div class="card-body p-4">
     <div class="d-flex align-items-center justify-content-between mb-3">
@@ -17,7 +18,7 @@
         <a class="btn btn-primary" asp-area="Admin" asp-controller="Products" asp-action="Create">Yeni urun</a>
     </div>
 
-    <form method="get" asp-area="Admin" asp-controller="Products" asp-action="Index" class="row g-2 mb-3">
+    <form method="get" asp-area="Admin" asp-controller="Products" asp-action="Index" class="row g-2 mb-3 js-form-search-target">
         <div class="col-md-5">
             <input type="text" name="q" value="@query" class="form-control" placeholder="Ad veya SKU ara..." />
         </div>

@@ -8,7 +8,7 @@ using Pehlione.Models.ViewModels.Staff;
 namespace Pehlione.Areas.Staff.Controllers;
 
 [Area("Staff")]
-[Authorize(Roles = $"{IdentitySeed.RoleStaff},{IdentitySeed.RolePurchasing},{IdentitySeed.RoleWarehouse},{IdentitySeed.RoleIt},{IdentitySeed.RoleAdmin}")]
+[Authorize(Roles = $"{IdentitySeed.RoleStaff},{IdentitySeed.RolePurchasing},{IdentitySeed.RoleWarehouse},{IdentitySeed.RoleIt},{IdentitySeed.RoleAccounting},{IdentitySeed.RoleAdmin}")]
 public sealed class NotificationsController : Controller
 {
     private readonly PehlioneDbContext _db;
@@ -118,6 +118,8 @@ public sealed class NotificationsController : Controller
             departments.Add(NotificationDepartments.It);
         if (User.IsInRole(IdentitySeed.RoleWarehouse))
             departments.Add(NotificationDepartments.Warehouse);
+        if (User.IsInRole(IdentitySeed.RoleAccounting))
+            departments.Add(NotificationDepartments.Accounting);
 
         return departments;
     }

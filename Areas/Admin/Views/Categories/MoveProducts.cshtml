@@ -5,6 +5,7 @@
 
 <div class="container-fluid py-4">
     <partial name="_AdminNav" />
+    <partial name="_AdminFormSearch" />
     <div class="card border-0 shadow-sm rounded-4" style="max-width: 900px;">
     <div class="card-body p-4">
     <h1 class="h3 mb-3">Urunleri baska kategoriye tasi</h1>
@@ -14,7 +15,7 @@
         Urun sayisi: <strong>@Model.ProductCount</strong>
     </div>
 
-    <form asp-area="Admin" asp-controller="Categories" asp-action="MoveProducts" method="post">
+    <form asp-area="Admin" asp-controller="Categories" asp-action="MoveProducts" method="post" class="js-form-search-target">
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="SourceCategoryId" />
         <input type="hidden" asp-for="SourceName" />

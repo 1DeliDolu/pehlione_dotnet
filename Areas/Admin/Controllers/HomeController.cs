@@ -33,6 +33,7 @@ public sealed class HomeController : Controller
         IdentitySeed.RoleWarehouse,
         IdentitySeed.RoleIt,
         IdentitySeed.RoleHr,
+        IdentitySeed.RoleAccounting,
         IdentitySeed.RoleAdmin
     ];
 

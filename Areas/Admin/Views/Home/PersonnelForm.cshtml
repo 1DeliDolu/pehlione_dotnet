@@ -5,6 +5,7 @@
 
 <div class="container-fluid py-4">
     <partial name="_AdminNav" />
+    <partial name="_AdminFormSearch" />
 
     @if (TempData["AdminSuccess"] is string ok && !string.IsNullOrWhiteSpace(ok))
     {
@@ -15,7 +16,7 @@
         <div class="alert alert-warning shadow-sm">@err</div>
     }
 
-    <form asp-area="Admin" asp-controller="Home" asp-action="QuickUpdatePersonnel" method="post" class="card border-0 shadow-sm rounded-4">
+    <form asp-area="Admin" asp-controller="Home" asp-action="QuickUpdatePersonnel" method="post" class="card border-0 shadow-sm rounded-4 js-form-search-target">
         @Html.AntiForgeryToken()
         <input type="hidden" name="returnTo" value="PersonnelForm" />
 
@@ -43,6 +44,7 @@
                         <option value="Warehouse">Warehouse</option>
                         <option value="IT">IT</option>
                         <option value="HR">HR</option>
+                        <option value="Accounting">Accounting</option>
                         <option value="Admin">Admin</option>
                     </select>
                 </div>
@@ -55,6 +57,7 @@
                         <option value="Warehouse">Warehouse</option>
                         <option value="IT">IT</option>
                         <option value="HR">HR</option>
+                        <option value="Accounting">Accounting</option>
                     </select>
                 </div>
                 <div class="col-12 col-lg-4">

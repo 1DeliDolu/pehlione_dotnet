@@ -6,4 +6,5 @@ public static class NotificationDepartments
     public const string Purchasing = "Purchasing";
     public const string It = "IT";
     public const string Warehouse = "Warehouse";
+    public const string Accounting = "Accounting";
 }

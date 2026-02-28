@@ -5,11 +5,12 @@
 
 <div class="container-fluid py-4">
     <partial name="_AdminNav" />
+    <partial name="_AdminFormSearch" />
     <div class="card border-0 shadow-sm rounded-4" style="max-width: 820px;">
     <div class="card-body p-4">
     <h1 class="h3 mb-3">Yeni urun</h1>
 
-    <form asp-area="Admin" asp-controller="Products" asp-action="Create" method="post">
+    <form asp-area="Admin" asp-controller="Products" asp-action="Create" method="post" class="js-form-search-target">
         @Html.AntiForgeryToken()
 
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>

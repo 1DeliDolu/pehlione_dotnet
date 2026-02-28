@@ -1,0 +1,33 @@
+@{
+    ViewData["Title"] = "Muhasebe Dashboard";
+}
+
+<div class="container-fluid py-4">
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <span class="badge text-bg-info mb-2">Accounting Dashboard</span>
+            <h1 class="h3 mb-1">Odeme ve Iade Yonetimi</h1>
+            <p class="text-muted mb-0">Muhasebe birimi Pending siparisleri Paid yapar, iade taleplerini Refunded olarak kapatir.</p>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h2 class="h5">Siparis Odeme Durumlari</h2>
+                    <p class="text-muted small">Paid ve Refunded adimlarini akis kurallarina gore yonetin.</p>
+                    <a class="btn btn-primary" asp-area="Staff" asp-controller="Accounting" asp-action="Orders">Muhasebe Siparislerine Git</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h2 class="h5">Not</h2>
+                    <p class="text-muted small mb-0">Paid olduktan sonra siparis warehouse kuyruguna duser ve sevkiyat sureci baslar.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

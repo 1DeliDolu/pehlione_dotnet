@@ -12,6 +12,8 @@ public sealed class Order
     public decimal TotalAmount { get; set; }
     public string Currency { get; set; } = "TRY";
     public string Status { get; set; } = "Pending";
+    public string? ShippingCarrier { get; set; }
+    public string? TrackingCode { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();

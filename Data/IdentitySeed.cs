@@ -12,6 +12,7 @@ public static class IdentitySeed
     public const string RoleCustomer = "Customer";
     public const string RoleHr = "HR";
     public const string RoleWarehouse = "Warehouse";
+    public const string RoleAccounting = "Accounting";
 
     public static async Task SeedAsync(IServiceProvider services)
     {
@@ -26,6 +27,7 @@ public static class IdentitySeed
         await EnsureRoleAsync(roleManager, RoleCustomer);
         await EnsureRoleAsync(roleManager, RoleHr);
         await EnsureRoleAsync(roleManager, RoleWarehouse);
+        await EnsureRoleAsync(roleManager, RoleAccounting);
 
         await EnsureUserAsync(
             userManager,
@@ -68,6 +70,12 @@ public static class IdentitySeed
             email: GetSeedValue(config, "WarehouseEmail", "warehouse@pehlione.local"),
             password: GetSeedValue(config, "WarehousePassword", "password"),
             role: RoleWarehouse);
+
+        await EnsureUserAsync(
+            userManager,
+            email: GetSeedValue(config, "AccountingEmail", "accounting@pehlione.local"),
+            password: GetSeedValue(config, "AccountingPassword", "password"),
+            role: RoleAccounting);
     }
 
     private static string GetSeedValue(IConfiguration config, string key, string fallback)
