@@ -148,7 +148,11 @@ public sealed class CatalogController : Controller
                 Price = p.Price,
                 CategoryName = p.Category!.Name,
                 CategorySlug = p.Category!.Slug,
-                ImageUrls = p.ImageUrls
+                ImageUrls = p.ImageUrls,
+                AvailableStock = _db.Stocks
+                    .Where(s => s.ProductId == p.Id)
+                    .Select(s => (int?)s.Quantity)
+                    .FirstOrDefault() ?? 0
             })
             .FirstOrDefaultAsync(ct);
 
@@ -165,6 +169,7 @@ public sealed class CatalogController : Controller
             Price = row.Price,
             CategoryName = row.CategoryName,
             CategorySlug = row.CategorySlug,
+            AvailableStock = Math.Max(0, row.AvailableStock),
             ImageUrls = row.ImageUrls
                 .Select(NormalizeImageUrl)
                 .Where(x => !string.IsNullOrWhiteSpace(x))

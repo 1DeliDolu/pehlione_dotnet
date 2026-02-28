@@ -7,6 +7,7 @@ public sealed class CatalogProductDetailsVm
     public string Sku { get; set; } = "";
     public decimal Price { get; set; }
     public IReadOnlyList<string> ImageUrls { get; set; } = Array.Empty<string>();
+    public int AvailableStock { get; set; }
 
     public string CategoryName { get; set; } = "";
     public string CategorySlug { get; set; } = "";

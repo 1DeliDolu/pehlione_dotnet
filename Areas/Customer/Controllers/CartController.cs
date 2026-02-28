@@ -124,14 +124,27 @@ public sealed class CartController : Controller
         color = NormalizeOption(color);
         size = NormalizeOption(size);
 
-        var exists = await _db.Products
-            .AsNoTracking()
-            .AnyAsync(p => p.Id == productId && p.IsActive && p.Category != null && p.Category.IsActive, ct);
-
-        if (!exists)
+        var availableStock = await GetAvailableStockAsync(productId, ct);
+        if (!availableStock.HasValue)
             return NotFound();
+        if (availableStock.Value <= 0)
+        {
+            TempData["CartError"] = "Bu urun stokta yok.";
+            return RedirectToReturnUrlOrCart(returnUrl);
+        }
 
         var cart = ReadCart();
+        var totalQtyInCartForProduct = cart
+            .Where(x => x.ProductId == productId)
+            .Sum(x => Math.Max(0, x.Qty));
+        var remainingStock = Math.Max(0, availableStock.Value - totalQtyInCartForProduct);
+        if (remainingStock <= 0)
+        {
+            TempData["CartError"] = "Stok limiti doldu. Sepetteki urun adedini guncelleyebilirsiniz.";
+            return RedirectToReturnUrlOrCart(returnUrl);
+        }
+
+        qty = Math.Min(qty, remainingStock);
 
         var item = cart.FirstOrDefault(x =>
             x.ProductId == productId &&
@@ -177,10 +190,6 @@ public sealed class CartController : Controller
         color = NormalizeOption(color);
         size = NormalizeOption(size);
 
-        var exists = await _db.Products
-            .AsNoTracking()
-            .AnyAsync(p => p.Id == productId && p.IsActive && p.Category != null && p.Category.IsActive, ct);
-
         var cart = ReadCart();
         var item = cart.FirstOrDefault(x =>
             x.ProductId == productId &&
@@ -190,14 +199,35 @@ public sealed class CartController : Controller
         if (item is null)
             return RedirectToReturnUrlOrCart(returnUrl);
 
-        if (!exists)
+        var availableStock = await GetAvailableStockAsync(productId, ct);
+        if (!availableStock.HasValue)
         {
             cart.Remove(item);
             WriteCart(cart);
             return RedirectToReturnUrlOrCart(returnUrl);
         }
 
-        item.Qty = qty;
+        if (availableStock.Value <= 0)
+        {
+            cart.Remove(item);
+            WriteCart(cart);
+            TempData["CartError"] = "Bu urun stokta yok.";
+            return RedirectToReturnUrlOrCart(returnUrl);
+        }
+
+        var otherQty = cart
+            .Where(x => x.ProductId == productId && !ReferenceEquals(x, item))
+            .Sum(x => Math.Max(0, x.Qty));
+        var maxQtyForItem = Math.Max(0, availableStock.Value - otherQty);
+        if (maxQtyForItem <= 0)
+        {
+            cart.Remove(item);
+            WriteCart(cart);
+            TempData["CartError"] = "Stok limiti nedeniyle urun adedi guncellendi.";
+            return RedirectToReturnUrlOrCart(returnUrl);
+        }
+
+        item.Qty = Math.Min(qty, Math.Min(MaxQtyPerItem, maxQtyForItem));
         WriteCart(cart);
 
         return RedirectToReturnUrlOrCart(returnUrl);
@@ -650,6 +680,23 @@ public sealed class CartController : Controller
 
         var lambda = Expression.Lambda<Func<Product, bool>>(body, parameter);
         return query.Where(lambda);
+    }
+
+    private async Task<int?> GetAvailableStockAsync(int productId, CancellationToken ct)
+    {
+        var row = await _db.Products
+            .AsNoTracking()
+            .Where(p => p.Id == productId && p.IsActive && p.Category != null && p.Category.IsActive)
+            .Select(p => new
+            {
+                Stock = _db.Stocks
+                    .Where(s => s.ProductId == p.Id)
+                    .Select(s => (int?)s.Quantity)
+                    .FirstOrDefault() ?? 0
+            })
+            .FirstOrDefaultAsync(ct);
+
+        return row?.Stock;
     }
 
     private async Task<CartVm> BuildCartVmAsync(CancellationToken ct)

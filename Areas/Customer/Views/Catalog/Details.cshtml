@@ -2,6 +2,8 @@
 @{
     ViewData["Title"] = Model.Name;
     var firstImage = Model.ImageUrls.FirstOrDefault();
+    var maxQty = Math.Clamp(Model.AvailableStock, 0, 99);
+    var isOutOfStock = Model.AvailableStock <= 0;
 }
 
 <div class="container py-3 py-md-4" style="max-width: 1100px;">
@@ -86,6 +88,16 @@
                         <div class="text-muted">Fiyat</div>
                         <div class="h4 m-0">@Model.Price.ToString("0.00")</div>
                     </div>
+                    <div class="mb-3">
+                        @if (isOutOfStock)
+                        {
+                            <span class="badge text-bg-danger">Stokta yok</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-success">Stok: @Model.AvailableStock</span>
+                        }
+                    </div>
 
                     <form asp-area="Customer"
                           asp-controller="Cart"
@@ -128,8 +140,23 @@
                         </div>
 
                         <label class="form-label m-0" for="qty">Adet</label>
-                        <input id="qty" type="number" name="qty" value="1" min="1" max="99" class="form-control" />
-                        <button type="submit" class="btn btn-dark">Sepete ekle</button>
+                        <input id="qty"
+                               type="number"
+                               name="qty"
+                               value="1"
+                               min="1"
+                               max="@maxQty"
+                               class="form-control"
+                               disabled="@isOutOfStock" />
+                        @if (isOutOfStock)
+                        {
+                            <div class="form-text text-danger">Bu urun su an stokta yok.</div>
+                        }
+                        else
+                        {
+                            <div class="form-text">Maksimum @maxQty adet ekleyebilirsiniz.</div>
+                        }
+                        <button type="submit" class="btn btn-dark" disabled="@isOutOfStock">Sepete ekle</button>
                     </form>
                 </div>
             </div>
