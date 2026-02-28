@@ -58,7 +58,8 @@ public sealed class DepartmentConstraintService : IDepartmentConstraintService
             NotificationDepartments.It,
             NotificationDepartments.Warehouse,
             NotificationDepartments.Accounting,
-            NotificationDepartments.Courier
+            NotificationDepartments.Courier,
+            NotificationDepartments.CustomerRelations
         };
     }
 
@@ -124,6 +125,18 @@ public sealed class DepartmentConstraintService : IDepartmentConstraintService
             };
         }
 
+        if (department.Equals(NotificationDepartments.CustomerRelations, StringComparison.OrdinalIgnoreCase))
+        {
+            return new DepartmentConstraint
+            {
+                Department = NotificationDepartments.CustomerRelations,
+                CanReadStock = true,
+                CanIncreaseStock = false,
+                CanDeleteStock = false,
+                MaxReceiveQuantity = null
+            };
+        }
+
         return new DepartmentConstraint
         {
             Department = NotificationDepartments.Sales,
@@ -155,6 +168,9 @@ public sealed class DepartmentConstraintService : IDepartmentConstraintService
 
         if (user.IsInRole(IdentitySeed.RoleCourier))
             set.Add(NotificationDepartments.Courier);
+
+        if (user.IsInRole(IdentitySeed.RoleCustomerRelations))
+            set.Add(NotificationDepartments.CustomerRelations);
 
         return set;
     }

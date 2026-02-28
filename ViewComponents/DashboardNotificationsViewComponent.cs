@@ -20,30 +20,6 @@ public sealed class DashboardNotificationsViewComponent : ViewComponent
         var isAdmin = UserClaimsPrincipal.IsInRole(IdentitySeed.RoleAdmin);
         var query = _db.Notifications.AsNoTracking().AsQueryable();
 
-        if (!isAdmin)
-        {
-            var departments = new List<string>();
-            if (UserClaimsPrincipal.IsInRole(IdentitySeed.RoleStaff))
-                departments.Add(NotificationDepartments.Sales);
-            if (UserClaimsPrincipal.IsInRole(IdentitySeed.RolePurchasing))
-                departments.Add(NotificationDepartments.Purchasing);
-            if (UserClaimsPrincipal.IsInRole(IdentitySeed.RoleWarehouse))
-                departments.Add(NotificationDepartments.Warehouse);
-            if (UserClaimsPrincipal.IsInRole(IdentitySeed.RoleIt))
-                departments.Add(NotificationDepartments.It);
-            if (UserClaimsPrincipal.IsInRole(IdentitySeed.RoleHr))
-                departments.Add("HR");
-            if (UserClaimsPrincipal.IsInRole(IdentitySeed.RoleAccounting))
-                departments.Add(NotificationDepartments.Accounting);
-            if (UserClaimsPrincipal.IsInRole(IdentitySeed.RoleCourier))
-                departments.Add(NotificationDepartments.Courier);
-
-            if (departments.Count == 0)
-                return View(new DashboardNotificationsVm());
-
-            query = query.Where(x => departments.Contains(x.Department));
-        }
-
         var unreadCount = await query.CountAsync(x => !x.IsRead, ct);
         var items = await query
             .OrderByDescending(x => x.CreatedAt)
@@ -76,8 +52,25 @@ public sealed class DashboardNotificationsViewComponent : ViewComponent
         {
             IsAdmin = isAdmin,
             UnreadCount = unreadCount,
+            ReturnUrl = HttpContext?.Request?.Path.Value ?? "",
+            CreateEventDepartmentOptions = GetAllDepartmentOptions(),
             Items = mapped
         });
+    }
+
+    private static string[] GetAllDepartmentOptions()
+    {
+        return
+        [
+            NotificationDepartments.Sales,
+            NotificationDepartments.Purchasing,
+            NotificationDepartments.Warehouse,
+            NotificationDepartments.It,
+            NotificationDepartments.Hr,
+            NotificationDepartments.Accounting,
+            NotificationDepartments.Courier,
+            NotificationDepartments.CustomerRelations
+        ];
     }
 
     private string? BuildLink(string? relatedEntityType, string? relatedEntityId, string department)

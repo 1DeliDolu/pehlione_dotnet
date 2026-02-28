@@ -1,7 +1,7 @@
 @model Pehlione.Models.ViewModels.Staff.HrDashboardVm
 @{
     ViewData["Title"] = "Insan Kaynaklari Dashboard";
-    var departments = new[] { "Sales", "Purchasing", "Warehouse", "IT", "HR", "Accounting", "Courier" };
+    var departments = new[] { "Sales", "Purchasing", "Warehouse", "IT", "HR", "Accounting", "Courier", "CustomerRelations" };
     var positions = new[] { "Staff", "Teamleiter", "Mudur" };
 }
 
@@ -53,7 +53,7 @@
                                     <input type="hidden" name="userId" value="@p.UserId" />
                                     <div class="col-12 col-lg-4">
                                         <div class="fw-semibold">@p.Email</div>
-                                        <div class="text-muted small">Mevcut: Rol=@p.Role | Birim=@(p.Department ?? "-") | Pozisyon=@(p.Position ?? "-")</div>
+                                        <div class="text-muted small">Mevcut: Rol=@p.Role | Birimler=@(p.Departments.Length == 0 ? "-" : string.Join(", ", p.Departments)) | Pozisyon=@(p.Position ?? "-")</div>
                                     </div>
                                     <div class="col-12 col-md-4 col-lg-2">
                                         <select class="form-select form-select-sm" name="role">
@@ -64,16 +64,21 @@
                                             <option value="HR" selected="@(p.Role == "HR")">HR</option>
                                             <option value="Accounting" selected="@(p.Role == "Accounting")">Accounting</option>
                                             <option value="Courier" selected="@(p.Role == "Courier")">Courier</option>
+                                            <option value="CustomerRelations" selected="@(p.Role == "CustomerRelations")">CustomerRelations</option>
                                         </select>
                                     </div>
-                                    <div class="col-12 col-md-4 col-lg-2">
-                                        <select class="form-select form-select-sm" name="department">
-                                            <option value="">-</option>
+                                    <div class="col-12 col-md-4 col-lg-3">
+                                        <div class="border rounded-3 p-2" style="max-height:120px; overflow:auto;">
                                             @foreach (var d in departments)
                                             {
-                                                <option value="@d" selected="@(string.Equals(p.Department, d, StringComparison.OrdinalIgnoreCase))">@d</option>
+                                                var checkedDept = p.Departments.Contains(d, StringComparer.OrdinalIgnoreCase);
+                                                var inputId = $"dept_{p.UserId}_{d}";
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="departments" value="@d" id="@inputId" checked="@checkedDept" />
+                                                    <label class="form-check-label small" for="@inputId">@d</label>
+                                                </div>
                                             }
-                                        </select>
+                                        </div>
                                     </div>
                                     <div class="col-12 col-md-4 col-lg-2">
                                         <select class="form-select form-select-sm" name="position">

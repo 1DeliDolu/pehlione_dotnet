@@ -46,21 +46,47 @@
                         <option value="HR">HR</option>
                         <option value="Accounting">Accounting</option>
                         <option value="Courier">Courier</option>
+                        <option value="CustomerRelations">CustomerRelations</option>
                         <option value="Admin">Admin</option>
                     </select>
                 </div>
                 <div class="col-12 col-lg-4">
                     <label class="form-label fw-semibold">Birim</label>
-                    <select name="Department" class="form-select form-select-lg">
-                        <option value="">-</option>
-                        <option value="Sales">Sales</option>
-                        <option value="Purchasing">Purchasing</option>
-                        <option value="Warehouse">Warehouse</option>
-                        <option value="IT">IT</option>
-                        <option value="HR">HR</option>
-                        <option value="Accounting">Accounting</option>
-                        <option value="Courier">Courier</option>
-                    </select>
+                    <div class="border rounded-3 p-3 bg-light-subtle">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="departments" value="Sales" id="deptSales" />
+                            <label class="form-check-label" for="deptSales">Sales</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="departments" value="Purchasing" id="deptPurchasing" />
+                            <label class="form-check-label" for="deptPurchasing">Purchasing</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="departments" value="Warehouse" id="deptWarehouse" />
+                            <label class="form-check-label" for="deptWarehouse">Warehouse</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="departments" value="IT" id="deptIt" />
+                            <label class="form-check-label" for="deptIt">IT</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="departments" value="HR" id="deptHr" />
+                            <label class="form-check-label" for="deptHr">HR</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="departments" value="Accounting" id="deptAccounting" />
+                            <label class="form-check-label" for="deptAccounting">Accounting</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="departments" value="Courier" id="deptCourier" />
+                            <label class="form-check-label" for="deptCourier">Courier</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="departments" value="CustomerRelations" id="deptCustomerRelations" />
+                            <label class="form-check-label" for="deptCustomerRelations">CustomerRelations</label>
+                        </div>
+                    </div>
+                    <div class="form-text">Bir personele birden fazla departman atanabilir.</div>
                 </div>
                 <div class="col-12 col-lg-4">
                     <label class="form-label fw-semibold">Pozisyon</label>

@@ -8,7 +8,7 @@ using Pehlione.Models.ViewModels.Staff;
 namespace Pehlione.Areas.Staff.Controllers;
 
 [Area("Staff")]
-[Authorize(Roles = $"{IdentitySeed.RoleStaff},{IdentitySeed.RolePurchasing},{IdentitySeed.RoleWarehouse},{IdentitySeed.RoleIt},{IdentitySeed.RoleAccounting},{IdentitySeed.RoleCourier},{IdentitySeed.RoleAdmin}")]
+[Authorize(Roles = $"{IdentitySeed.RoleStaff},{IdentitySeed.RolePurchasing},{IdentitySeed.RoleWarehouse},{IdentitySeed.RoleIt},{IdentitySeed.RoleHr},{IdentitySeed.RoleAccounting},{IdentitySeed.RoleCourier},{IdentitySeed.RoleCustomerRelations},{IdentitySeed.RoleAdmin}")]
 public sealed class NotificationsController : Controller
 {
     private readonly PehlioneDbContext _db;
@@ -21,17 +21,9 @@ public sealed class NotificationsController : Controller
     [HttpGet]
     public async Task<IActionResult> Index(bool includeRead = false, string? q = null, string? department = null, CancellationToken ct = default)
     {
-        var isAdmin = User.IsInRole(IdentitySeed.RoleAdmin);
-        var allowedDepartments = isAdmin ? GetAllDepartments() : GetAllowedDepartments();
+        var allowedDepartments = GetAllDepartments();
 
         var query = _db.Notifications.AsNoTracking();
-        if (!isAdmin)
-        {
-            if (allowedDepartments.Count == 0)
-                return View(new NotificationIndexVm());
-
-            query = query.Where(x => allowedDepartments.Contains(x.Department));
-        }
 
         var normalizedDepartment = (department ?? "").Trim();
         if (!string.IsNullOrWhiteSpace(normalizedDepartment))
@@ -86,6 +78,58 @@ public sealed class NotificationsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateEvent(
+        string[]? departments,
+        string? department,
+        string title,
+        string message,
+        string? returnUrl = null,
+        CancellationToken ct = default)
+    {
+        var normalizedTitle = (title ?? "").Trim();
+        var normalizedMessage = (message ?? "").Trim();
+
+        var targetDepartments = (departments ?? Array.Empty<string>())
+            .Select(x => (x ?? "").Trim())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (targetDepartments.Count == 0 && !string.IsNullOrWhiteSpace(department))
+            targetDepartments.Add(department.Trim());
+
+        if (targetDepartments.Count == 0 || string.IsNullOrWhiteSpace(normalizedTitle) || string.IsNullOrWhiteSpace(normalizedMessage))
+        {
+            TempData["EventError"] = "Departman, baslik ve mesaj zorunludur.";
+            return RedirectToLocalOrIndex(returnUrl);
+        }
+
+        var allowedDepartments = GetAllDepartments();
+        if (targetDepartments.Any(d => !allowedDepartments.Contains(d)))
+        {
+            TempData["EventError"] = "Bu departman icin event olusturma yetkiniz yok.";
+            return RedirectToLocalOrIndex(returnUrl);
+        }
+
+        foreach (var targetDepartment in targetDepartments)
+        {
+            _db.Notifications.Add(new Notification
+            {
+                Department = targetDepartment,
+                Title = normalizedTitle,
+                Message = normalizedMessage,
+                RelatedEntityType = "ManualEvent",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+        await _db.SaveChangesAsync(ct);
+
+        TempData["EventSuccess"] = $"Event olusturuldu. Hedef departman sayisi: {targetDepartments.Count}";
+        return RedirectToLocalOrIndex(returnUrl);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> MarkRead(long id, bool includeRead = false, string? q = null, string? department = null, CancellationToken ct = default)
     {
         if (id <= 0)
@@ -115,7 +159,7 @@ public sealed class NotificationsController : Controller
 
         if (!User.IsInRole(IdentitySeed.RoleAdmin))
         {
-            var allowedDepartments = GetAllowedDepartments();
+            var allowedDepartments = GetAllDepartments();
             if (allowedDepartments.Count == 0)
                 return RedirectToAction(nameof(Index), new { includeRead, q, department });
 
@@ -132,29 +176,7 @@ public sealed class NotificationsController : Controller
 
     private bool CanAccessDepartment(string department)
     {
-        if (User.IsInRole(IdentitySeed.RoleAdmin))
-            return true;
-
-        return GetAllowedDepartments().Contains(department);
-    }
-
-    private HashSet<string> GetAllowedDepartments()
-    {
-        var departments = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if (User.IsInRole(IdentitySeed.RoleStaff))
-            departments.Add(NotificationDepartments.Sales);
-        if (User.IsInRole(IdentitySeed.RolePurchasing))
-            departments.Add(NotificationDepartments.Purchasing);
-        if (User.IsInRole(IdentitySeed.RoleIt))
-            departments.Add(NotificationDepartments.It);
-        if (User.IsInRole(IdentitySeed.RoleWarehouse))
-            departments.Add(NotificationDepartments.Warehouse);
-        if (User.IsInRole(IdentitySeed.RoleAccounting))
-            departments.Add(NotificationDepartments.Accounting);
-        if (User.IsInRole(IdentitySeed.RoleCourier))
-            departments.Add(NotificationDepartments.Courier);
-
-        return departments;
+        return GetAllDepartments().Contains(department);
     }
 
     private static HashSet<string> GetAllDepartments()
@@ -165,10 +187,19 @@ public sealed class NotificationsController : Controller
             NotificationDepartments.Purchasing,
             NotificationDepartments.Warehouse,
             NotificationDepartments.It,
+            NotificationDepartments.Hr,
             NotificationDepartments.Accounting,
             NotificationDepartments.Courier,
-            "HR"
+            NotificationDepartments.CustomerRelations,
         };
+    }
+
+    private IActionResult RedirectToLocalOrIndex(string? returnUrl)
+    {
+        if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+            return Redirect(returnUrl);
+
+        return RedirectToAction(nameof(Index));
     }
 
     private string? BuildLink(string? relatedEntityType, string? relatedEntityId, string department)
@@ -191,6 +222,9 @@ public sealed class NotificationsController : Controller
 
                 if (department.Equals(NotificationDepartments.Purchasing, StringComparison.OrdinalIgnoreCase))
                     return Url.Action("Returns", "Purchasing", new { area = "Staff", q = relatedEntityId });
+
+                if (department.Equals(NotificationDepartments.CustomerRelations, StringComparison.OrdinalIgnoreCase))
+                    return Url.Action("Index", "CustomerRelations", new { area = "Staff" });
             }
 
             return Url.Action("Index", "Notifications", new { area = "Staff" });

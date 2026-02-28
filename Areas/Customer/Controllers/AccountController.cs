@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Pehlione.Data;
 using Pehlione.Models;
 using Pehlione.Models.Commerce;
+using Pehlione.Models.Communication;
 using Pehlione.Models.Identity;
 using Pehlione.Models.ViewModels.Customer;
 using Pehlione.Services;
@@ -20,17 +21,29 @@ public sealed class AccountController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IOrderStatusEmailService _orderStatusEmailService;
     private readonly IOrderWorkflowNotificationService _orderWorkflowNotificationService;
+    private readonly IOrderStatusTimelineService _orderStatusTimelineService;
+    private readonly INotificationService _notificationService;
+    private readonly IAppEmailSender _emailSender;
+    private readonly IConfiguration _configuration;
 
     public AccountController(
         PehlioneDbContext db,
         UserManager<ApplicationUser> userManager,
         IOrderStatusEmailService orderStatusEmailService,
-        IOrderWorkflowNotificationService orderWorkflowNotificationService)
+        IOrderWorkflowNotificationService orderWorkflowNotificationService,
+        IOrderStatusTimelineService orderStatusTimelineService,
+        INotificationService notificationService,
+        IAppEmailSender emailSender,
+        IConfiguration configuration)
     {
         _db = db;
         _userManager = userManager;
         _orderStatusEmailService = orderStatusEmailService;
         _orderWorkflowNotificationService = orderWorkflowNotificationService;
+        _orderStatusTimelineService = orderStatusTimelineService;
+        _notificationService = notificationService;
+        _emailSender = emailSender;
+        _configuration = configuration;
     }
 
     [HttpGet]
@@ -217,10 +230,76 @@ public sealed class AccountController : Controller
         var oldStatus = order.Status;
         order.Status = OrderStatusWorkflow.Cancelled;
         await _db.SaveChangesAsync(ct);
+        await _orderStatusTimelineService.LogStatusChangedAsync(
+            orderId: order.Id,
+            fromStatus: oldStatus,
+            toStatus: OrderStatusWorkflow.Cancelled,
+            changedByUserId: userId,
+            changedByDepartment: "Customer",
+            ct: ct);
         await _orderStatusEmailService.NotifyStatusChangedAsync(order, oldStatus, OrderStatusWorkflow.Cancelled, ct);
         await _orderWorkflowNotificationService.OnStatusChangedAsync(order, oldStatus, OrderStatusWorkflow.Cancelled, ct);
 
         TempData["AccountSuccess"] = $"Siparis #{id} iptal edildi.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ContactCustomerRelations(CustomerRelationsMessageVm model, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+            return Challenge();
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+            return Challenge();
+
+        if (!ModelState.IsValid)
+        {
+            TempData["AccountError"] = "Iletisim formu gecersiz.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var subject = (model.Subject ?? "").Trim();
+        var message = (model.Message ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(subject) || string.IsNullOrWhiteSpace(message))
+        {
+            TempData["AccountError"] = "Konu ve mesaj zorunludur.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var customerEmail = user.Email ?? user.UserName ?? "unknown@pehlione.local";
+        var relationsEmail = _configuration["Mail:CustomerRelationsEmail"] ?? "support@pehlione.local";
+        var mailSubject = $"Musteri Iliskileri Talebi - {customerEmail}";
+        var mailBody = $@"
+            <h2>Musteri Iliskileri Talebi</h2>
+            <p><strong>Musteri:</strong> {System.Net.WebUtility.HtmlEncode(customerEmail)}</p>
+            <p><strong>Konu:</strong> {System.Net.WebUtility.HtmlEncode(subject)}</p>
+            <p><strong>Mesaj:</strong><br />{System.Net.WebUtility.HtmlEncode(message).Replace("\n", "<br />")}</p>
+        ";
+
+        _db.CustomerRelationsMessages.Add(new CustomerRelationsMessage
+        {
+            UserId = userId,
+            CustomerEmail = customerEmail,
+            Subject = subject,
+            Message = message
+        });
+        await _db.SaveChangesAsync(ct);
+
+        await _emailSender.SendAsync(relationsEmail, mailSubject, mailBody, ct);
+
+        await _notificationService.CreateAsync(
+            department: NotificationDepartments.Sales,
+            title: "Musteri iliskileri talebi",
+            message: $"{customerEmail} musterisi iletisim talebi gonderdi: {subject}",
+            relatedEntityType: "Customer",
+            relatedEntityId: userId,
+            ct: ct);
+
+        TempData["AccountSuccess"] = "Mesajiniz musteri iliskilerine iletildi.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -324,9 +403,38 @@ public sealed class AccountController : Controller
                 CreatedAt = x.CreatedAt,
                 Status = OrderStatusWorkflow.Normalize(x.Status),
                 CanCancel = OrderStatusWorkflow.CanTransition(x.Status, OrderStatusWorkflow.Cancelled),
+                ShippingCarrier = x.ShippingCarrier,
+                TrackingCode = x.TrackingCode,
                 TotalAmount = x.TotalAmount,
                 Currency = x.Currency,
                 ItemCount = x.Items.Count
+            })
+            .ToListAsync(ct);
+
+        var processNotifications = orders
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new CustomerProcessNotificationVm
+            {
+                OrderId = x.Id,
+                Status = x.Status,
+                StatusMessage = BuildCustomerStatusMessage(x.Status),
+                EventAt = x.CreatedAt,
+                ShippingCarrier = x.ShippingCarrier,
+                TrackingCode = x.TrackingCode
+            })
+            .ToList();
+
+        var relationHistory = await _db.CustomerRelationsMessages
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(20)
+            .Select(x => new CustomerRelationsHistoryItemVm
+            {
+                Id = x.Id,
+                Subject = x.Subject,
+                Message = x.Message,
+                CreatedAt = x.CreatedAt
             })
             .ToListAsync(ct);
 
@@ -400,7 +508,10 @@ public sealed class AccountController : Controller
             Password = new PasswordChangeVm(),
             AddressForm = addressForm,
             PaymentForm = paymentForm,
+            CustomerRelationsForm = new CustomerRelationsMessageVm(),
             Orders = orders,
+            ProcessNotifications = processNotifications,
+            CustomerRelationsHistory = relationHistory,
             Addresses = addressesRaw.Select(x => new CustomerAddressListItemVm
             {
                 Id = x.Id,
@@ -421,6 +532,28 @@ public sealed class AccountController : Controller
                 ExpYear = x.ExpYear,
                 IsDefault = x.IsDefault
             }).ToList()
+        };
+    }
+
+    private static string BuildCustomerStatusMessage(string status)
+    {
+        var normalized = OrderStatusWorkflow.Normalize(status);
+        return normalized switch
+        {
+            OrderStatusWorkflow.Pending => "Siparisiniz alindi.",
+            OrderStatusWorkflow.Paid => "Odemeniz onaylandi.",
+            OrderStatusWorkflow.Processing => "Siparisiniz hazirlaniyor.",
+            OrderStatusWorkflow.Packed => "Siparisiniz paketlendi.",
+            OrderStatusWorkflow.Shipped => "Siparisiniz kargoya verildi.",
+            OrderStatusWorkflow.CourierPickedUp => "Kurye siparisinizi teslim aldi.",
+            OrderStatusWorkflow.OutForDelivery => "Siparisiniz dagitimda.",
+            OrderStatusWorkflow.Delivered => "Siparisiniz teslim edildi.",
+            OrderStatusWorkflow.Completed => "Siparis sureci tamamlandi.",
+            OrderStatusWorkflow.Cancelled => "Siparisiniz iptal edildi.",
+            OrderStatusWorkflow.ReturnPickedUp => "Iade urunu kurye tarafindan teslim alindi.",
+            OrderStatusWorkflow.ReturnDeliveredToSeller => "Iade urunu saticiya teslim edildi.",
+            OrderStatusWorkflow.Refunded => "Geri odeme islemi tamamlandi.",
+            _ => normalized
         };
     }
 }

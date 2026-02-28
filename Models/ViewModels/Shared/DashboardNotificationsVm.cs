@@ -4,6 +4,8 @@ public sealed class DashboardNotificationsVm
 {
     public bool IsAdmin { get; set; }
     public int UnreadCount { get; set; }
+    public string ReturnUrl { get; set; } = "";
+    public IReadOnlyList<string> CreateEventDepartmentOptions { get; set; } = Array.Empty<string>();
     public IReadOnlyList<DashboardNotificationItemVm> Items { get; set; } = Array.Empty<DashboardNotificationItemVm>();
 }
 

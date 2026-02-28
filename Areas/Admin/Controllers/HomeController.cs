@@ -16,6 +16,19 @@ namespace Pehlione.Areas.Admin.Controllers;
 [Authorize(Roles = IdentitySeed.RoleAdmin)]
 public sealed class HomeController : Controller
 {
+    private static readonly int[] DashboardRangeOptions = [5, 7, 15, 30, 60, 90, 180, 365];
+    private static readonly string[] DepartmentOptions =
+    [
+        "Sales",
+        "Purchasing",
+        "Warehouse",
+        "IT",
+        "HR",
+        "Accounting",
+        "Courier",
+        "CustomerRelations"
+    ];
+
     private static readonly HashSet<string> AdminActions = new(StringComparer.OrdinalIgnoreCase)
     {
         nameof(Index),
@@ -35,6 +48,7 @@ public sealed class HomeController : Controller
         IdentitySeed.RoleHr,
         IdentitySeed.RoleAccounting,
         IdentitySeed.RoleCourier,
+        IdentitySeed.RoleCustomerRelations,
         IdentitySeed.RoleAdmin
     ];
 
@@ -50,9 +64,10 @@ public sealed class HomeController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(CancellationToken ct)
+    public async Task<IActionResult> Index(int? days = null, DateTime? startDate = null, DateTime? endDate = null, CancellationToken ct = default)
     {
-        var vm = await BuildVmAsync(ct);
+        var range = ResolveRange(days, startDate, endDate);
+        var vm = await BuildVmAsync(range.StartUtc, range.EndUtc, range.RangeDays, range.CustomStartDate, range.CustomEndDate, range.Label, ct);
         return View(vm);
     }
 
@@ -236,7 +251,12 @@ public sealed class HomeController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> QuickUpdatePersonnel(QuickPersonnelUpdateVm model, string? returnTo, CancellationToken ct)
+    public async Task<IActionResult> QuickUpdatePersonnel(
+        QuickPersonnelUpdateVm model,
+        string[]? departments,
+        string? department,
+        string? returnTo,
+        CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(model.UserId) || !AllowedRoles.Contains(model.Role))
         {
@@ -261,7 +281,8 @@ public sealed class HomeController : Controller
         if (!await _userManager.IsInRoleAsync(user, model.Role))
             await _userManager.AddToRoleAsync(user, model.Role);
 
-        await UpsertClaimAsync(user, PehlioneClaimTypes.Department, model.Department);
+        var selectedDepartments = NormalizeDepartments(departments, department, model.Department);
+        await ReplaceDepartmentClaimsAsync(user, selectedDepartments);
         await UpsertClaimAsync(user, PehlioneClaimTypes.Position, model.Position);
 
         TempData["AdminSuccess"] = "Personel rol/birim bilgisi guncellendi.";
@@ -279,7 +300,37 @@ public sealed class HomeController : Controller
             await _userManager.AddClaimAsync(user, new System.Security.Claims.Claim(claimType, value.Trim()));
     }
 
-    private async Task<AdminDashboardVm> BuildVmAsync(CancellationToken ct)
+    private async Task ReplaceDepartmentClaimsAsync(ApplicationUser user, IReadOnlyList<string> departments)
+    {
+        var claims = await _userManager.GetClaimsAsync(user);
+        var existing = claims.Where(x => x.Type == PehlioneClaimTypes.Department).ToList();
+        if (existing.Count > 0)
+            await _userManager.RemoveClaimsAsync(user, existing);
+
+        foreach (var department in departments)
+            await _userManager.AddClaimAsync(user, new System.Security.Claims.Claim(PehlioneClaimTypes.Department, department));
+    }
+
+    private static string[] NormalizeDepartments(string[]? departments, string? department, string? modelDepartment)
+    {
+        return (departments ?? Array.Empty<string>())
+            .Concat(string.IsNullOrWhiteSpace(department) ? Array.Empty<string>() : new[] { department })
+            .Concat(string.IsNullOrWhiteSpace(modelDepartment) ? Array.Empty<string>() : new[] { modelDepartment })
+            .Select(x => (x ?? "").Trim())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Where(x => DepartmentOptions.Contains(x, StringComparer.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private async Task<AdminDashboardVm> BuildVmAsync(
+        DateTime startUtc,
+        DateTime endUtc,
+        int selectedRangeDays,
+        DateTime? customStartDate,
+        DateTime? customEndDate,
+        string rangeLabel,
+        CancellationToken ct)
     {
         var categories = await LoadCategoryOptionsAsync(ct);
         var productOptions = await LoadProductOptionsAsync(ct);
@@ -289,8 +340,11 @@ public sealed class HomeController : Controller
         var totalProducts = await _db.Products.AsNoTracking().CountAsync(ct);
         var activeProducts = await _db.Products.AsNoTracking().CountAsync(x => x.IsActive, ct);
         var totalCategories = await _db.Categories.AsNoTracking().CountAsync(ct);
-        var totalOrders = await _db.Orders.AsNoTracking().CountAsync(ct);
-        var ordersRevenue = await _db.Orders.AsNoTracking().SumAsync(x => (decimal?)x.TotalAmount, ct) ?? 0m;
+        var orderQueryForRange = _db.Orders
+            .AsNoTracking()
+            .Where(x => x.CreatedAt >= startUtc && x.CreatedAt < endUtc);
+        var totalOrders = await orderQueryForRange.CountAsync(ct);
+        var ordersRevenue = await orderQueryForRange.SumAsync(x => (decimal?)x.TotalAmount, ct) ?? 0m;
         var totalStockQuantity = await _db.Stocks.AsNoTracking().SumAsync(x => (int?)x.Quantity, ct) ?? 0;
         var lowStockProducts = await (
             from p in _db.Products.AsNoTracking()
@@ -318,32 +372,36 @@ public sealed class HomeController : Controller
         .Take(8)
         .ToListAsync(ct);
 
-        var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1).AddMonths(-5);
-        var monthlyRaw = await _db.Orders
+        var rangeDays = Math.Max((int)Math.Ceiling((endUtc - startUtc).TotalDays), 1);
+        var useDailyBuckets = rangeDays <= 60;
+        var monthlyOrders = useDailyBuckets
+            ? await BuildDailyOrdersAsync(startUtc, endUtc, ct)
+            : await BuildMonthlyOrdersAsync(startUtc, endUtc, ct);
+
+        var orderCreatedMap = await _db.Orders
             .AsNoTracking()
-            .Where(o => o.CreatedAt >= monthStart)
-            .GroupBy(o => new { o.CreatedAt.Year, o.CreatedAt.Month })
-            .Select(g => new
+            .Where(x => x.CreatedAt >= startUtc && x.CreatedAt < endUtc)
+            .Select(x => new { x.Id, x.CreatedAt })
+            .ToDictionaryAsync(x => x.Id, x => x.CreatedAt, ct);
+
+        var ordersInRange = _db.Orders
+            .AsNoTracking()
+            .Where(x => x.CreatedAt >= startUtc && x.CreatedAt < endUtc)
+            .Select(x => x.Id);
+
+        var statusLogs = await (
+            from log in _db.OrderStatusLogs.AsNoTracking()
+            join orderId in ordersInRange on log.OrderId equals orderId
+            orderby log.ChangedAt
+            select new OrderStatusLogRow
             {
-                g.Key.Year,
-                g.Key.Month,
-                OrderCount = g.Count(),
-                Revenue = g.Sum(x => x.TotalAmount)
+                OrderId = log.OrderId,
+                ToStatus = log.ToStatus,
+                ChangedAt = log.ChangedAt
             })
             .ToListAsync(ct);
 
-        var monthlyOrders = new List<AdminMonthlyOrderVm>(6);
-        for (var i = 0; i < 6; i++)
-        {
-            var current = monthStart.AddMonths(i);
-            var row = monthlyRaw.FirstOrDefault(x => x.Year == current.Year && x.Month == current.Month);
-            monthlyOrders.Add(new AdminMonthlyOrderVm
-            {
-                MonthLabel = current.ToString("MMM yyyy"),
-                OrderCount = row?.OrderCount ?? 0,
-                Revenue = row?.Revenue ?? 0m
-            });
-        }
+        var (orderTimings, transitionTimings) = BuildOrderTimings(orderCreatedMap, statusLogs);
 
         return new AdminDashboardVm
         {
@@ -377,8 +435,217 @@ public sealed class HomeController : Controller
             LowStockProducts = lowStockProducts,
             OrdersRevenue = ordersRevenue,
             CategoryStock = categoryStock,
-            MonthlyOrders = monthlyOrders
+            MonthlyOrders = monthlyOrders,
+            OrderTimings = orderTimings,
+            TransitionTimings = transitionTimings,
+            SelectedRangeDays = selectedRangeDays,
+            CustomStartDate = customStartDate,
+            CustomEndDate = customEndDate,
+            RangeLabel = rangeLabel,
+            RangeOptions = DashboardRangeOptions
         };
+    }
+
+    private async Task<IReadOnlyList<AdminMonthlyOrderVm>> BuildDailyOrdersAsync(DateTime startUtc, DateTime endUtc, CancellationToken ct)
+    {
+        var raw = await _db.Orders
+            .AsNoTracking()
+            .Where(o => o.CreatedAt >= startUtc && o.CreatedAt < endUtc)
+            .GroupBy(o => o.CreatedAt.Date)
+            .Select(g => new
+            {
+                Day = g.Key,
+                OrderCount = g.Count(),
+                Revenue = g.Sum(x => x.TotalAmount)
+            })
+            .ToListAsync(ct);
+
+        var map = raw.ToDictionary(x => x.Day, x => x);
+        var result = new List<AdminMonthlyOrderVm>();
+        for (var day = startUtc.Date; day < endUtc.Date; day = day.AddDays(1))
+        {
+            map.TryGetValue(day, out var row);
+            result.Add(new AdminMonthlyOrderVm
+            {
+                MonthLabel = day.ToString("dd MMM"),
+                OrderCount = row?.OrderCount ?? 0,
+                Revenue = row?.Revenue ?? 0m
+            });
+        }
+
+        return result;
+    }
+
+    private async Task<IReadOnlyList<AdminMonthlyOrderVm>> BuildMonthlyOrdersAsync(DateTime startUtc, DateTime endUtc, CancellationToken ct)
+    {
+        var raw = await _db.Orders
+            .AsNoTracking()
+            .Where(o => o.CreatedAt >= startUtc && o.CreatedAt < endUtc)
+            .GroupBy(o => new { o.CreatedAt.Year, o.CreatedAt.Month })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                OrderCount = g.Count(),
+                Revenue = g.Sum(x => x.TotalAmount)
+            })
+            .ToListAsync(ct);
+
+        var map = raw.ToDictionary(x => $"{x.Year:D4}-{x.Month:D2}", x => x);
+        var monthStart = new DateTime(startUtc.Year, startUtc.Month, 1);
+        var monthEnd = new DateTime(endUtc.Year, endUtc.Month, 1).AddMonths(1);
+
+        var result = new List<AdminMonthlyOrderVm>();
+        for (var current = monthStart; current < monthEnd; current = current.AddMonths(1))
+        {
+            var key = $"{current.Year:D4}-{current.Month:D2}";
+            map.TryGetValue(key, out var row);
+            result.Add(new AdminMonthlyOrderVm
+            {
+                MonthLabel = current.ToString("MMM yyyy"),
+                OrderCount = row?.OrderCount ?? 0,
+                Revenue = row?.Revenue ?? 0m
+            });
+        }
+
+        return result;
+    }
+
+    private static (DateTime StartUtc, DateTime EndUtc, int RangeDays, DateTime? CustomStartDate, DateTime? CustomEndDate, string Label) ResolveRange(
+        int? days,
+        DateTime? startDate,
+        DateTime? endDate)
+    {
+        var now = DateTime.UtcNow;
+        var normalizedDays = DashboardRangeOptions.Contains(days ?? 0) ? days!.Value : 30;
+
+        if (startDate.HasValue && endDate.HasValue)
+        {
+            var start = startDate.Value.Date;
+            var endInclusive = endDate.Value.Date;
+            if (endInclusive < start)
+                (start, endInclusive) = (endInclusive, start);
+
+            var endExclusive = endInclusive.AddDays(1);
+            if (endExclusive <= start)
+                endExclusive = start.AddDays(1);
+
+            var spanDays = Math.Max((int)Math.Ceiling((endExclusive - start).TotalDays), 1);
+            return (start, endExclusive, spanDays, start, endInclusive, $"Custom: {start:yyyy-MM-dd} - {endInclusive:yyyy-MM-dd}");
+        }
+
+        var startUtc = now.AddDays(-normalizedDays);
+        return (startUtc, now, normalizedDays, null, null, $"Last {normalizedDays} days");
+    }
+
+    private static (AdminOrderTimingSummaryVm summary, IReadOnlyList<AdminOrderTransitionTimingVm> transitions) BuildOrderTimings(
+        IReadOnlyDictionary<int, DateTime> orderCreatedMap,
+        IReadOnlyList<OrderStatusLogRow> statusLogs)
+    {
+        var approvalHours = new List<double>();
+        var dispatchHours = new List<double>();
+        var shippingHours = new List<double>();
+        var endToEndHours = new List<double>();
+
+        var transitionConfig = new (string From, string To, string Label)[]
+        {
+            (OrderStatusWorkflow.Pending, OrderStatusWorkflow.Paid, "Pending -> Paid"),
+            (OrderStatusWorkflow.Paid, OrderStatusWorkflow.Processing, "Paid -> Processing"),
+            (OrderStatusWorkflow.Processing, OrderStatusWorkflow.Packed, "Processing -> Packed"),
+            (OrderStatusWorkflow.Packed, OrderStatusWorkflow.Shipped, "Packed -> Shipped"),
+            (OrderStatusWorkflow.Shipped, OrderStatusWorkflow.CourierPickedUp, "Shipped -> Courier Picked Up"),
+            (OrderStatusWorkflow.CourierPickedUp, OrderStatusWorkflow.OutForDelivery, "Courier Picked Up -> Out for Delivery"),
+            (OrderStatusWorkflow.OutForDelivery, OrderStatusWorkflow.Delivered, "Out for Delivery -> Delivered")
+        };
+
+        var transitionBuckets = transitionConfig.ToDictionary(
+            x => x.Label,
+            _ => new List<double>(),
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var group in statusLogs.GroupBy(x => x.OrderId))
+        {
+            var firstStatusTimes = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+            foreach (var item in group)
+            {
+                var normalized = OrderStatusWorkflow.Normalize(item.ToStatus);
+                if (string.IsNullOrWhiteSpace(normalized))
+                    continue;
+
+                if (!firstStatusTimes.ContainsKey(normalized))
+                    firstStatusTimes[normalized] = item.ChangedAt;
+            }
+
+            DateTime? pendingAt = firstStatusTimes.TryGetValue(OrderStatusWorkflow.Pending, out var pendingTs)
+                ? pendingTs
+                : orderCreatedMap.TryGetValue(group.Key, out var createdAt) ? createdAt : null;
+
+            DateTime? paidAt = firstStatusTimes.TryGetValue(OrderStatusWorkflow.Paid, out var paidTs) ? paidTs : null;
+            DateTime? shippedAt = firstStatusTimes.TryGetValue(OrderStatusWorkflow.Shipped, out var shippedTs) ? shippedTs : null;
+            DateTime? deliveredAt = firstStatusTimes.TryGetValue(OrderStatusWorkflow.Delivered, out var deliveredTs) ? deliveredTs : null;
+
+            AddDurationHours(approvalHours, pendingAt, paidAt);
+            AddDurationHours(dispatchHours, paidAt, shippedAt);
+            AddDurationHours(shippingHours, shippedAt, deliveredAt);
+            AddDurationHours(endToEndHours, pendingAt, deliveredAt);
+
+            foreach (var transition in transitionConfig)
+            {
+                var fromAt = firstStatusTimes.TryGetValue(transition.From, out var fromTs) ? fromTs : (DateTime?)null;
+                var toAt = firstStatusTimes.TryGetValue(transition.To, out var toTs) ? toTs : (DateTime?)null;
+                AddDurationHours(transitionBuckets[transition.Label], fromAt, toAt);
+            }
+        }
+
+        var summary = new AdminOrderTimingSummaryVm
+        {
+            AvgApprovalHours = AverageHours(approvalHours),
+            ApprovalSampleCount = approvalHours.Count,
+            AvgDispatchHours = AverageHours(dispatchHours),
+            DispatchSampleCount = dispatchHours.Count,
+            AvgShippingHours = AverageHours(shippingHours),
+            ShippingSampleCount = shippingHours.Count,
+            AvgEndToEndHours = AverageHours(endToEndHours),
+            EndToEndSampleCount = endToEndHours.Count
+        };
+
+        var transitions = transitionConfig
+            .Select(x => new AdminOrderTransitionTimingVm
+            {
+                Label = x.Label,
+                AvgHours = AverageHours(transitionBuckets[x.Label]),
+                SampleCount = transitionBuckets[x.Label].Count
+            })
+            .ToArray();
+
+        return (summary, transitions);
+    }
+
+    private static void AddDurationHours(List<double> bucket, DateTime? start, DateTime? end)
+    {
+        if (!start.HasValue || !end.HasValue)
+            return;
+
+        var hours = (end.Value - start.Value).TotalHours;
+        if (hours < 0 || hours > 24 * 365 * 2)
+            return;
+
+        bucket.Add(hours);
+    }
+
+    private static double AverageHours(IReadOnlyCollection<double> values)
+    {
+        if (values.Count == 0)
+            return 0;
+
+        return Math.Round(values.Average(), 2, MidpointRounding.AwayFromZero);
+    }
+
+    private sealed class OrderStatusLogRow
+    {
+        public int OrderId { get; set; }
+        public string ToStatus { get; set; } = "";
+        public DateTime ChangedAt { get; set; }
     }
 
     private string SafeReturnAction(string? returnTo)

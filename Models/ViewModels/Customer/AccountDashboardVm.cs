@@ -8,7 +8,10 @@ public sealed class AccountDashboardVm
     public PasswordChangeVm Password { get; set; } = new();
     public AddressEditVm AddressForm { get; set; } = new();
     public PaymentEditVm PaymentForm { get; set; } = new();
+    public CustomerRelationsMessageVm CustomerRelationsForm { get; set; } = new();
     public IReadOnlyList<CustomerOrderHistoryItemVm> Orders { get; set; } = Array.Empty<CustomerOrderHistoryItemVm>();
+    public IReadOnlyList<CustomerProcessNotificationVm> ProcessNotifications { get; set; } = Array.Empty<CustomerProcessNotificationVm>();
+    public IReadOnlyList<CustomerRelationsHistoryItemVm> CustomerRelationsHistory { get; set; } = Array.Empty<CustomerRelationsHistoryItemVm>();
     public IReadOnlyList<CustomerAddressListItemVm> Addresses { get; set; } = Array.Empty<CustomerAddressListItemVm>();
     public IReadOnlyList<CustomerPaymentListItemVm> Payments { get; set; } = Array.Empty<CustomerPaymentListItemVm>();
 }
@@ -131,9 +134,40 @@ public sealed class CustomerOrderHistoryItemVm
     public DateTime CreatedAt { get; set; }
     public string Status { get; set; } = "";
     public bool CanCancel { get; set; }
+    public string? ShippingCarrier { get; set; }
+    public string? TrackingCode { get; set; }
     public decimal TotalAmount { get; set; }
     public string Currency { get; set; } = "";
     public int ItemCount { get; set; }
+}
+
+public sealed class CustomerProcessNotificationVm
+{
+    public int OrderId { get; set; }
+    public string Status { get; set; } = "";
+    public string StatusMessage { get; set; } = "";
+    public DateTime EventAt { get; set; }
+    public string? ShippingCarrier { get; set; }
+    public string? TrackingCode { get; set; }
+}
+
+public sealed class CustomerRelationsMessageVm
+{
+    [Required]
+    [Display(Name = "Konu")]
+    public string Subject { get; set; } = "";
+
+    [Required]
+    [Display(Name = "Mesaj")]
+    public string Message { get; set; } = "";
+}
+
+public sealed class CustomerRelationsHistoryItemVm
+{
+    public long Id { get; set; }
+    public string Subject { get; set; } = "";
+    public string Message { get; set; } = "";
+    public DateTime CreatedAt { get; set; }
 }
 
 public sealed class CustomerAddressListItemVm

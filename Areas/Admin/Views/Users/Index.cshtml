@@ -1,6 +1,23 @@
 @model IReadOnlyList<Pehlione.Models.ViewModels.Admin.UserListItemVm>
 @{
     ViewData["Title"] = "Kullanicilar";
+
+    var customers = Model
+        .Where(x => x.Roles.Contains("Customer", StringComparer.OrdinalIgnoreCase))
+        .OrderBy(x => x.Email)
+        .ToList();
+
+    var couriers = Model
+        .Where(x => !x.Roles.Contains("Customer", StringComparer.OrdinalIgnoreCase))
+        .Where(x => x.Roles.Contains("Courier", StringComparer.OrdinalIgnoreCase))
+        .OrderBy(x => x.Email)
+        .ToList();
+
+    var companyEmployees = Model
+        .Where(x => !x.Roles.Contains("Customer", StringComparer.OrdinalIgnoreCase))
+        .Where(x => !x.Roles.Contains("Courier", StringComparer.OrdinalIgnoreCase))
+        .OrderBy(x => x.Email)
+        .ToList();
 }
 
 <div class="container-fluid py-4">
@@ -16,22 +33,98 @@
         Bu liste, Identity kullanicilarini ve rollerini gosterir.
     </p>
 
+    <h2 class="h5 mt-4 mb-2">Sirket Ici Calisanlar (@companyEmployees.Count)</h2>
+    <table class="table table-striped align-middle mb-4">
+        <thead>
+            <tr>
+                <th>E-posta</th>
+                <th>Kullanici Adi</th>
+                <th>Roller</th>
+                <th>Departmanlar</th>
+            </tr>
+        </thead>
+        <tbody>
+        @if (companyEmployees.Count == 0)
+        {
+            <tr>
+                <td colspan="4" class="text-muted">Kayit yok.</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var u in companyEmployees)
+            {
+                <tr>
+                    <td>@u.Email</td>
+                    <td>@u.UserName</td>
+                    <td>@(u.Roles.Length == 0 ? "-" : string.Join(", ", u.Roles))</td>
+                    <td>@(u.Departments.Length == 0 ? "-" : string.Join(", ", u.Departments))</td>
+                </tr>
+            }
+        }
+        </tbody>
+    </table>
+
+    <h2 class="h5 mt-4 mb-2">Musteriler (@customers.Count)</h2>
+    <table class="table table-striped align-middle mb-4">
+        <thead>
+            <tr>
+                <th>E-posta</th>
+                <th>Kullanici Adi</th>
+                <th>Roller</th>
+                <th>Departmanlar</th>
+            </tr>
+        </thead>
+        <tbody>
+        @if (customers.Count == 0)
+        {
+            <tr>
+                <td colspan="4" class="text-muted">Kayit yok.</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var u in customers)
+            {
+                <tr>
+                    <td>@u.Email</td>
+                    <td>@u.UserName</td>
+                    <td>@(u.Roles.Length == 0 ? "-" : string.Join(", ", u.Roles))</td>
+                    <td>@(u.Departments.Length == 0 ? "-" : string.Join(", ", u.Departments))</td>
+                </tr>
+            }
+        }
+        </tbody>
+    </table>
+
+    <h2 class="h5 mt-4 mb-2">Kuryeler (@couriers.Count)</h2>
     <table class="table table-striped align-middle">
         <thead>
             <tr>
                 <th>E-posta</th>
                 <th>Kullanici Adi</th>
                 <th>Roller</th>
+                <th>Departmanlar</th>
             </tr>
         </thead>
         <tbody>
-        @foreach (var u in Model)
+        @if (couriers.Count == 0)
         {
             <tr>
-                <td>@u.Email</td>
-                <td>@u.UserName</td>
-                <td>@(u.Roles.Length == 0 ? "-" : string.Join(", ", u.Roles))</td>
+                <td colspan="4" class="text-muted">Kayit yok.</td>
             </tr>
+        }
+        else
+        {
+            @foreach (var u in couriers)
+            {
+                <tr>
+                    <td>@u.Email</td>
+                    <td>@u.UserName</td>
+                    <td>@(u.Roles.Length == 0 ? "-" : string.Join(", ", u.Roles))</td>
+                    <td>@(u.Departments.Length == 0 ? "-" : string.Join(", ", u.Departments))</td>
+                </tr>
+            }
         }
         </tbody>
     </table>

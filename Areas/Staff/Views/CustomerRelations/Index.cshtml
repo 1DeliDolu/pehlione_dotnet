@@ -1,0 +1,35 @@
+@{
+    ViewData["Title"] = "Musteri Iliskileri Dashboard";
+}
+
+<div class="container-fluid py-4">
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <span class="badge text-bg-primary mb-2">Customer Relations</span>
+            <h1 class="h3 mb-1">Musteri Iliskileri Dashboard</h1>
+            <p class="text-muted mb-0">Musteri geri bildirimleri, destek talepleri ve iletisim sureclerini bu alandan yonetebilirsiniz.</p>
+        </div>
+    </div>
+
+    @await Component.InvokeAsync("DashboardNotifications")
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h2 class="h5">Bildirimler</h2>
+                    <p class="text-muted small">Musteri iliskileri departmani ile ilgili tum bildirimleri filtreleyerek takip edin.</p>
+                    <a class="btn btn-primary" asp-area="Staff" asp-controller="Notifications" asp-action="Index" asp-route-department="CustomerRelations">Bildirimleri Ac</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h2 class="h5">Not</h2>
+                    <p class="text-muted small mb-0">Bu ekran, diger Staff departman dashboardlariyla ayni yapida baslangic paneli olarak eklendi.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

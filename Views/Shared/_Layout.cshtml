@@ -85,6 +85,12 @@
                             accountController = "Courier";
                             accountAction = "Index";
                         }
+                        else if (User.IsInRole("CustomerRelations"))
+                        {
+                            accountArea = "Staff";
+                            accountController = "CustomerRelations";
+                            accountAction = "Index";
+                        }
                         else if (User.IsInRole("Staff"))
                         {
                             accountArea = "Staff";

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Pehlione.Data;
 
@@ -11,9 +12,11 @@ using Pehlione.Data;
 namespace Pehlione.Migrations
 {
     [DbContext(typeof(PehlioneDbContext))]
-    partial class PehlioneDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260228034841_AddCustomerRelationsMessages")]
+    partial class AddCustomerRelationsMessages
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -666,55 +669,6 @@ namespace Pehlione.Migrations
                     b.ToTable("order_items", (string)null);
                 });
 
-            modelBuilder.Entity("Pehlione.Models.Commerce.OrderStatusLog", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTime>("ChangedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("changed_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
-
-                    b.Property<string>("ChangedByDepartment")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("changed_by_department");
-
-                    b.Property<string>("ChangedByUserId")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("changed_by_user_id");
-
-                    b.Property<string>("FromStatus")
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)")
-                        .HasColumnName("from_status");
-
-                    b.Property<int>("OrderId")
-                        .HasColumnType("int")
-                        .HasColumnName("order_id");
-
-                    b.Property<string>("ToStatus")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)")
-                        .HasColumnName("to_status");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrderId", "ChangedAt");
-
-                    b.HasIndex("ToStatus", "ChangedAt");
-
-                    b.ToTable("order_status_logs", (string)null);
-                });
-
             modelBuilder.Entity("Pehlione.Models.Communication.CustomerRelationsMessage", b =>
                 {
                     b.Property<long>("Id")
@@ -1358,17 +1312,6 @@ namespace Pehlione.Migrations
                     b.Navigation("Order");
 
                     b.Navigation("Product");
-                });
-
-            modelBuilder.Entity("Pehlione.Models.Commerce.OrderStatusLog", b =>
-                {
-                    b.HasOne("Pehlione.Models.Commerce.Order", "Order")
-                        .WithMany()
-                        .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Order");
                 });
 
             modelBuilder.Entity("Pehlione.Models.Communication.CustomerRelationsMessage", b =>

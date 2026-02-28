@@ -140,6 +140,102 @@
         </div>
 
         <div class="col-12 col-xl-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h2 class="h5 mb-1">Bildirimlerim / Surec Takibi</h2>
+                    <p class="text-muted small mb-0">Siparis surecinizdeki son bilgilendirmeler burada gorunur.</p>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    @if (Model.ProcessNotifications.Count == 0)
+                    {
+                        <div class="alert alert-info mb-0">Henuz surec bildirimi yok.</div>
+                    }
+                    else
+                    {
+                        @foreach (var n in Model.ProcessNotifications)
+                        {
+                            <div class="border rounded-3 p-3 mb-2">
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div>
+                                        <div class="fw-semibold">Siparis #@n.OrderId</div>
+                                        <div>@n.StatusMessage</div>
+                                        <div class="small text-muted">@n.EventAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                                        @if (!string.IsNullOrWhiteSpace(n.ShippingCarrier) || !string.IsNullOrWhiteSpace(n.TrackingCode))
+                                        {
+                                            <div class="small text-muted mt-1">
+                                                Kargo: @(string.IsNullOrWhiteSpace(n.ShippingCarrier) ? "-" : n.ShippingCarrier)
+                                                @if (!string.IsNullOrWhiteSpace(n.TrackingCode))
+                                                {
+                                                    <span> | Takip: @n.TrackingCode</span>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                    <span class="badge text-bg-light">@n.Status</span>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <form asp-area="Customer" asp-controller="Account" asp-action="ContactCustomerRelations" method="post" class="card border-0 shadow-sm rounded-4 h-100">
+                @Html.AntiForgeryToken()
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h2 class="h5 mb-1">Musteri Iliskileri Iletisim</h2>
+                    <p class="text-muted small mb-0">Soru, iade veya surec taleplerinizi dogrudan iletebilirsiniz.</p>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Konu</label>
+                            <input name="Subject" value="@Model.CustomerRelationsForm.Subject" class="form-control" required />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Mesaj</label>
+                            <textarea name="Message" class="form-control" rows="6" required>@Model.CustomerRelationsForm.Message</textarea>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end mt-4">
+                        <button type="submit" class="btn btn-primary">Mesaji Gonder</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h2 class="h5 mb-1">Musteri Iliskileri Mesaj Gecmisi</h2>
+                    <p class="text-muted small mb-0">Gonderdiginiz mesajlarin kayitlari.</p>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    @if (Model.CustomerRelationsHistory.Count == 0)
+                    {
+                        <div class="alert alert-info mb-0">Henuz mesaj gecmisi bulunmuyor.</div>
+                    }
+                    else
+                    {
+                        @foreach (var m in Model.CustomerRelationsHistory)
+                        {
+                            <div class="border rounded-3 p-3 mb-2">
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div>
+                                        <div class="fw-semibold">@m.Subject</div>
+                                        <div class="small">@m.Message</div>
+                                    </div>
+                                    <div class="small text-muted">@m.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-6">
             <form asp-area="Customer" asp-controller="Account" asp-action="SaveAddress" method="post" class="card border-0 shadow-sm rounded-4 h-100">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="Id" value="@Model.AddressForm.Id" />

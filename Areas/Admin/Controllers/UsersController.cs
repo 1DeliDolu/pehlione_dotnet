@@ -25,7 +25,8 @@ public sealed class UsersController : Controller
         IdentitySeed.RoleHr,
         IdentitySeed.RoleWarehouse,
         IdentitySeed.RoleAccounting,
-        IdentitySeed.RoleCourier
+        IdentitySeed.RoleCourier,
+        IdentitySeed.RoleCustomerRelations
     ];
 
     private readonly UserManager<ApplicationUser> _userManager;
@@ -54,11 +55,20 @@ public sealed class UsersController : Controller
         foreach (var u in users)
         {
             var roles = await _userManager.GetRolesAsync(u);
+            var claims = await _userManager.GetClaimsAsync(u);
+            var departments = claims
+                .Where(c => c.Type == PehlioneClaimTypes.Department)
+                .Select(c => (c.Value ?? "").Trim())
+                .Where(c => !string.IsNullOrWhiteSpace(c))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(c => c)
+                .ToArray();
             items.Add(new UserListItemVm
             {
                 Email = u.Email ?? "",
                 UserName = u.UserName ?? "",
-                Roles = roles.OrderBy(x => x).ToArray()
+                Roles = roles.OrderBy(x => x).ToArray(),
+                Departments = departments
             });
         }
 

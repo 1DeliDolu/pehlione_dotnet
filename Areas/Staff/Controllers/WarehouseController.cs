@@ -39,15 +39,18 @@ public sealed class WarehouseController : Controller
     private readonly PehlioneDbContext _db;
     private readonly IOrderStatusEmailService _orderStatusEmailService;
     private readonly IOrderWorkflowNotificationService _orderWorkflowNotificationService;
+    private readonly IOrderStatusTimelineService _orderStatusTimelineService;
 
     public WarehouseController(
         PehlioneDbContext db,
         IOrderStatusEmailService orderStatusEmailService,
-        IOrderWorkflowNotificationService orderWorkflowNotificationService)
+        IOrderWorkflowNotificationService orderWorkflowNotificationService,
+        IOrderStatusTimelineService orderStatusTimelineService)
     {
         _db = db;
         _orderStatusEmailService = orderStatusEmailService;
         _orderWorkflowNotificationService = orderWorkflowNotificationService;
+        _orderStatusTimelineService = orderStatusTimelineService;
     }
 
     public IActionResult Index()
@@ -179,6 +182,13 @@ public sealed class WarehouseController : Controller
         var oldStatus = order.Status;
         order.Status = normalized;
         await _db.SaveChangesAsync(ct);
+        await _orderStatusTimelineService.LogStatusChangedAsync(
+            orderId: order.Id,
+            fromStatus: oldStatus,
+            toStatus: normalized,
+            changedByUserId: User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
+            changedByDepartment: "Warehouse",
+            ct: ct);
         await _orderStatusEmailService.NotifyStatusChangedAsync(order, oldStatus, normalized, ct);
         await _orderWorkflowNotificationService.OnStatusChangedAsync(order, oldStatus, normalized, ct);
 

@@ -12,6 +12,48 @@
         </div>
     </div>
     <div class="card-body px-4 pb-4">
+        @if (TempData["EventSuccess"] is string eventOk && !string.IsNullOrWhiteSpace(eventOk))
+        {
+            <div class="alert alert-success py-2">@eventOk</div>
+        }
+        @if (TempData["EventError"] is string eventErr && !string.IsNullOrWhiteSpace(eventErr))
+        {
+            <div class="alert alert-danger py-2">@eventErr</div>
+        }
+
+        @if (Model.CreateEventDepartmentOptions.Count > 0)
+        {
+            <form asp-area="Staff" asp-controller="Notifications" asp-action="CreateEvent" method="post" class="border rounded-3 p-3 mb-3">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+                <div class="row g-2">
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label small fw-semibold mb-1">Departmanlar (birden fazla secilebilir)</label>
+                        <div class="d-flex flex-wrap gap-2 border rounded-2 p-2" style="max-height: 130px; overflow:auto;">
+                            @foreach (var d in Model.CreateEventDepartmentOptions)
+                            {
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="departments" value="@d" id="evt_@d" />
+                                    <label class="form-check-label small" for="evt_@d">@d</label>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-3">
+                        <label class="form-label small fw-semibold mb-1">Baslik</label>
+                        <input name="title" class="form-control form-control-sm" maxlength="120" required />
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label small fw-semibold mb-1">Mesaj</label>
+                        <input name="message" class="form-control form-control-sm" maxlength="500" required />
+                    </div>
+                    <div class="col-12 col-lg-2 d-grid align-self-end">
+                        <button type="submit" class="btn btn-sm btn-primary">Event Olustur</button>
+                    </div>
+                </div>
+            </form>
+        }
+
         @if (Model.Items.Count == 0)
         {
             <div class="text-muted small">Bildirim bulunmuyor.</div>

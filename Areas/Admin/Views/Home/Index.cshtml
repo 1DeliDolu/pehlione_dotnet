@@ -69,6 +69,75 @@
     </div>
 
     <div class="row g-3 mb-3">
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Onaylama Suresi</div>
+                    <div class="h4 mb-1">@Model.OrderTimings.AvgApprovalHours saat</div>
+                    <div class="small text-muted">Pending -> Paid | n=@Model.OrderTimings.ApprovalSampleCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Hazirlama + Gonderim Suresi</div>
+                    <div class="h4 mb-1">@Model.OrderTimings.AvgDispatchHours saat</div>
+                    <div class="small text-muted">Paid -> Shipped | n=@Model.OrderTimings.DispatchSampleCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Kargo Suresi</div>
+                    <div class="h4 mb-1">@Model.OrderTimings.AvgShippingHours saat</div>
+                    <div class="small text-muted">Shipped -> Delivered | n=@Model.OrderTimings.ShippingSampleCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Uctan Uca Siparis Suresi</div>
+                    <div class="h4 mb-1">@Model.OrderTimings.AvgEndToEndHours saat</div>
+                    <div class="small text-muted">Pending -> Delivered | n=@Model.OrderTimings.EndToEndSampleCount</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body">
+                    <form method="get" asp-area="Admin" asp-controller="Home" asp-action="Index" class="row g-3 align-items-end">
+                        <div class="col-12 col-lg-3">
+                            <label class="form-label fw-semibold">Hazir Zaman Araligi</label>
+                            <select name="days" class="form-select">
+                                @foreach (var d in Model.RangeOptions)
+                                {
+                                    <option value="@d" selected="@(Model.SelectedRangeDays == d && !Model.CustomStartDate.HasValue && !Model.CustomEndDate.HasValue)">Son @d gun</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <label class="form-label fw-semibold">Baslangic (Ozel)</label>
+                            <input type="date" name="startDate" class="form-control" value="@(Model.CustomStartDate?.ToString("yyyy-MM-dd") ?? "")" />
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <label class="form-label fw-semibold">Bitis (Ozel)</label>
+                            <input type="date" name="endDate" class="form-control" value="@(Model.CustomEndDate?.ToString("yyyy-MM-dd") ?? "")" />
+                        </div>
+                        <div class="col-12 col-lg-3 d-grid d-lg-flex justify-content-lg-end gap-2">
+                            <button type="submit" class="btn btn-primary">Uygula</button>
+                            <a asp-area="Admin" asp-controller="Home" asp-action="Index" asp-route-days="30" class="btn btn-outline-secondary">Sifirla</a>
+                        </div>
+                    </form>
+                    <div class="small text-muted mt-2">Aktif aralik: @Model.RangeLabel</div>
+                </div>
+            </div>
+        </div>
         <div class="col-12 col-lg-6">
             <div class="card border-0 shadow-sm rounded-4 h-100">
                 <div class="card-header bg-white border-0 pt-4 px-4">
@@ -91,6 +160,17 @@
                 </div>
             </div>
         </div>
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h2 class="h6 mb-1">Siparis Asama Sureleri</h2>
+                    <p class="text-muted small mb-0">Gecis bazli ortalama saat degerleri</p>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    <canvas id="orderTransitionChart" height="120"></canvas>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -100,6 +180,7 @@
         (function () {
             const categoryStock = @Html.Raw(JsonSerializer.Serialize(Model.CategoryStock));
             const monthlyOrders = @Html.Raw(JsonSerializer.Serialize(Model.MonthlyOrders));
+            const transitionTimings = @Html.Raw(JsonSerializer.Serialize(Model.TransitionTimings));
 
             const catCtx = document.getElementById('categoryStockChart');
             if (catCtx) {
@@ -155,6 +236,40 @@
                         scales: {
                             yOrders: { type: 'linear', position: 'left', beginAtZero: true },
                             yRevenue: { type: 'linear', position: 'right', beginAtZero: true, grid: { drawOnChartArea: false } }
+                        }
+                    }
+                });
+            }
+
+            const transitionCtx = document.getElementById('orderTransitionChart');
+            if (transitionCtx) {
+                new Chart(transitionCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: transitionTimings.map(x => x.Label),
+                        datasets: [{
+                            label: 'Ortalama Saat',
+                            data: transitionTimings.map(x => x.AvgHours),
+                            backgroundColor: 'rgba(220,53,69,0.5)',
+                            borderColor: 'rgba(220,53,69,1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    afterLabel: function (ctx) {
+                                        const item = transitionTimings[ctx.dataIndex];
+                                        return 'Ornek: ' + (item ? item.SampleCount : 0);
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: true }
                         }
                     }
                 });

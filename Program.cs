@@ -95,6 +95,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IDepartmentConstraintService, DepartmentConstraintService>();
 builder.Services.AddScoped<IOrderStatusEmailService, OrderStatusEmailService>();
 builder.Services.AddScoped<IOrderWorkflowNotificationService, OrderWorkflowNotificationService>();
+builder.Services.AddScoped<IOrderStatusTimelineService, OrderStatusTimelineService>();
 
 if (builder.Environment.IsDevelopment())
 {

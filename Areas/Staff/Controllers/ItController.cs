@@ -102,7 +102,7 @@ public sealed class ItController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreatePersonnel(ItCreatePersonnelVm model, CancellationToken ct)
     {
-        var allowedRoles = new[] { IdentitySeed.RoleStaff, IdentitySeed.RolePurchasing, IdentitySeed.RoleWarehouse, IdentitySeed.RoleIt, IdentitySeed.RoleHr, IdentitySeed.RoleAccounting, IdentitySeed.RoleCourier };
+        var allowedRoles = new[] { IdentitySeed.RoleStaff, IdentitySeed.RolePurchasing, IdentitySeed.RoleWarehouse, IdentitySeed.RoleIt, IdentitySeed.RoleHr, IdentitySeed.RoleAccounting, IdentitySeed.RoleCourier, IdentitySeed.RoleCustomerRelations };
         if (!allowedRoles.Contains(model.Role))
             ModelState.AddModelError(nameof(model.Role), "Gecersiz rol secimi.");
 

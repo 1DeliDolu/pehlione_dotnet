@@ -29,9 +29,11 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
     public DbSet<MenuNodeTranslation> MenuNodeTranslations => Set<MenuNodeTranslation>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<OrderStatusLog> OrderStatusLogs => Set<OrderStatusLog>();
     public DbSet<Stock> Stocks => Set<Stock>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<CustomerRelationsMessage> CustomerRelationsMessages => Set<CustomerRelationsMessage>();
     public DbSet<DepartmentConstraint> DepartmentConstraints => Set<DepartmentConstraint>();
     public DbSet<UserAddress> UserAddresses => Set<UserAddress>();
     public DbSet<UserPaymentMethod> UserPaymentMethods => Set<UserPaymentMethod>();
@@ -295,6 +297,26 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        builder.Entity<OrderStatusLog>(b =>
+        {
+            b.ToTable("order_status_logs");
+            b.Property(x => x.Id).HasColumnName("id");
+            b.Property(x => x.OrderId).HasColumnName("order_id");
+            b.Property(x => x.FromStatus).HasColumnName("from_status").HasMaxLength(32);
+            b.Property(x => x.ToStatus).HasColumnName("to_status").HasMaxLength(32).IsRequired();
+            b.Property(x => x.ChangedAt).HasColumnName("changed_at").HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            b.Property(x => x.ChangedByUserId).HasColumnName("changed_by_user_id").HasMaxLength(255);
+            b.Property(x => x.ChangedByDepartment).HasColumnName("changed_by_department").HasMaxLength(64);
+
+            b.HasIndex(x => new { x.OrderId, x.ChangedAt });
+            b.HasIndex(x => new { x.ToStatus, x.ChangedAt });
+
+            b.HasOne(x => x.Order)
+                .WithMany()
+                .HasForeignKey(x => x.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         builder.Entity<Stock>(b =>
         {
             b.ToTable("stocks");
@@ -343,6 +365,24 @@ public sealed class PehlioneDbContext : IdentityDbContext<ApplicationUser, Ident
             b.Property(x => x.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
             b.HasIndex(x => new { x.Department, x.IsRead, x.CreatedAt });
+        });
+
+        builder.Entity<CustomerRelationsMessage>(b =>
+        {
+            b.ToTable("customer_relations_messages");
+            b.Property(x => x.Id).HasColumnName("id");
+            b.Property(x => x.UserId).HasColumnName("user_id").HasMaxLength(255).IsRequired();
+            b.Property(x => x.CustomerEmail).HasColumnName("customer_email").HasMaxLength(255).IsRequired();
+            b.Property(x => x.Subject).HasColumnName("subject").HasMaxLength(200).IsRequired();
+            b.Property(x => x.Message).HasColumnName("message").HasMaxLength(4000).IsRequired();
+            b.Property(x => x.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+            b.HasIndex(x => new { x.UserId, x.CreatedAt });
+
+            b.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<DepartmentConstraint>(b =>

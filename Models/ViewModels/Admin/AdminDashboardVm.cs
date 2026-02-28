@@ -19,6 +19,13 @@ public sealed class AdminDashboardVm
     public decimal OrdersRevenue { get; set; }
     public IReadOnlyList<AdminCategoryStockVm> CategoryStock { get; set; } = Array.Empty<AdminCategoryStockVm>();
     public IReadOnlyList<AdminMonthlyOrderVm> MonthlyOrders { get; set; } = Array.Empty<AdminMonthlyOrderVm>();
+    public AdminOrderTimingSummaryVm OrderTimings { get; set; } = new();
+    public IReadOnlyList<AdminOrderTransitionTimingVm> TransitionTimings { get; set; } = Array.Empty<AdminOrderTransitionTimingVm>();
+    public int SelectedRangeDays { get; set; } = 30;
+    public DateTime? CustomStartDate { get; set; }
+    public DateTime? CustomEndDate { get; set; }
+    public string RangeLabel { get; set; } = "";
+    public IReadOnlyList<int> RangeOptions { get; set; } = Array.Empty<int>();
 }
 
 public sealed class AdminCategoryStockVm
@@ -32,6 +39,25 @@ public sealed class AdminMonthlyOrderVm
     public string MonthLabel { get; set; } = "";
     public int OrderCount { get; set; }
     public decimal Revenue { get; set; }
+}
+
+public sealed class AdminOrderTimingSummaryVm
+{
+    public double AvgApprovalHours { get; set; }
+    public int ApprovalSampleCount { get; set; }
+    public double AvgDispatchHours { get; set; }
+    public int DispatchSampleCount { get; set; }
+    public double AvgShippingHours { get; set; }
+    public int ShippingSampleCount { get; set; }
+    public double AvgEndToEndHours { get; set; }
+    public int EndToEndSampleCount { get; set; }
+}
+
+public sealed class AdminOrderTransitionTimingVm
+{
+    public string Label { get; set; } = "";
+    public double AvgHours { get; set; }
+    public int SampleCount { get; set; }
 }
 
 public sealed class AdminSelectOptionVm

@@ -14,6 +14,18 @@ namespace Pehlione.Areas.Staff.Controllers;
 [Authorize(Roles = $"{IdentitySeed.RoleHr},{IdentitySeed.RoleAdmin}")]
 public sealed class HrController : Controller
 {
+    private static readonly string[] DepartmentOptions =
+    [
+        "Sales",
+        "Purchasing",
+        "Warehouse",
+        "IT",
+        "HR",
+        "Accounting",
+        "Courier",
+        "CustomerRelations"
+    ];
+
     private static readonly string[] AllowedRoles =
     [
         IdentitySeed.RoleStaff,
@@ -22,7 +34,8 @@ public sealed class HrController : Controller
         IdentitySeed.RoleIt,
         IdentitySeed.RoleHr,
         IdentitySeed.RoleAccounting,
-        IdentitySeed.RoleCourier
+        IdentitySeed.RoleCourier,
+        IdentitySeed.RoleCustomerRelations
     ];
 
     private readonly UserManager<ApplicationUser> _userManager;
@@ -41,7 +54,13 @@ public sealed class HrController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdatePerson(string userId, string role, string? department, string? position, CancellationToken ct)
+    public async Task<IActionResult> UpdatePerson(
+        string userId,
+        string role,
+        string[]? departments,
+        string? department,
+        string? position,
+        CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(userId))
             return RedirectToAction(nameof(Index));
@@ -69,7 +88,8 @@ public sealed class HrController : Controller
         if (!await _userManager.IsInRoleAsync(user, role))
             await _userManager.AddToRoleAsync(user, role);
 
-        await UpsertClaimAsync(user, PehlioneClaimTypes.Department, department);
+        var selectedDepartments = NormalizeDepartments(departments, department);
+        await ReplaceDepartmentClaimsAsync(user, selectedDepartments);
         await UpsertClaimAsync(user, PehlioneClaimTypes.Position, position);
 
         TempData["HrSuccess"] = "Personel bilgileri guncellendi.";
@@ -87,6 +107,30 @@ public sealed class HrController : Controller
             await _userManager.AddClaimAsync(user, new Claim(claimType, value.Trim()));
     }
 
+    private async Task ReplaceDepartmentClaimsAsync(ApplicationUser user, IReadOnlyList<string> departments)
+    {
+        var claims = await _userManager.GetClaimsAsync(user);
+        var existing = claims.Where(x => x.Type == PehlioneClaimTypes.Department).ToList();
+        if (existing.Count > 0)
+            await _userManager.RemoveClaimsAsync(user, existing);
+
+        foreach (var department in departments)
+            await _userManager.AddClaimAsync(user, new Claim(PehlioneClaimTypes.Department, department));
+    }
+
+    private static string[] NormalizeDepartments(string[]? departments, string? department)
+    {
+        var values = (departments ?? Array.Empty<string>())
+            .Concat(string.IsNullOrWhiteSpace(department) ? Array.Empty<string>() : new[] { department })
+            .Select(x => (x ?? "").Trim())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Where(x => DepartmentOptions.Contains(x, StringComparer.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return values;
+    }
+
     private async Task<HrDashboardVm> BuildVmAsync(CancellationToken ct)
     {
         var users = await _userManager.Users
@@ -101,12 +145,20 @@ public sealed class HrController : Controller
                 continue;
 
             var claims = await _userManager.GetClaimsAsync(user);
+            var departments = claims
+                .Where(x => x.Type == PehlioneClaimTypes.Department)
+                .Select(x => (x.Value ?? "").Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x)
+                .ToArray();
+
             rows.Add(new HrPersonRowVm
             {
                 UserId = user.Id,
                 Email = user.Email ?? user.UserName ?? "",
                 Role = roles.FirstOrDefault(x => AllowedRoles.Contains(x)) ?? "-",
-                Department = claims.FirstOrDefault(x => x.Type == PehlioneClaimTypes.Department)?.Value,
+                Departments = departments,
                 Position = claims.FirstOrDefault(x => x.Type == PehlioneClaimTypes.Position)?.Value
             });
         }

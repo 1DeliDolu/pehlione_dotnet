@@ -25,15 +25,18 @@ public sealed class CourierController : Controller
     private readonly PehlioneDbContext _db;
     private readonly IOrderStatusEmailService _orderStatusEmailService;
     private readonly IOrderWorkflowNotificationService _orderWorkflowNotificationService;
+    private readonly IOrderStatusTimelineService _orderStatusTimelineService;
 
     public CourierController(
         PehlioneDbContext db,
         IOrderStatusEmailService orderStatusEmailService,
-        IOrderWorkflowNotificationService orderWorkflowNotificationService)
+        IOrderWorkflowNotificationService orderWorkflowNotificationService,
+        IOrderStatusTimelineService orderStatusTimelineService)
     {
         _db = db;
         _orderStatusEmailService = orderStatusEmailService;
         _orderWorkflowNotificationService = orderWorkflowNotificationService;
+        _orderStatusTimelineService = orderStatusTimelineService;
     }
 
     [HttpGet]
@@ -133,6 +136,13 @@ public sealed class CourierController : Controller
         var oldStatus = order.Status;
         order.Status = target;
         await _db.SaveChangesAsync(ct);
+        await _orderStatusTimelineService.LogStatusChangedAsync(
+            orderId: order.Id,
+            fromStatus: oldStatus,
+            toStatus: target,
+            changedByUserId: User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
+            changedByDepartment: "Courier",
+            ct: ct);
         await _orderStatusEmailService.NotifyStatusChangedAsync(order, oldStatus, target, ct);
         await _orderWorkflowNotificationService.OnStatusChangedAsync(order, oldStatus, target, ct);
 

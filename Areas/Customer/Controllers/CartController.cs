@@ -30,6 +30,7 @@ public sealed class CartController : Controller
     private readonly IAppEmailSender _emailSender;
     private readonly INotificationService _notificationService;
     private readonly IOrderWorkflowNotificationService _orderWorkflowNotificationService;
+    private readonly IOrderStatusTimelineService _orderStatusTimelineService;
     private readonly ILogger<CartController> _logger;
 
     public CartController(
@@ -38,6 +39,7 @@ public sealed class CartController : Controller
         IAppEmailSender emailSender,
         INotificationService notificationService,
         IOrderWorkflowNotificationService orderWorkflowNotificationService,
+        IOrderStatusTimelineService orderStatusTimelineService,
         ILogger<CartController> logger)
     {
         _db = db;
@@ -45,6 +47,7 @@ public sealed class CartController : Controller
         _emailSender = emailSender;
         _notificationService = notificationService;
         _orderWorkflowNotificationService = orderWorkflowNotificationService;
+        _orderStatusTimelineService = orderStatusTimelineService;
         _logger = logger;
     }
 
@@ -555,6 +558,7 @@ public sealed class CartController : Controller
         {
             _db.Orders.Add(order);
             await _db.SaveChangesAsync(ct);
+            await _orderStatusTimelineService.LogOrderPlacedAsync(order.Id, userId, ct);
 
             foreach (var required in requiredStocks)
             {
