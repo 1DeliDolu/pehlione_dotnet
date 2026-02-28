@@ -1,0 +1,54 @@
+@model Pehlione.Models.ViewModels.Admin.CreateUserVm
+@{
+    ViewData["Title"] = "Calisan Ekle / Sifre Olustur";
+}
+
+<div class="container-fluid py-4">
+    <partial name="_AdminNav" />
+
+    @if (TempData["AdminSuccess"] is string ok && !string.IsNullOrWhiteSpace(ok))
+    {
+        <div class="alert alert-success shadow-sm">@ok</div>
+    }
+    @if (TempData["AdminError"] is string err && !string.IsNullOrWhiteSpace(err))
+    {
+        <div class="alert alert-warning shadow-sm">@err</div>
+    }
+
+    <form asp-area="Admin" asp-controller="Home" asp-action="QuickCreateUser" method="post" class="card border-0 shadow-sm rounded-4">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="returnTo" value="UserForm" />
+
+        <div class="card-header bg-white border-0 pt-4 px-4">
+            <h1 class="h5 mb-1">Calisan Ekle / Sifre Olustur</h1>
+            <p class="text-muted small mb-0">Modern admin formu</p>
+        </div>
+
+        <div class="card-body px-4 pb-4">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label fw-semibold">E-posta</label>
+                    <input name="Email" value="@Model.Email" type="email" class="form-control form-control-lg" required />
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-semibold">Parola</label>
+                    <input name="Password" value="@Model.Password" type="text" class="form-control form-control-lg" required />
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-semibold">Rol</label>
+                    <select name="Role" class="form-select form-select-lg">
+                        <option value="Staff">Staff</option>
+                        <option value="Purchasing">Purchasing</option>
+                        <option value="Warehouse">Warehouse</option>
+                        <option value="IT">IT</option>
+                        <option value="HR">HR</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+            </div>
+            <div class="d-flex justify-content-end mt-4">
+                <button type="submit" class="btn btn-primary btn-lg px-4">Calisan Olustur</button>
+            </div>
+        </div>
+    </form>
+</div>

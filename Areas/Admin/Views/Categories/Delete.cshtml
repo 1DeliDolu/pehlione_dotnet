@@ -3,7 +3,10 @@
     ViewData["Title"] = "Kategori Sil";
 }
 
-<div class="container" style="max-width: 720px;">
+<div class="container-fluid py-4">
+    <partial name="_AdminNav" />
+    <div class="card border-0 shadow-sm rounded-4" style="max-width: 860px;">
+    <div class="card-body p-4">
     <h1 class="h3 mb-3">Kategori sil</h1>
 
     <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
@@ -51,5 +54,7 @@
                 </form>
             }
         </div>
+    </div>
+    </div>
     </div>
 </div>

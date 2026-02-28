@@ -1,8 +1,162 @@
+@using System.Text.Json
+@model Pehlione.Models.ViewModels.Admin.AdminDashboardVm
 @{
-    ViewData["Title"] = "Admin";
+    ViewData["Title"] = "Admin Dashboard";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Admin Bolumu</h1>
-    <p>Bu alan ileride <strong>Admin</strong> rolu ile korunacak (JWT + RBAC).</p>
+<div class="container-fluid py-4">
+    <partial name="_AdminNav" />
+
+    @if (TempData["AdminSuccess"] is string ok && !string.IsNullOrWhiteSpace(ok))
+    {
+        <div class="alert alert-success shadow-sm">@ok</div>
+    }
+    @if (TempData["AdminError"] is string err && !string.IsNullOrWhiteSpace(err))
+    {
+        <div class="alert alert-warning shadow-sm">@err</div>
+    }
+
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-md-6 col-xl-3">
+            <a class="card border-0 shadow-sm rounded-4 h-100 text-decoration-none" asp-area="Admin" asp-controller="Home" asp-action="UserForm">
+                <div class="card-body">
+                    <h2 class="h6 mb-1 text-dark">Calisan Ekle / Sifre Olustur</h2>
+                    <p class="text-muted small mb-0">Ayri formu ac</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            <a class="card border-0 shadow-sm rounded-4 h-100 text-decoration-none" asp-area="Admin" asp-controller="Home" asp-action="ProductForm">
+                <div class="card-body">
+                    <h2 class="h6 mb-1 text-dark">Urun Ekleme Formu</h2>
+                    <p class="text-muted small mb-0">Ayri formu ac</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            <a class="card border-0 shadow-sm rounded-4 h-100 text-decoration-none" asp-area="Admin" asp-controller="Home" asp-action="StockForm">
+                <div class="card-body">
+                    <h2 class="h6 mb-1 text-dark">Departman: Stok Artir / Azalt</h2>
+                    <p class="text-muted small mb-0">Ayri formu ac</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            <a class="card border-0 shadow-sm rounded-4 h-100 text-decoration-none" asp-area="Admin" asp-controller="Home" asp-action="PersonnelForm">
+                <div class="card-body">
+                    <h2 class="h6 mb-1 text-dark">Departman: Personel Rol / Birim</h2>
+                    <p class="text-muted small mb-0">Ayri formu ac</p>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-1">
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body"><div class="text-muted small">Toplam Kullanici</div><div class="h4 mb-0">@Model.TotalUsers</div></div></div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body"><div class="text-muted small">Toplam Urun</div><div class="h4 mb-0">@Model.TotalProducts</div></div></div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body"><div class="text-muted small">Toplam Siparis</div><div class="h4 mb-0">@Model.TotalOrders</div></div></div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body"><div class="text-muted small">Toplam Stok</div><div class="h4 mb-0">@Model.TotalStockQuantity</div></div></div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h2 class="h6 mb-1">Kategori Bazli Stok</h2>
+                    <p class="text-muted small mb-0">En yuksek stoklu ilk kategoriler</p>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    <canvas id="categoryStockChart" height="180"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h2 class="h6 mb-1">Aylik Siparis ve Ciro</h2>
+                    <p class="text-muted small mb-0">Son 6 ay</p>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    <canvas id="monthlyOrdersChart" height="180"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        (function () {
+            const categoryStock = @Html.Raw(JsonSerializer.Serialize(Model.CategoryStock));
+            const monthlyOrders = @Html.Raw(JsonSerializer.Serialize(Model.MonthlyOrders));
+
+            const catCtx = document.getElementById('categoryStockChart');
+            if (catCtx) {
+                new Chart(catCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: categoryStock.map(x => x.CategoryName),
+                        datasets: [{
+                            label: 'Stok',
+                            data: categoryStock.map(x => x.Quantity),
+                            backgroundColor: 'rgba(13,110,253,0.6)',
+                            borderColor: 'rgba(13,110,253,1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+
+            const monthCtx = document.getElementById('monthlyOrdersChart');
+            if (monthCtx) {
+                new Chart(monthCtx, {
+                    type: 'line',
+                    data: {
+                        labels: monthlyOrders.map(x => x.MonthLabel),
+                        datasets: [
+                            {
+                                label: 'Siparis',
+                                data: monthlyOrders.map(x => x.OrderCount),
+                                borderColor: 'rgba(25,135,84,1)',
+                                backgroundColor: 'rgba(25,135,84,0.2)',
+                                yAxisID: 'yOrders',
+                                tension: 0.25
+                            },
+                            {
+                                label: 'Ciro',
+                                data: monthlyOrders.map(x => x.Revenue),
+                                borderColor: 'rgba(255,193,7,1)',
+                                backgroundColor: 'rgba(255,193,7,0.2)',
+                                yAxisID: 'yRevenue',
+                                tension: 0.25
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            yOrders: { type: 'linear', position: 'left', beginAtZero: true },
+                            yRevenue: { type: 'linear', position: 'right', beginAtZero: true, grid: { drawOnChartArea: false } }
+                        }
+                    }
+                });
+            }
+        })();
+    </script>
+}

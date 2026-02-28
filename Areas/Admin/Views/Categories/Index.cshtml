@@ -3,7 +3,10 @@
     ViewData["Title"] = "Kategoriler";
 }
 
-<div class="container" style="max-width: 980px;">
+<div class="container-fluid py-4">
+    <partial name="_AdminNav" />
+    <div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body p-4">
     <div class="d-flex align-items-center justify-content-between mb-3">
         <h1 class="h3 m-0">Kategoriler</h1>
         <a class="btn btn-primary" asp-area="Admin" asp-controller="Categories" asp-action="Create">Yeni kategori</a>
@@ -53,4 +56,6 @@
         }
         </tbody>
     </table>
+    </div>
+    </div>
 </div>

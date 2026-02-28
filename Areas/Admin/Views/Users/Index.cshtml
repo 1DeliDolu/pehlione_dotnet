@@ -3,7 +3,10 @@
     ViewData["Title"] = "Kullanicilar";
 }
 
-<div class="container" style="max-width: 980px;">
+<div class="container-fluid py-4">
+    <partial name="_AdminNav" />
+    <div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body p-4">
     <div class="d-flex align-items-center justify-content-between mb-3">
         <h1 class="h3 m-0">Kullanicilar</h1>
         <a class="btn btn-primary" asp-area="Admin" asp-controller="Users" asp-action="Create">Yeni kullanici</a>
@@ -32,4 +35,6 @@
         }
         </tbody>
     </table>
+    </div>
+    </div>
 </div>

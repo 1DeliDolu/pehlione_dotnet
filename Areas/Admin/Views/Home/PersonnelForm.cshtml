@@ -1,0 +1,75 @@
+@model Pehlione.Models.ViewModels.Admin.AdminPersonnelFormVm
+@{
+    ViewData["Title"] = "Departman Operasyonu: Personel Rol / Birim";
+}
+
+<div class="container-fluid py-4">
+    <partial name="_AdminNav" />
+
+    @if (TempData["AdminSuccess"] is string ok && !string.IsNullOrWhiteSpace(ok))
+    {
+        <div class="alert alert-success shadow-sm">@ok</div>
+    }
+    @if (TempData["AdminError"] is string err && !string.IsNullOrWhiteSpace(err))
+    {
+        <div class="alert alert-warning shadow-sm">@err</div>
+    }
+
+    <form asp-area="Admin" asp-controller="Home" asp-action="QuickUpdatePersonnel" method="post" class="card border-0 shadow-sm rounded-4">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="returnTo" value="PersonnelForm" />
+
+        <div class="card-header bg-white border-0 pt-4 px-4">
+            <h1 class="h5 mb-1">Departman Operasyonu: Personel Rol / Birim</h1>
+            <p class="text-muted small mb-0">Admin burada HR ve IT gibi personel yetkilerini gunceller.</p>
+        </div>
+
+        <div class="card-body px-4 pb-4">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label fw-semibold">Personel</label>
+                    <select name="UserId" class="form-select form-select-lg">
+                        @foreach (var u in Model.PersonnelOptions)
+                        {
+                            <option value="@u.Value">@u.Label</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-lg-4">
+                    <label class="form-label fw-semibold">Rol</label>
+                    <select name="Role" class="form-select form-select-lg">
+                        <option value="Staff">Staff</option>
+                        <option value="Purchasing">Purchasing</option>
+                        <option value="Warehouse">Warehouse</option>
+                        <option value="IT">IT</option>
+                        <option value="HR">HR</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <div class="col-12 col-lg-4">
+                    <label class="form-label fw-semibold">Birim</label>
+                    <select name="Department" class="form-select form-select-lg">
+                        <option value="">-</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Purchasing">Purchasing</option>
+                        <option value="Warehouse">Warehouse</option>
+                        <option value="IT">IT</option>
+                        <option value="HR">HR</option>
+                    </select>
+                </div>
+                <div class="col-12 col-lg-4">
+                    <label class="form-label fw-semibold">Pozisyon</label>
+                    <select name="Position" class="form-select form-select-lg">
+                        <option value="">-</option>
+                        <option value="Staff">Staff</option>
+                        <option value="Teamleiter">Teamleiter</option>
+                        <option value="Mudur">Mudur</option>
+                    </select>
+                </div>
+            </div>
+            <div class="d-flex justify-content-end mt-4">
+                <button type="submit" class="btn btn-primary btn-lg px-4">Personel Guncelle</button>
+            </div>
+        </div>
+    </form>
+</div>

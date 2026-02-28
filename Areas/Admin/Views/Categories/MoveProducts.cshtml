@@ -3,7 +3,10 @@
     ViewData["Title"] = "Urunleri Tasi";
 }
 
-<div class="container" style="max-width: 760px;">
+<div class="container-fluid py-4">
+    <partial name="_AdminNav" />
+    <div class="card border-0 shadow-sm rounded-4" style="max-width: 900px;">
+    <div class="card-body p-4">
     <h1 class="h3 mb-3">Urunleri baska kategoriye tasi</h1>
 
     <div class="alert alert-info">
@@ -43,6 +46,8 @@
                asp-route-id="@Model.SourceCategoryId">Geri</a>
         </div>
     </form>
+    </div>
+    </div>
 </div>
 
 @section Scripts {
