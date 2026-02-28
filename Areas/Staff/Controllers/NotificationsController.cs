@@ -71,6 +71,9 @@ public sealed class NotificationsController : Controller
             })
             .ToListAsync(ct);
 
+        foreach (var item in items)
+            item.LinkUrl = BuildLink(item.RelatedEntityType, item.RelatedEntityId, item.Department);
+
         return View(new NotificationIndexVm
         {
             IncludeRead = includeRead,
@@ -166,5 +169,36 @@ public sealed class NotificationsController : Controller
             NotificationDepartments.Courier,
             "HR"
         };
+    }
+
+    private string? BuildLink(string? relatedEntityType, string? relatedEntityId, string department)
+    {
+        if (string.Equals(relatedEntityType, "Order", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!string.IsNullOrWhiteSpace(relatedEntityId))
+            {
+                if (User.IsInRole(IdentitySeed.RoleAdmin))
+                    return Url.Action("Index", "Orders", new { area = "Admin", q = relatedEntityId });
+
+                if (department.Equals(NotificationDepartments.Accounting, StringComparison.OrdinalIgnoreCase))
+                    return Url.Action("Orders", "Accounting", new { area = "Staff", q = relatedEntityId });
+
+                if (department.Equals(NotificationDepartments.Warehouse, StringComparison.OrdinalIgnoreCase))
+                    return Url.Action("Orders", "Warehouse", new { area = "Staff", q = relatedEntityId });
+
+                if (department.Equals(NotificationDepartments.Courier, StringComparison.OrdinalIgnoreCase))
+                    return Url.Action("Orders", "Courier", new { area = "Staff", q = relatedEntityId });
+
+                if (department.Equals(NotificationDepartments.Purchasing, StringComparison.OrdinalIgnoreCase))
+                    return Url.Action("Returns", "Purchasing", new { area = "Staff", q = relatedEntityId });
+            }
+
+            return Url.Action("Index", "Notifications", new { area = "Staff" });
+        }
+
+        if (string.Equals(relatedEntityType, "Product", StringComparison.OrdinalIgnoreCase))
+            return Url.Action("Receive", "Inventory", new { area = "Staff", productId = relatedEntityId });
+
+        return null;
     }
 }

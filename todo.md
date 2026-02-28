@@ -1,56 +1,38 @@
-Anladım: **admin oluşturulduğu anda**, sistemdeki **tüm çalışan hesaplarına** (admin hariç) “Yeni admin hesabı oluşturuldu” gibi bir **broadcast bildirim** düşsün.
+Bunu iş akışına şöyle oturturuz: **Müşteri şikayeti açıldığında** otomatik olarak **Halkla İlişkiler (PR/Customer Relations)** biriminin dashboard’una bildirim düşer; PR şikayet kaydının içinden müşteriyle “irtibat” sürecini yürütür.
 
-Bunu sağlamanın en sağlam 2 yolu var:
+## Yol haritası (şikayet → PR irtibat)
 
-## Seçenek A (Hızlı, prototip için yeterli): “AllEmployees” hedef tipi
+1. **Complaint (Şikayet) modülü**
 
-Notification tablosuna bir hedefleme alanı ekleriz:
+* Müşteri (veya admin adına) bir şikayet kaydı açar.
+* Alanlar: `Subject`, `Message`, `OrderId?`, `Status (New/InProgress/Resolved)`, `Priority`, `CreatedAt`, `CreatedByUserId (Customer)`
 
-* `TargetType`: `Role | User | AllEmployees`
-* `AllEmployees` seçilince, bildirim listelerken:
+2. **Event / Bildirim**
 
-  * Admin dışındaki rollere sahip kullanıcılar bu bildirimi görür
-  * Admin de isterse ayrıca “hepsini gör” ekranından görür (admin zaten her şeyi görüyor)
+* `ComplaintCreated` olayı tetiklenir.
+* Notification hedefi: **PR rolü** (ya da “CustomerRelations” rolü)
 
-**Artı:** tek kayıt, performans iyi
-**Eksi:** “kimin okuduğunu tek tek takip” zorlaşır (okundu bilgisi kullanıcı bazlı olmalı)
+3. **PR İrtibat akışı**
 
-Bunu çözmek için okundu bilgisini ayrı tabloda tutarız:
+* PR dashboard: “Yeni Şikayetler” listesi
+* PR bir şikayeti “Üstlen” der → şikayet `AssignedToUserId` set olur, status `InProgress`
+* PR cevap yazar (internal not + müşteri mesajı)
+* Müşteriye bildirim gider: “Şikayetiniz inceleniyor / cevaplandı”
 
-* `NotificationReads(NotificationId, UserId, ReadAt)`
+4. **Mesajlaşma (birimler arası haberleşme şartına da hizmet eder)**
 
-## Seçenek B (Kurumsal/izlenebilir): Recipient tablosu ile fan-out
+* `ComplaintMessage` tablosu:
 
-Admin yaratılınca:
+  * `ComplaintId`, `SenderUserId`, `Message`, `IsInternal`, `CreatedAt`
+* PR müşteriyle buradan yazışır (UI’da thread görünür)
 
-* 1 adet `Notification`
-* Her çalışan için `NotificationRecipient(NotificationId, UserId, IsRead, ReadAt)` satırı
+5. **Yetkiler (RBAC)**
 
-**Artı:** kim okudu/okumadı net
-**Eksi:** çalışan sayısı büyürse insert sayısı artar (ama prototipte sorun değil)
+* Customer: sadece **kendi şikayetlerini** görür/açar
+* PR: tüm şikayetleri görür, üstlenir, cevaplar
+* Admin: hepsini görür
 
----
-
-## Önerim
-
-Senin “dashboard iş akışı” + “admin tüm bildirimleri görsün” hedefinle en temiz çözüm:
-
-* **Notification (tek kayıt)** + **NotificationRecipient (kime gitti)** yaklaşımı (Seçenek B)
-* Böylece hem “her bir çalışana gitsin” net olur, hem de “okundu/okunmadı” raporu çıkar.
+> Not: Senin “3 rol” şartın varsa, PR’ı mevcut 3 rolden biriyle eşleştiririz (ör. “Sales” ya da “Support” gibi). Ama idealde PR ayrı rol olur.
 
 ---
-
-## Akış (Admin created → herkesin dashboard’una bildirim)
-
-1. `AdminCreated` olayı oluşur (event/outbox veya doğrudan servis)
-2. NotificationService:
-
-   * Sistemdeki tüm “çalışan kullanıcıları” (Admin hariç) listeler
-   * Her biri için `NotificationRecipient` üretir
-3. Kullanıcı kendi dashboard’una girince:
-
-   * “Kendi recipient kayıtları” üzerinden bildirimler listelenir
-
----
-
 

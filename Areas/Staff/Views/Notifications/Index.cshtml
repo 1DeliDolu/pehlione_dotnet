@@ -63,6 +63,10 @@
                             }
                         </div>
                         <div class="text-end">
+                            @if (!string.IsNullOrWhiteSpace(n.LinkUrl))
+                            {
+                                <a class="btn btn-sm btn-outline-secondary mb-2" href="@n.LinkUrl">Detaya Git</a>
+                            }
                             @if (n.IsRead)
                             {
                                 <span class="badge text-bg-success">Okundu</span>

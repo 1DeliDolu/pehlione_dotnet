@@ -48,22 +48,63 @@ public sealed class DashboardNotificationsViewComponent : ViewComponent
         var items = await query
             .OrderByDescending(x => x.CreatedAt)
             .Take(Math.Clamp(take, 1, 20))
-            .Select(x => new DashboardNotificationItemVm
+            .Select(x => new
             {
-                Id = x.Id,
-                Department = x.Department,
-                Title = x.Title,
-                Message = x.Message,
-                IsRead = x.IsRead,
-                CreatedAt = x.CreatedAt
+                x.Id,
+                x.Department,
+                x.Title,
+                x.Message,
+                x.RelatedEntityType,
+                x.RelatedEntityId,
+                x.IsRead,
+                x.CreatedAt
             })
             .ToListAsync(ct);
+
+        var mapped = items.Select(x => new DashboardNotificationItemVm
+        {
+            Id = x.Id,
+            Department = x.Department,
+            Title = x.Title,
+            Message = x.Message,
+            LinkUrl = BuildLink(x.RelatedEntityType, x.RelatedEntityId, x.Department),
+            IsRead = x.IsRead,
+            CreatedAt = x.CreatedAt
+        }).ToList();
 
         return View(new DashboardNotificationsVm
         {
             IsAdmin = isAdmin,
             UnreadCount = unreadCount,
-            Items = items
+            Items = mapped
         });
+    }
+
+    private string? BuildLink(string? relatedEntityType, string? relatedEntityId, string department)
+    {
+        if (string.Equals(relatedEntityType, "Order", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!string.IsNullOrWhiteSpace(relatedEntityId))
+            {
+                if (UserClaimsPrincipal.IsInRole(IdentitySeed.RoleAdmin))
+                    return Url.Action("Index", "Orders", new { area = "Admin", q = relatedEntityId });
+
+                if (department.Equals(NotificationDepartments.Accounting, StringComparison.OrdinalIgnoreCase))
+                    return Url.Action("Orders", "Accounting", new { area = "Staff", q = relatedEntityId });
+                if (department.Equals(NotificationDepartments.Warehouse, StringComparison.OrdinalIgnoreCase))
+                    return Url.Action("Orders", "Warehouse", new { area = "Staff", q = relatedEntityId });
+                if (department.Equals(NotificationDepartments.Courier, StringComparison.OrdinalIgnoreCase))
+                    return Url.Action("Orders", "Courier", new { area = "Staff", q = relatedEntityId });
+                if (department.Equals(NotificationDepartments.Purchasing, StringComparison.OrdinalIgnoreCase))
+                    return Url.Action("Returns", "Purchasing", new { area = "Staff", q = relatedEntityId });
+            }
+
+            return Url.Action("Index", "Notifications", new { area = "Staff" });
+        }
+
+        if (string.Equals(relatedEntityType, "Product", StringComparison.OrdinalIgnoreCase))
+            return Url.Action("Receive", "Inventory", new { area = "Staff", productId = relatedEntityId });
+
+        return null;
     }
 }
