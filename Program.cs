@@ -80,7 +80,7 @@ builder.Services.AddAuthentication()
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("CanIncreaseStock", policy =>
-        policy.RequireRole(IdentitySeed.RolePurchasing, IdentitySeed.RoleAdmin));
+        policy.RequireRole(IdentitySeed.RolePurchasing, IdentitySeed.RoleWarehouse, IdentitySeed.RoleAdmin));
 
     options.AddPolicy("CanDeleteStock", policy =>
         policy.RequireRole(IdentitySeed.RoleIt, IdentitySeed.RoleAdmin));

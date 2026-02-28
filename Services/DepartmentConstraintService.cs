@@ -54,7 +54,8 @@ public sealed class DepartmentConstraintService : IDepartmentConstraintService
         {
             NotificationDepartments.Sales,
             NotificationDepartments.Purchasing,
-            NotificationDepartments.It
+            NotificationDepartments.It,
+            NotificationDepartments.Warehouse
         };
     }
 
@@ -82,6 +83,17 @@ public sealed class DepartmentConstraintService : IDepartmentConstraintService
             };
         }
 
+        if (department.Equals(NotificationDepartments.Warehouse, StringComparison.OrdinalIgnoreCase))
+        {
+            return new DepartmentConstraint
+            {
+                Department = NotificationDepartments.Warehouse,
+                CanIncreaseStock = true,
+                CanDeleteStock = false,
+                MaxReceiveQuantity = null
+            };
+        }
+
         return new DepartmentConstraint
         {
             Department = NotificationDepartments.Sales,
@@ -103,6 +115,9 @@ public sealed class DepartmentConstraintService : IDepartmentConstraintService
 
         if (user.IsInRole(IdentitySeed.RoleIt))
             set.Add(NotificationDepartments.It);
+
+        if (user.IsInRole(IdentitySeed.RoleWarehouse))
+            set.Add(NotificationDepartments.Warehouse);
 
         return set;
     }

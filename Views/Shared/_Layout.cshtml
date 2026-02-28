@@ -67,6 +67,12 @@
                             accountController = "Hr";
                             accountAction = "Index";
                         }
+                        else if (User.IsInRole("Warehouse"))
+                        {
+                            accountArea = "Staff";
+                            accountController = "Warehouse";
+                            accountAction = "Index";
+                        }
                         else if (User.IsInRole("Staff"))
                         {
                             accountArea = "Staff";

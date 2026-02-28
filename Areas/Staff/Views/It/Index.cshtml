@@ -1,6 +1,8 @@
 @model Pehlione.Models.ViewModels.Staff.DepartmentConstraintsVm
 @{
     ViewData["Title"] = "IT Kisit Yonetimi";
+    var createPersonnel = (ViewData["CreatePersonnelModel"] as Pehlione.Models.ViewModels.Staff.ItCreatePersonnelVm)
+        ?? new Pehlione.Models.ViewModels.Staff.ItCreatePersonnelVm();
 }
 
 <div class="container-fluid py-4">
@@ -67,6 +69,39 @@
 
             <div class="d-flex justify-content-end mt-4">
                 <button type="submit" class="btn btn-primary btn-lg px-4">Kaydet</button>
+            </div>
+        </div>
+    </form>
+
+    <form asp-area="Staff" asp-controller="It" asp-action="CreatePersonnel" method="post" class="card border-0 shadow-sm rounded-4 mt-4">
+        @Html.AntiForgeryToken()
+        <div class="card-header bg-white border-0 pt-4 px-4">
+            <h2 class="h5 mb-1">Personel Girisi ve Sifre Olusturma</h2>
+            <p class="text-muted small mb-0">IT birimi buradan yeni personel hesabi acabilir.</p>
+        </div>
+        <div class="card-body px-4 pb-4">
+            <div class="row g-3">
+                <div class="col-12 col-lg-4">
+                    <label class="form-label fw-semibold">Personel E-posta</label>
+                    <input name="Email" value="@createPersonnel.Email" type="email" class="form-control" />
+                </div>
+                <div class="col-12 col-lg-4">
+                    <label class="form-label fw-semibold">Gecici Sifre</label>
+                    <input name="Password" value="@createPersonnel.Password" type="text" class="form-control" />
+                </div>
+                <div class="col-12 col-lg-4">
+                    <label class="form-label fw-semibold">Rol</label>
+                    <select name="Role" class="form-select">
+                        <option value="Staff" selected="@(createPersonnel.Role == "Staff")">Staff</option>
+                        <option value="Purchasing" selected="@(createPersonnel.Role == "Purchasing")">Purchasing</option>
+                        <option value="Warehouse" selected="@(createPersonnel.Role == "Warehouse")">Warehouse</option>
+                        <option value="IT" selected="@(createPersonnel.Role == "IT")">IT</option>
+                        <option value="HR" selected="@(createPersonnel.Role == "HR")">HR</option>
+                    </select>
+                </div>
+            </div>
+            <div class="d-flex justify-content-end mt-4">
+                <button type="submit" class="btn btn-outline-primary btn-lg px-4">Personel Olustur</button>
             </div>
         </div>
     </form>

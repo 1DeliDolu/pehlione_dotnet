@@ -22,7 +22,8 @@ public sealed class UsersController : Controller
         IdentitySeed.RolePurchasing,
         IdentitySeed.RoleIt,
         IdentitySeed.RoleAdmin,
-        IdentitySeed.RoleHr
+        IdentitySeed.RoleHr,
+        IdentitySeed.RoleWarehouse
     ];
 
     private readonly UserManager<ApplicationUser> _userManager;

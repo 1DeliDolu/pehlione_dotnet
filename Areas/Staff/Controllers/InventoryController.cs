@@ -32,7 +32,7 @@ public sealed class InventoryController : Controller
     }
 
     [HttpGet]
-    [Authorize(Roles = $"{IdentitySeed.RolePurchasing},{IdentitySeed.RoleIt},{IdentitySeed.RoleAdmin}")]
+    [Authorize(Roles = $"{IdentitySeed.RolePurchasing},{IdentitySeed.RoleWarehouse},{IdentitySeed.RoleIt},{IdentitySeed.RoleAdmin}")]
     public async Task<IActionResult> Receive(int? topCategoryId, int? subCategoryId, int? subSubCategoryId, int? productId, CancellationToken ct)
     {
         var allCategories = await LoadAllCategoriesAsync(ct);
@@ -212,7 +212,7 @@ public sealed class InventoryController : Controller
     }
 
     [HttpGet]
-    [Authorize(Roles = $"{IdentitySeed.RolePurchasing},{IdentitySeed.RoleIt},{IdentitySeed.RoleAdmin}")]
+    [Authorize(Roles = $"{IdentitySeed.RolePurchasing},{IdentitySeed.RoleWarehouse},{IdentitySeed.RoleIt},{IdentitySeed.RoleAdmin}")]
     public async Task<IActionResult> SubCategories(int parentId, CancellationToken ct)
     {
         if (parentId <= 0)
@@ -234,7 +234,7 @@ public sealed class InventoryController : Controller
     }
 
     [HttpGet]
-    [Authorize(Roles = $"{IdentitySeed.RolePurchasing},{IdentitySeed.RoleIt},{IdentitySeed.RoleAdmin}")]
+    [Authorize(Roles = $"{IdentitySeed.RolePurchasing},{IdentitySeed.RoleWarehouse},{IdentitySeed.RoleIt},{IdentitySeed.RoleAdmin}")]
     public async Task<IActionResult> ProductsByCategory(int categoryId, CancellationToken ct)
     {
         if (categoryId <= 0)

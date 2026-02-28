@@ -1,0 +1,43 @@
+@{
+    ViewData["Title"] = "Depo Dashboard";
+}
+
+<div class="container-fluid py-4">
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <span class="badge text-bg-warning mb-2">Warehouse Dashboard</span>
+            <h1 class="h3 mb-1">Depo Gorevleri</h1>
+            <p class="text-muted mb-0">Depo birimi stok kabul, stok kontrol ve urun hareketlerini bu panelden yonetir.</p>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h2 class="h5">Mal Kabul / Stok Girisi</h2>
+                    <p class="text-muted small">Kategori secip urun adedi girerek depo girisini tamamlayin.</p>
+                    <a class="btn btn-primary" asp-area="Staff" asp-controller="Inventory" asp-action="Receive">Stok Formuna Git</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h2 class="h5">Guncel Stok Kontrolu</h2>
+                    <p class="text-muted small">Mevcut urun miktarlarini ve son hareketleri kontrol edin.</p>
+                    <a class="btn btn-outline-secondary" asp-area="Staff" asp-controller="Inventory" asp-action="Receive">Stok Durumu</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h2 class="h5">Bildirimler</h2>
+                    <p class="text-muted small">Depo tarafina ait operasyon bildirimlerini takip edin.</p>
+                    <a class="btn btn-outline-secondary" asp-area="Staff" asp-controller="Notifications" asp-action="Index">Bildirimler</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

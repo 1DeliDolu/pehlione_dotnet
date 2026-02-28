@@ -1,0 +1,95 @@
+@model Pehlione.Models.ViewModels.Staff.HrDashboardVm
+@{
+    ViewData["Title"] = "Insan Kaynaklari Dashboard";
+    var departments = new[] { "Sales", "Purchasing", "Warehouse", "IT", "HR" };
+    var positions = new[] { "Staff", "Teamleiter", "Mudur" };
+}
+
+<div class="container-fluid py-4">
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <span class="badge text-bg-success mb-2">HR Dashboard</span>
+            <h1 class="h3 mb-1">Personel Birim ve Gorev Yonetimi</h1>
+            <p class="text-muted mb-0">Personelin birimini, rolunu ve gorev seviyesini bu panelden guncelleyebilirsiniz.</p>
+        </div>
+    </div>
+
+    @if (TempData["HrSuccess"] is string ok && !string.IsNullOrWhiteSpace(ok))
+    {
+        <div class="alert alert-success shadow-sm">@ok</div>
+    }
+
+    @if (TempData["HrError"] is string err && !string.IsNullOrWhiteSpace(err))
+    {
+        <div class="alert alert-warning shadow-sm">@err</div>
+    }
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-white border-0 pt-4 px-4">
+            <h2 class="h5 mb-1">Personel Listesi</h2>
+            <p class="text-muted small mb-0">Insan kaynaklari burada personel birimi degistirme ve unvan tanimlamasi yapar.</p>
+        </div>
+        <div class="card-body px-4 pb-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>E-posta</th>
+                            <th>Rol</th>
+                            <th>Birim</th>
+                            <th>Pozisyon</th>
+                            <th class="text-end">Islem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var p in Model.People)
+                    {
+                        <tr>
+                            <td colspan="5" class="p-0 border-0">
+                                <form asp-area="Staff" asp-controller="Hr" asp-action="UpdatePerson" method="post" class="row g-2 align-items-center m-0 p-2 border-bottom">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="userId" value="@p.UserId" />
+                                    <div class="col-12 col-lg-4">
+                                        <div class="fw-semibold">@p.Email</div>
+                                        <div class="text-muted small">Mevcut: Rol=@p.Role | Birim=@(p.Department ?? "-") | Pozisyon=@(p.Position ?? "-")</div>
+                                    </div>
+                                    <div class="col-12 col-md-4 col-lg-2">
+                                        <select class="form-select form-select-sm" name="role">
+                                            <option value="Staff" selected="@(p.Role == "Staff")">Staff</option>
+                                            <option value="Purchasing" selected="@(p.Role == "Purchasing")">Purchasing</option>
+                                            <option value="Warehouse" selected="@(p.Role == "Warehouse")">Warehouse</option>
+                                            <option value="IT" selected="@(p.Role == "IT")">IT</option>
+                                            <option value="HR" selected="@(p.Role == "HR")">HR</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12 col-md-4 col-lg-2">
+                                        <select class="form-select form-select-sm" name="department">
+                                            <option value="">-</option>
+                                            @foreach (var d in departments)
+                                            {
+                                                <option value="@d" selected="@(string.Equals(p.Department, d, StringComparison.OrdinalIgnoreCase))">@d</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-12 col-md-4 col-lg-2">
+                                        <select class="form-select form-select-sm" name="position">
+                                            <option value="">-</option>
+                                            @foreach (var pos in positions)
+                                            {
+                                                <option value="@pos" selected="@(string.Equals(p.Position, pos, StringComparison.OrdinalIgnoreCase))">@pos</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-12 col-lg-2 text-lg-end">
+                                        <button type="submit" class="btn btn-sm btn-primary">Kaydet</button>
+                                    </div>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

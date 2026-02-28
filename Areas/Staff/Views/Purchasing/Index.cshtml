@@ -2,12 +2,41 @@
     ViewData["Title"] = "Purchasing Dashboard";
 }
 
-<div class="container" style="max-width: 900px;">
-    <h1 class="h3 mb-3">Satin Alma Dashboard</h1>
-    <p class="text-muted">Satın almacı girişinden sonra bu panel açılır.</p>
+<div class="container-fluid py-4">
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <span class="badge text-bg-primary mb-2">Purchasing Dashboard</span>
+            <h1 class="h3 mb-1">Satin Alma Gorevleri</h1>
+            <p class="text-muted mb-0">Giris yaptiginiz stok formu, siparis akislari ve bildirim islemleri burada.</p>
+        </div>
+    </div>
 
-    <div class="d-flex gap-2 flex-wrap">
-        <a class="btn btn-primary" asp-area="Staff" asp-controller="Inventory" asp-action="Receive">Stok Girisi</a>
-        <a class="btn btn-outline-secondary" asp-area="Staff" asp-controller="Notifications" asp-action="Index">Bildirimler</a>
+    <div class="row g-3">
+        <div class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h2 class="h5">Satin Alma Girisi Formu</h2>
+                    <p class="text-muted small">Kategori agacindan urun secip adet girerek stok girisi yapin.</p>
+                    <a class="btn btn-primary" asp-area="Staff" asp-controller="Inventory" asp-action="Receive">Forma Git</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h2 class="h5">Bildirimler</h2>
+                    <p class="text-muted small">Satin alma birimine gelen talepleri ve stok degisikliklerini takip edin.</p>
+                    <a class="btn btn-outline-secondary" asp-area="Staff" asp-controller="Notifications" asp-action="Index">Bildirimleri Ac</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h2 class="h5">Operasyon Notu</h2>
+                    <p class="text-muted small mb-0">Girilen adetler mevcut stok uzerine otomatik eklenir.</p>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
