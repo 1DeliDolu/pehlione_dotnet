@@ -261,7 +261,8 @@
                         <div class="col-12"><input name="PhoneNumber" value="@Model.AddressForm.PhoneNumber" class="form-control" placeholder="Telefon" /></div>
                         <div class="col-12">
                             <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="AddressIsDefault" name="IsDefault" checked="@Model.AddressForm.IsDefault" />
+                                <input type="hidden" name="IsDefault" value="false" />
+                                <input class="form-check-input" type="checkbox" id="AddressIsDefault" name="IsDefault" value="true" checked="@Model.AddressForm.IsDefault" />
                                 <label class="form-check-label" for="AddressIsDefault">Varsayilan adres</label>
                             </div>
                         </div>
@@ -333,7 +334,8 @@
                         <div class="col-4"><label class="form-label fw-semibold">Yil</label><input name="ExpYear" value="@Model.PaymentForm.ExpYear" type="number" min="2020" max="2100" class="form-control" /></div>
                         <div class="col-12">
                             <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="PaymentIsDefault" name="IsDefault" checked="@Model.PaymentForm.IsDefault" />
+                                <input type="hidden" name="IsDefault" value="false" />
+                                <input class="form-check-input" type="checkbox" id="PaymentIsDefault" name="IsDefault" value="true" checked="@Model.PaymentForm.IsDefault" />
                                 <label class="form-check-label" for="PaymentIsDefault">Varsayilan odeme yontemi</label>
                             </div>
                         </div>

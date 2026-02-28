@@ -126,11 +126,26 @@ public sealed class AccountController : Controller
         if (string.IsNullOrWhiteSpace(userId))
             return Challenge();
 
+        model.FirstName = (model.FirstName ?? "").Trim();
+        model.LastName = (model.LastName ?? "").Trim();
+        model.Street = (model.Street ?? "").Trim();
+        model.HouseNumber = (model.HouseNumber ?? "").Trim();
+        model.PostalCode = (model.PostalCode ?? "").Trim();
+        model.City = (model.City ?? "").Trim();
         model.CountryCode = (model.CountryCode ?? "").Trim().ToUpperInvariant();
 
         if (!ModelState.IsValid)
         {
-            TempData["AccountError"] = "Adres formu gecersiz.";
+            var errors = ModelState
+                .Values
+                .SelectMany(x => x.Errors)
+                .Select(e => e.ErrorMessage)
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .Distinct()
+                .ToList();
+            TempData["AccountError"] = errors.Count == 0
+                ? "Adres formu gecersiz."
+                : "Adres formu gecersiz: " + string.Join(" | ", errors);
             return RedirectToAction(nameof(Index));
         }
 

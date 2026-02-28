@@ -76,7 +76,7 @@ public sealed class AddressEditVm
     public string? AddressLine2 { get; set; }
 
     [Required]
-    [RegularExpression("^\\d{5}$")]
+    [RegularExpression("^[A-Za-z0-9\\-\\s]{3,16}$", ErrorMessage = "Posta kodu 3-16 karakter olmali.")]
     [Display(Name = "Posta Kodu")]
     public string PostalCode { get; set; } = "";
 
@@ -88,7 +88,7 @@ public sealed class AddressEditVm
     public string? State { get; set; }
 
     [Required]
-    [RegularExpression("^[A-Z]{2}$")]
+    [RegularExpression("^[A-Za-z]{2}$", ErrorMessage = "Ulke kodu 2 harf olmali (ornek: TR, DE).")]
     [Display(Name = "Ulke")]
     public string CountryCode { get; set; } = "DE";
 
