@@ -159,3 +159,15 @@ Pehlione is an ASP.NET Core MVC e-commerce project with MySQL + EF Core.
 - `wwwroot`: Statik dosyalar (`css`, `js`, upload/public assetler)
 
 Bu proje temel olarak MVP prensibiyle gelistirildi. Mevcut yapi bilerek sade tutuldu ve yeni moduller/alanlar eklenerek gelistirilmeye aciktir.
+
+## Guvenlik ve Yetkilendirme (RBAC + JWT)
+
+- `RBAC (Role-Based Access Control)`: Yetkilendirme rol bazlidir.
+  - Roller: `Admin`, `Customer`, `Staff` ve operasyon rolleri (`Purchasing`, `IT`, `HR`, `Warehouse`, `Accounting`, `Courier`, `CustomerRelations`)
+  - `[Authorize(Roles = ...)]` ve policy kontrolleri ile area/action bazli erisim sinirlanir.
+- `JWT`: API/servis token uretimi ve dogrulamasi JWT tabanli altyapi ile yonetilir.
+  - Token ayarlari `Models/Security/JwtOptions.cs`
+  - Token servisleri `Services/JwtTokenService.cs` ve `Services/IJwtTokenService.cs`
+- `Identity`: Kullanici/rol yonetimi ASP.NET Core Identity uzerinden yurur.
+  - Seed ve rol olusturma akisi `Data/IdentitySeed.cs`
+- `Department constraints`: Stok islemleri gibi kritik aksiyonlarda departman bazli ek kisitlar uygulanir.
