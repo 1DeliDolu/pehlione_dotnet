@@ -145,29 +145,29 @@ Pehlione is an ASP.NET Core MVC e-commerce project with MySQL + EF Core.
 - Add pagination/filtering for customer order history and admin data grids.
 - Improve localization consistency (TR/DE labels and validation messages).
 
-## Temel Kod Yapisi
+## Core Code Structure
 
-- `Areas/Admin`: Admin paneli (urun, kategori, siparis, kullanici ve dashboard yonetimi)
-- `Areas/Customer`: Musteri tarafi (katalog, sepet, checkout, hesap)
-- `Areas/Staff`: Operasyon ekipleri (warehouse, accounting, courier, purchasing, HR, IT)
-- `Controllers`: Ortak/public controller katmani
-- `Models`: Domain modelleri (`Catalog`, `Commerce`, `Inventory`, `Communication`, `Identity`)
-- `Models/ViewModels`: UI/View katmani icin tasinan ekran modelleri
-- `Data`: `PehlioneDbContext`, migration ve seed entegrasyonu
-- `Services`: Is kurali ve uygulama servisleri (stok, bildirim, timeline, mail)
-- `Views`: Area disi Razor ekranlari
-- `wwwroot`: Statik dosyalar (`css`, `js`, upload/public assetler)
+- `Areas/Admin`: Admin panel (product, category, order, user, and dashboard management)
+- `Areas/Customer`: Customer-facing area (catalog, cart, checkout, account)
+- `Areas/Staff`: Operations teams (warehouse, accounting, courier, purchasing, HR, IT)
+- `Controllers`: Shared/public controller layer
+- `Models`: Domain models (`Catalog`, `Commerce`, `Inventory`, `Communication`, `Identity`)
+- `Models/ViewModels`: UI/view-facing models
+- `Data`: `PehlioneDbContext`, migrations, and seed integration
+- `Services`: Business/application services (stock, notifications, timeline, mail)
+- `Views`: Razor views outside area folders
+- `wwwroot`: Static assets (`css`, `js`, uploads/public assets)
 
-Bu proje temel olarak MVP prensibiyle gelistirildi. Mevcut yapi bilerek sade tutuldu ve yeni moduller/alanlar eklenerek gelistirilmeye aciktir.
+This is an MVP-principled project designed to be open for continuous development and extension.
 
-## Guvenlik ve Yetkilendirme (RBAC + JWT)
+## Security and Authorization (RBAC + JWT)
 
-- `RBAC (Role-Based Access Control)`: Yetkilendirme rol bazlidir.
-  - Roller: `Admin`, `Customer`, `Staff` ve operasyon rolleri (`Purchasing`, `IT`, `HR`, `Warehouse`, `Accounting`, `Courier`, `CustomerRelations`)
-  - `[Authorize(Roles = ...)]` ve policy kontrolleri ile area/action bazli erisim sinirlanir.
-- `JWT`: API/servis token uretimi ve dogrulamasi JWT tabanli altyapi ile yonetilir.
-  - Token ayarlari `Models/Security/JwtOptions.cs`
-  - Token servisleri `Services/JwtTokenService.cs` ve `Services/IJwtTokenService.cs`
-- `Identity`: Kullanici/rol yonetimi ASP.NET Core Identity uzerinden yurur.
-  - Seed ve rol olusturma akisi `Data/IdentitySeed.cs`
-- `Department constraints`: Stok islemleri gibi kritik aksiyonlarda departman bazli ek kisitlar uygulanir.
+- `RBAC (Role-Based Access Control)`: Authorization is role-driven.
+  - Roles: `Admin`, `Customer`, `Staff`, and operations roles (`Purchasing`, `IT`, `HR`, `Warehouse`, `Accounting`, `Courier`, `CustomerRelations`)
+  - Access is restricted per area/action via `[Authorize(Roles = ...)]` and policy checks.
+- `JWT`: API/service token generation and validation are handled with JWT-based infrastructure.
+  - Token configuration: `Models/Security/JwtOptions.cs`
+  - Token services: `Services/JwtTokenService.cs` and `Services/IJwtTokenService.cs`
+- `Identity`: User and role management are handled by ASP.NET Core Identity.
+  - Seed and role bootstrap flow: `Data/IdentitySeed.cs`
+- `Department constraints`: Additional department-level restrictions are enforced for critical actions (such as stock operations).
