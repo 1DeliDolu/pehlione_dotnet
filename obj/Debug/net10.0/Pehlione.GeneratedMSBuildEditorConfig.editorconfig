@@ -19,253 +19,253 @@ build_property.TargetFrameworkIdentifier = .NETCoreApp
 build_property.TargetFrameworkVersion = v10.0
 build_property.RootNamespace = Pehlione
 build_property.RootNamespace = Pehlione
-build_property.ProjectDir = /home/project/Pehlione/
+build_property.ProjectDir = D:\Code\pehlione_dotnet\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.RazorLangVersion = 9.0
 build_property.SupportLocalizedComponentNames = 
 build_property.GenerateRazorMetadataSourceChecksumAttributes = 
-build_property.MSBuildProjectDirectory = /home/project/Pehlione
+build_property.MSBuildProjectDirectory = D:\Code\pehlione_dotnet
 build_property._RazorSourceGeneratorDebug = 
 build_property.EffectiveAnalysisLevelStyle = 10.0
 build_property.EnableCodeStyleSeverity = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Categories/Create.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvQ2F0ZWdvcmllcy9DcmVhdGUuY3NodG1s
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Categories/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcQ2F0ZWdvcmllc1xDcmVhdGUuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Categories/Delete.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvQ2F0ZWdvcmllcy9EZWxldGUuY3NodG1s
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Categories/Delete.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcQ2F0ZWdvcmllc1xEZWxldGUuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Categories/Edit.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvQ2F0ZWdvcmllcy9FZGl0LmNzaHRtbA==
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Categories/Edit.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcQ2F0ZWdvcmllc1xFZGl0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Categories/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvQ2F0ZWdvcmllcy9JbmRleC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Categories/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcQ2F0ZWdvcmllc1xJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Categories/MoveProducts.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvQ2F0ZWdvcmllcy9Nb3ZlUHJvZHVjdHMuY3NodG1s
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Categories/MoveProducts.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcQ2F0ZWdvcmllc1xNb3ZlUHJvZHVjdHMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Home/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvSG9tZS9JbmRleC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Home/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcSG9tZVxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Home/PersonnelForm.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvSG9tZS9QZXJzb25uZWxGb3JtLmNzaHRtbA==
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Home/PersonnelForm.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcSG9tZVxQZXJzb25uZWxGb3JtLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Home/ProductForm.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvSG9tZS9Qcm9kdWN0Rm9ybS5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Home/ProductForm.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcSG9tZVxQcm9kdWN0Rm9ybS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Home/StockForm.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvSG9tZS9TdG9ja0Zvcm0uY3NodG1s
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Home/StockForm.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcSG9tZVxTdG9ja0Zvcm0uY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Home/UserForm.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvSG9tZS9Vc2VyRm9ybS5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Home/UserForm.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcSG9tZVxVc2VyRm9ybS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Orders/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvT3JkZXJzL0luZGV4LmNzaHRtbA==
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Orders/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcT3JkZXJzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Products/Create.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvUHJvZHVjdHMvQ3JlYXRlLmNzaHRtbA==
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Products/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcUHJvZHVjdHNcQ3JlYXRlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Products/Delete.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvUHJvZHVjdHMvRGVsZXRlLmNzaHRtbA==
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Products/Delete.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcUHJvZHVjdHNcRGVsZXRlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Products/Edit.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvUHJvZHVjdHMvRWRpdC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Products/Edit.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcUHJvZHVjdHNcRWRpdC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Products/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvUHJvZHVjdHMvSW5kZXguY3NodG1s
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Products/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcUHJvZHVjdHNcSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Products/Product.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvUHJvZHVjdHMvUHJvZHVjdC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Products/Product.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcUHJvZHVjdHNcUHJvZHVjdC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Shared/_AdminFormSearch.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvU2hhcmVkL19BZG1pbkZvcm1TZWFyY2guY3NodG1s
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Shared/_AdminFormSearch.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcU2hhcmVkXF9BZG1pbkZvcm1TZWFyY2guY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Shared/_AdminNav.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvU2hhcmVkL19BZG1pbk5hdi5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Shared/_AdminNav.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcU2hhcmVkXF9BZG1pbk5hdi5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Users/Create.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvVXNlcnMvQ3JlYXRlLmNzaHRtbA==
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Users/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcVXNlcnNcQ3JlYXRlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/Users/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvVXNlcnMvSW5kZXguY3NodG1s
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/Users/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcVXNlcnNcSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/_ViewImports.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvX1ZpZXdJbXBvcnRzLmNzaHRtbA==
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/_ViewImports.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcX1ZpZXdJbXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Admin/Views/_ViewStart.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQWRtaW4vVmlld3MvX1ZpZXdTdGFydC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Admin/Views/_ViewStart.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcX1ZpZXdTdGFydC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Customer/Views/Account/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQ3VzdG9tZXIvVmlld3MvQWNjb3VudC9JbmRleC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Customer/Views/Account/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQ3VzdG9tZXJcVmlld3NcQWNjb3VudFxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Customer/Views/Cart/Checkout.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQ3VzdG9tZXIvVmlld3MvQ2FydC9DaGVja291dC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Customer/Views/Cart/Checkout.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQ3VzdG9tZXJcVmlld3NcQ2FydFxDaGVja291dC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Customer/Views/Cart/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQ3VzdG9tZXIvVmlld3MvQ2FydC9JbmRleC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Customer/Views/Cart/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQ3VzdG9tZXJcVmlld3NcQ2FydFxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Customer/Views/Catalog/Category.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQ3VzdG9tZXIvVmlld3MvQ2F0YWxvZy9DYXRlZ29yeS5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Customer/Views/Catalog/Category.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQ3VzdG9tZXJcVmlld3NcQ2F0YWxvZ1xDYXRlZ29yeS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Customer/Views/Catalog/Details.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQ3VzdG9tZXIvVmlld3MvQ2F0YWxvZy9EZXRhaWxzLmNzaHRtbA==
+[D:/Code/pehlione_dotnet/Areas/Customer/Views/Catalog/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQ3VzdG9tZXJcVmlld3NcQ2F0YWxvZ1xEZXRhaWxzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Customer/Views/Catalog/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQ3VzdG9tZXIvVmlld3MvQ2F0YWxvZy9JbmRleC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Customer/Views/Catalog/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQ3VzdG9tZXJcVmlld3NcQ2F0YWxvZ1xJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Customer/Views/Home/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQ3VzdG9tZXIvVmlld3MvSG9tZS9JbmRleC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Customer/Views/Home/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQ3VzdG9tZXJcVmlld3NcSG9tZVxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Customer/Views/_ViewImports.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQ3VzdG9tZXIvVmlld3MvX1ZpZXdJbXBvcnRzLmNzaHRtbA==
+[D:/Code/pehlione_dotnet/Areas/Customer/Views/_ViewImports.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQ3VzdG9tZXJcVmlld3NcX1ZpZXdJbXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Customer/Views/_ViewStart.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvQ3VzdG9tZXIvVmlld3MvX1ZpZXdTdGFydC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Customer/Views/_ViewStart.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQ3VzdG9tZXJcVmlld3NcX1ZpZXdTdGFydC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Staff/Views/Accounting/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvQWNjb3VudGluZy9JbmRleC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Staff/Views/Accounting/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcU3RhZmZcVmlld3NcQWNjb3VudGluZ1xJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Staff/Views/Accounting/Orders.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvQWNjb3VudGluZy9PcmRlcnMuY3NodG1s
+[D:/Code/pehlione_dotnet/Areas/Staff/Views/Accounting/Orders.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcU3RhZmZcVmlld3NcQWNjb3VudGluZ1xPcmRlcnMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Staff/Views/Courier/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvQ291cmllci9JbmRleC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Staff/Views/Courier/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcU3RhZmZcVmlld3NcQ291cmllclxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Staff/Views/Courier/Orders.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvQ291cmllci9PcmRlcnMuY3NodG1s
+[D:/Code/pehlione_dotnet/Areas/Staff/Views/Courier/Orders.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcU3RhZmZcVmlld3NcQ291cmllclxPcmRlcnMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Staff/Views/CustomerRelations/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvQ3VzdG9tZXJSZWxhdGlvbnMvSW5kZXguY3NodG1s
+[D:/Code/pehlione_dotnet/Areas/Staff/Views/CustomerRelations/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcU3RhZmZcVmlld3NcQ3VzdG9tZXJSZWxhdGlvbnNcSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Staff/Views/Home/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvSG9tZS9JbmRleC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Staff/Views/Home/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcU3RhZmZcVmlld3NcSG9tZVxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Staff/Views/Hr/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvSHIvSW5kZXguY3NodG1s
+[D:/Code/pehlione_dotnet/Areas/Staff/Views/Hr/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcU3RhZmZcVmlld3NcSHJcSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Staff/Views/Inventory/Receive.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvSW52ZW50b3J5L1JlY2VpdmUuY3NodG1s
+[D:/Code/pehlione_dotnet/Areas/Staff/Views/Inventory/Receive.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcU3RhZmZcVmlld3NcSW52ZW50b3J5XFJlY2VpdmUuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Staff/Views/It/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvSXQvSW5kZXguY3NodG1s
+[D:/Code/pehlione_dotnet/Areas/Staff/Views/It/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcU3RhZmZcVmlld3NcSXRcSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Staff/Views/Notifications/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvTm90aWZpY2F0aW9ucy9JbmRleC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Staff/Views/Notifications/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcU3RhZmZcVmlld3NcTm90aWZpY2F0aW9uc1xJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Staff/Views/Purchasing/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvUHVyY2hhc2luZy9JbmRleC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Staff/Views/Purchasing/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcU3RhZmZcVmlld3NcUHVyY2hhc2luZ1xJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Staff/Views/Purchasing/Returns.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvUHVyY2hhc2luZy9SZXR1cm5zLmNzaHRtbA==
+[D:/Code/pehlione_dotnet/Areas/Staff/Views/Purchasing/Returns.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcU3RhZmZcVmlld3NcUHVyY2hhc2luZ1xSZXR1cm5zLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Staff/Views/Warehouse/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvV2FyZWhvdXNlL0luZGV4LmNzaHRtbA==
+[D:/Code/pehlione_dotnet/Areas/Staff/Views/Warehouse/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcU3RhZmZcVmlld3NcV2FyZWhvdXNlXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Staff/Views/Warehouse/Orders.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvV2FyZWhvdXNlL09yZGVycy5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Staff/Views/Warehouse/Orders.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcU3RhZmZcVmlld3NcV2FyZWhvdXNlXE9yZGVycy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Staff/Views/_ViewImports.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvX1ZpZXdJbXBvcnRzLmNzaHRtbA==
+[D:/Code/pehlione_dotnet/Areas/Staff/Views/_ViewImports.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcU3RhZmZcVmlld3NcX1ZpZXdJbXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Areas/Staff/Views/_ViewStart.cshtml]
-build_metadata.AdditionalFiles.TargetPath = QXJlYXMvU3RhZmYvVmlld3MvX1ZpZXdTdGFydC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Areas/Staff/Views/_ViewStart.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcU3RhZmZcVmlld3NcX1ZpZXdTdGFydC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Views/Account/ChangePassword.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQWNjb3VudC9DaGFuZ2VQYXNzd29yZC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Views/Account/ChangePassword.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxDaGFuZ2VQYXNzd29yZC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Views/Account/Denied.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQWNjb3VudC9EZW5pZWQuY3NodG1s
+[D:/Code/pehlione_dotnet/Views/Account/Denied.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxEZW5pZWQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Views/Account/Login.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQWNjb3VudC9Mb2dpbi5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Views/Account/Login.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxMb2dpbi5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Views/Home/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvSG9tZS9JbmRleC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Views/Home/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Views/Home/Privacy.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvSG9tZS9Qcml2YWN5LmNzaHRtbA==
+[D:/Code/pehlione_dotnet/Views/Home/Privacy.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxQcml2YWN5LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Views/Shared/Components/DashboardNotifications/Default.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvU2hhcmVkL0NvbXBvbmVudHMvRGFzaGJvYXJkTm90aWZpY2F0aW9ucy9EZWZhdWx0LmNzaHRtbA==
+[D:/Code/pehlione_dotnet/Views/Shared/Components/DashboardNotifications/Default.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXENvbXBvbmVudHNcRGFzaGJvYXJkTm90aWZpY2F0aW9uc1xEZWZhdWx0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Views/Shared/Components/MainNav/Default.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvU2hhcmVkL0NvbXBvbmVudHMvTWFpbk5hdi9EZWZhdWx0LmNzaHRtbA==
+[D:/Code/pehlione_dotnet/Views/Shared/Components/MainNav/Default.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXENvbXBvbmVudHNcTWFpbk5hdlxEZWZhdWx0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Views/Shared/Error.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvU2hhcmVkL0Vycm9yLmNzaHRtbA==
+[D:/Code/pehlione_dotnet/Views/Shared/Error.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXEVycm9yLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Views/Shared/_ValidationScriptsPartial.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvU2hhcmVkL19WYWxpZGF0aW9uU2NyaXB0c1BhcnRpYWwuY3NodG1s
+[D:/Code/pehlione_dotnet/Views/Shared/_ValidationScriptsPartial.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9WYWxpZGF0aW9uU2NyaXB0c1BhcnRpYWwuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Views/Token/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvVG9rZW4vSW5kZXguY3NodG1s
+[D:/Code/pehlione_dotnet/Views/Token/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVG9rZW5cSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Views/_ViewImports.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvX1ZpZXdJbXBvcnRzLmNzaHRtbA==
+[D:/Code/pehlione_dotnet/Views/_ViewImports.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcX1ZpZXdJbXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Views/_ViewStart.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvX1ZpZXdTdGFydC5jc2h0bWw=
+[D:/Code/pehlione_dotnet/Views/_ViewStart.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcX1ZpZXdTdGFydC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/project/Pehlione/Views/Shared/_Layout.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvU2hhcmVkL19MYXlvdXQuY3NodG1s
-build_metadata.AdditionalFiles.CssScope = b-gn91jfo8cn
+[D:/Code/pehlione_dotnet/Views/Shared/_Layout.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9MYXlvdXQuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = b-hp67oe1pyc

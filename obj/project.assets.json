@@ -2867,25 +2867,24 @@
     ]
   },
   "packageFolders": {
-    "/home/delione/.nuget/packages/": {}
+    "C:\\Users\\musta\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/project/Pehlione/Pehlione.csproj",
+      "projectUniqueName": "D:\\Code\\pehlione_dotnet\\Pehlione.csproj",
       "projectName": "Pehlione",
-      "projectPath": "/home/project/Pehlione/Pehlione.csproj",
-      "packagesPath": "/home/delione/.nuget/packages/",
-      "outputPath": "/home/project/Pehlione/obj/",
+      "projectPath": "D:\\Code\\pehlione_dotnet\\Pehlione.csproj",
+      "packagesPath": "C:\\Users\\musta\\.nuget\\packages\\",
+      "outputPath": "D:\\Code\\pehlione_dotnet\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/home/delione/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\musta\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
       ],
       "sources": {
-        "/usr/lib/dotnet/library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -2960,7 +2959,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/10.0.103/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.106/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.AspNetCore": "(,10.0.32767]",
           "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",
